@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "npm run build && wrangler dev",
+    "deploy": "npm run build && wrangler deploy"
   },
   "dependencies": {
     "esbuild": "^0.28.0",
@@ -13,7 +14,9 @@
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
+    "@cloudflare/vite-plugin": "^1.36.0",
     "@vitejs/plugin-react": "^4.7.0",
-    "vite": "^7.3.2"
+    "vite": "^7.3.2",
+    "wrangler": "^4.88.0"
   }
 }
