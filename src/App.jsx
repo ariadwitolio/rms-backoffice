@@ -1,6 +1,4 @@
 import {
-  Fragment,
-  isValidElement,
   useDeferredValue,
   useEffect,
   useLayoutEffect,
@@ -9,8 +7,12 @@ import {
   startTransition,
 } from "react";
 import { createPortal } from "react-dom";
+import {
+  CatalogPanelInfoRow,
+  DetailReadField,
+} from "./components/catalog/Presentational.jsx";
 import { ChevronIcon, Icon } from "./components/icons/Icon.jsx";
-import { PageHeader, Sidebar, TopNavbar } from "./components/layout/Layout.jsx";
+import { Sidebar, TopNavbar } from "./components/layout/Layout.jsx";
 import {
   DetailPageHeader,
   DetailPanelDeleteAction,
@@ -51,6 +53,16 @@ import {
   TablePagination,
   Toggle,
 } from "./components/ui/Primitives.jsx";
+import CatalogModule from "./modules/catalog-management/catalog/CatalogModule.jsx";
+import CatalogListPage from "./modules/catalog-management/catalog/pages/CatalogListPage.jsx";
+import CategoryListPage from "./modules/catalog-management/category/pages/CategoryListPage.jsx";
+import ModifierListPage from "./modules/catalog-management/modifier/pages/ModifierListPage.jsx";
+import PricingRuleModule from "./modules/catalog-management/pricing-rule/PricingRuleModule.jsx";
+import PricingRuleListPage from "./modules/catalog-management/pricing-rule/pages/PricingRuleListPage.jsx";
+import UnitListPage from "./modules/catalog-management/unit/pages/UnitListPage.jsx";
+import DashboardModule from "./modules/dashboard/DashboardModule.jsx";
+import DashboardOverviewPage from "./modules/dashboard/pages/DashboardOverviewPage.jsx";
+import DevicesListPage from "./modules/devices/pages/DevicesListPage.jsx";
 import { ASSETS } from "./constants/assets.js";
 import {
   ALL_SELLING_TIME_DAY_LABELS,
@@ -5012,104 +5024,6 @@ function CreatePanelFooter({
         )}
       </div>
     </div>
-  );
-}
-
-function DetailReadField({
-  label,
-  value,
-  helper = null,
-  onEdit,
-  disabled = false,
-  ghost = false,
-  ellipsis = false,
-}) {
-
-  return (
-    <button
-      type="button"
-      className={`catalog-read-field${disabled ? " is-disabled" : ""}${ghost ? " is-ghost" : ""
-        }`}
-      onClick={disabled || ghost ? undefined : onEdit}
-      tabIndex={ghost ? -1 : undefined}
-      aria-hidden={ghost ? "true" : undefined}
-      data-catalog-detail-trigger={!disabled && !ghost ? "true" : undefined}
-    >
-      {label ? (
-        <p className="catalog-read-field__label type-subtitle-2">{label}</p>
-      ) : null}
-      <span className="catalog-read-field__value-row">
-        <p className={`catalog-read-field__value type-subtitle-1${ellipsis ? " catalog-detail-field__input--ellipsis" : ""}`}>
-          {value || "-"}
-        </p>
-
-        {!disabled && !ghost ? (
-          <span className="catalog-read-field__icon" aria-hidden="true">
-            <Icon name="edit" className="lab-icon lab-icon--16" alt="" />
-          </span>
-        ) : null}
-      </span>
-      {helper ? (
-        <p className="catalog-read-field__helper type-body">{helper}</p>
-      ) : null}
-    </button>
-  );
-}
-
-function CatalogPanelInfoRow({
-  label,
-  value,
-  helper = null,
-  onEdit,
-  disabled = false,
-  triggerDataAttr = "data-catalog-detail-trigger",
-  ellipsis = false,
-}) {
-
-  const isInteractive = Boolean(onEdit && !disabled);
-  const resolvedValue =
-    value === null || value === undefined || value === "" ? "-" : value;
-  const shouldWrapValueInBlock =
-    isValidElement(resolvedValue) ||
-    (typeof resolvedValue !== "string" && typeof resolvedValue !== "number");
-  const triggerProps =
-    isInteractive && triggerDataAttr
-      ? { [triggerDataAttr]: "true" }
-      : undefined;
-  const ContainerTag = isInteractive ? "button" : "div";
-
-  return (
-    <ContainerTag
-      {...(isInteractive ? { type: "button", onClick: onEdit } : {})}
-      className={`catalog-panel-info-row${isInteractive ? "" : " is-disabled"}`}
-      {...triggerProps}
-    >
-      <span className="catalog-panel-info-row__main">
-        <p className="catalog-panel-info-row__label type-subtitle-2">{label}</p>
-        <span className="catalog-panel-info-row__value-wrap">
-          <span className="catalog-panel-info-row__value-row">
-            {shouldWrapValueInBlock ? (
-              <span className="catalog-panel-info-row__value type-subtitle-2">
-                {resolvedValue}
-              </span>
-            ) : (
-              <p className={`catalog-panel-info-row__value type-subtitle-2${ellipsis ? " catalog-detail-field__input--ellipsis" : ""}`}>
-                {resolvedValue}
-              </p>
-
-            )}
-            {isInteractive ? (
-              <span className="catalog-panel-info-row__icon" aria-hidden="true">
-                <Icon name="edit" className="lab-icon lab-icon--16" alt="" />
-              </span>
-            ) : null}
-          </span>
-          {helper ? (
-            <p className="catalog-panel-info-row__helper type-body">{helper}</p>
-          ) : null}
-        </span>
-      </span>
-    </ContainerTag>
   );
 }
 
@@ -22337,242 +22251,61 @@ export default function App() {
     const detailView = getCatalogDetailViewModel();
     const isDetailPanelOpen = Boolean(detailView);
     const isCreatePanelOpen = currentPage === "catalog-create";
-    const catalogSummaryCount = filteredRows.length;
     const allVisibleSelected =
       filteredRows.length > 0 &&
       filteredRows.every((row) => selectedRows.catalog.includes(row.id));
 
     return (
-      <section
-        className={`page-canvas catalog-page-shell${isDetailPanelOpen || isCreatePanelOpen ? " is-detail-open" : ""
-          }`}
+      <CatalogModule
+        isDetailOpen={isDetailPanelOpen}
+        isCreateOpen={isCreatePanelOpen}
+        lockedInfoBox={renderLockedBusinessUnitInfoBox()}
+        sidePanel={
+          isCreatePanelOpen
+            ? renderCatalogCreateSidePanel()
+            : isDetailPanelOpen
+              ? renderCatalogDetailSidePanel(detailView)
+              : null
+        }
       >
-        <div className="catalog-page-main">
-          <div className="page-body page-body--list">
-            {renderLockedBusinessUnitInfoBox()}
-            <div className="catalog-page-table-wrap">
-              <section className="table-card catalog-table-card list-page-table-card">
-                <ListPageToolbar
-                  totalRows={catalogSummaryCount}
-                  totalLabel={
-                    catalogSummaryCount === 1 ? "Catalog" : "Catalogs"
-                  }
-                  filters={[
-                    <FilterChip
-                      key="category"
-                      label="Category"
-                      values={filtersByPage.catalog.category}
-                      options={getCatalogOptions("category")}
-                      onChange={(value) =>
-                        handleSetFilter("catalog", "category", value)
-                      }
-                    />,
-                  ]}
-                  searchPlaceholder="Search catalog"
-                  searchValue={searchByPage.catalog}
-                  onSearch={(value) => handleSetSearch("catalog", value)}
-                  actionLabel="New Catalog"
-                  onAction={openCatalogCreatePage}
-                />
-                <div
-                  className="table-scroll"
-                  data-scroll-top="false"
-                  onScroll={handleTableCardScroll}
-                >
-                  <table className="lab-table catalog-table">
-                    <thead>
-                      <tr>
-                        <th className="lab-table__checkbox">
-                          <LabCheckbox
-                            checked={allVisibleSelected}
-                            onChange={() =>
-                              handleToggleAllRows("catalog", filteredRows)
-                            }
-                            ariaLabel="Select all catalog rows"
-                          />
-                        </th>
-                        <th>
-                          <button
-                            type="button"
-                            className="lab-table__header-button"
-                            onClick={() => handleSetSort("catalog", "name")}
-                          >
-                            <span className="lab-table__header-stack">
-                              <p className="type-title-3">Catalog Name</p>
-                              <ChevronIcon
-                                name="filterChevron"
-                                size={16}
-                                color="#C2C2C2"
-                                direction={
-                                  sortByPage.catalog === "name"
-                                    ? (sortDirectionByPage.catalog === "asc" ? "up" : "down")
-                                    : "down"
-                                }
-                              />
-                            </span>
-                          </button>
-                        </th>
-                        <th>
-                          <button
-                            type="button"
-                            className="lab-table__header-button"
-                            onClick={() => handleSetSort("catalog", "category")}
-                          >
-                            <span className="lab-table__header-stack">
-                              <p className="type-title-3">Category</p>
-                              <ChevronIcon
-                                name="filterChevron"
-                                size={16}
-                                color="#C2C2C2"
-                                direction={
-                                  sortByPage.catalog === "category"
-                                    ? (sortDirectionByPage.catalog === "asc" ? "up" : "down")
-                                    : "down"
-                                }
-                              />
-                            </span>
-                          </button>
-                        </th>
-                        <th>
-                          <button
-                            type="button"
-                            className="lab-table__header-button"
-                            onClick={() => handleSetSort("catalog", "price")}
-                          >
-                            <span className="lab-table__header-stack">
-                              <p className="type-title-3">Price</p>
-                              <ChevronIcon
-                                name="filterChevron"
-                                size={16}
-                                color="#C2C2C2"
-                                direction={
-                                  sortByPage.catalog === "price"
-                                    ? (sortDirectionByPage.catalog === "asc" ? "up" : "down")
-                                    : "down"
-                                }
-                              />
-                            </span>
-                          </button>
-                        </th>
-                        <th>
-                          <p className="type-title-3">Availability</p>
-                        </th>
-                        <th className="lab-table__action" />
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {paged.rows.length ? (
-                        paged.rows.map((row) => (
-                          <tr
-                            key={row.id}
-                            className={`lab-table__row--clickable${catalogDetailDraft?.id === row.id
-                              ? " lab-table__row--selected"
-                              : ""
-                              }`}
-                            tabIndex={0}
-                            onClick={() => openCatalogDetailPage(row.id)}
-                            onKeyDown={(event) => {
-                              if (event.key === "Enter" || event.key === " ") {
-                                event.preventDefault();
-                                openCatalogDetailPage(row.id);
-                              }
-                            }}
-                          >
-                            <td
-                              className="lab-table__checkbox"
-                              onClick={(event) => event.stopPropagation()}
-                            >
-                              <LabCheckbox
-                                checked={selectedRows.catalog.includes(row.id)}
-                                onChange={() =>
-                                  handleToggleSelectedRow("catalog", row.id)
-                                }
-                                ariaLabel={`Select ${row.name}`}
-                              />
-                            </td>
-                            <td>
-                              <p className="type-subtitle-2 lab-table__link">
-                                {row.name}
-                              </p>
-                            </td>
-                            <td>
-                              <p className="type-subtitle-2">{row.category}</p>
-                            </td>
-                            <td>
-                              <p className="type-subtitle-2">
-                                {formatIdr(row.basePrice)}
-                              </p>
-                            </td>
-                            <td
-                              className="lab-table__toggle"
-                            >
-                              <Toggle
-                                checked={row.availability}
-                                onChange={() =>
-                                  handleToggleCatalogAvailability(row.id)
-                                }
-                                ariaLabel={`Toggle availability for ${row.name}`}
-                              />
-                            </td>
-                            <td
-                              className="lab-table__action"
-                              onClick={(event) => event.stopPropagation()}
-                            >
-                              <TableActionButton
-                                tooltip="Delete"
-                                onClick={() =>
-                                  requestDeleteRow(
-                                    "catalog",
-                                    row.id,
-                                    row.name
-                                  )
-                                }
-                              >
-                                <Icon
-                                  name="delete"
-                                  className="lab-icon lab-icon--16"
-                                  alt="Delete"
-                                />
-                              </TableActionButton>
-                            </td>
-                          </tr>
-                        ))
-                      ) : (
-                        <tr>
-                          <td colSpan="6">
-                            <EmptyState
-                              title="No catalog matches the current filters"
-                              copy="Adjust the search or chip filters to restore the full table."
-                            />
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-                <TableFooterBar
-                  page={paged.page}
-                  totalPages={paged.totalPages}
-                  rowsPerPage={rowsPerPage.catalog}
-                  totalRows={filteredRows.length}
-                  onRowsChange={(value) =>
-                    handleSetRowsPerPage("catalog", value)
-                  }
-                  onPrev={() => handlePaginate("catalog", "prev")}
-                  onNext={() => handlePaginate("catalog", "next")}
-                  onSelectPage={(value) => handleGoToPage("catalog", value)}
-                  onDownload={() => handleDownloadPage("catalog")}
-                />
-              </section>
-            </div>
-          </div>
-        </div>
-        {isCreatePanelOpen
-          ? renderCatalogCreateSidePanel()
-          : isDetailPanelOpen
-            ? renderCatalogDetailSidePanel(detailView)
-            : null}
-      </section>
+        <CatalogListPage
+          totalRows={filteredRows.length}
+          filters={[
+            <FilterChip
+              key="category"
+              label="Category"
+              values={filtersByPage.catalog.category}
+              options={getCatalogOptions("category")}
+              onChange={(value) => handleSetFilter("catalog", "category", value)}
+            />,
+          ]}
+          searchValue={searchByPage.catalog}
+          onSearch={(value) => handleSetSearch("catalog", value)}
+          onAction={openCatalogCreatePage}
+          onTableScroll={handleTableCardScroll}
+          allVisibleSelected={allVisibleSelected}
+          onToggleAll={() => handleToggleAllRows("catalog", filteredRows)}
+          sortKey={sortByPage.catalog}
+          sortDirection={sortDirectionByPage.catalog}
+          onSort={(value) => handleSetSort("catalog", value)}
+          rows={paged.rows}
+          selectedCatalogId={catalogDetailDraft?.id ?? null}
+          selectedRowIds={selectedRows.catalog}
+          onToggleSelectedRow={(rowId) => handleToggleSelectedRow("catalog", rowId)}
+          onOpenDetail={openCatalogDetailPage}
+          onToggleAvailability={handleToggleCatalogAvailability}
+          onRequestDelete={(row) => requestDeleteRow("catalog", row.id, row.name)}
+          page={paged.page}
+          totalPages={paged.totalPages}
+          rowsPerPage={rowsPerPage.catalog}
+          onRowsChange={(value) => handleSetRowsPerPage("catalog", value)}
+          onPrev={() => handlePaginate("catalog", "prev")}
+          onNext={() => handlePaginate("catalog", "next")}
+          onSelectPage={(value) => handleGoToPage("catalog", value)}
+          onDownload={() => handleDownloadPage("catalog")}
+          formatIdr={formatIdr}
+        />
+      </CatalogModule>
     );
   }
 
@@ -24122,7 +23855,6 @@ export default function App() {
   function renderPricingRulePage() {
     const filteredRows = getRowsForPage("pricing-rule");
     const paged = getPagedRows("pricing-rule", filteredRows);
-    const pricingRuleSummaryCount = filteredRows.length;
     const allVisibleSelected =
       filteredRows.length > 0 &&
       filteredRows.every((row) =>
@@ -24136,264 +23868,93 @@ export default function App() {
     const isCreatePanelOpen = currentPage === "pricing-rule-create";
 
     return (
-      <section
-        className={`page-canvas${pricingRuleTab === "special" ? " catalog-page-shell" : ""
-          }${isSpecialRuleDetailOpen || isCreatePanelOpen ? " is-detail-open" : ""}`}
+      <PricingRuleModule
+        isSpecialRuleTab={pricingRuleTab === "special"}
+        isDetailOpen={isSpecialRuleDetailOpen}
+        isCreateOpen={isCreatePanelOpen}
+        lockedInfoBox={renderLockedBusinessUnitInfoBox()}
+        sidePanel={
+          isCreatePanelOpen
+            ? renderPricingRuleCreateSidePanel()
+            : isSpecialRuleDetailOpen
+              ? renderPricingRuleDetailSidePanel(selectedPricingRuleDetailRow)
+              : null
+        }
       >
-        <div
-          className={
-            pricingRuleTab === "special" ? "catalog-page-main" : undefined
+        <PricingRuleListPage
+          PricingRuleTabButtonComponent={PricingRuleTabButton}
+          PricingOverrideCardComponent={PricingOverrideCard}
+          pricingRuleTab={pricingRuleTab}
+          onSetPricingRuleTab={handleSetPricingRuleTab}
+          catalogOverrideGroups={catalogOverrideGroups}
+          modifierOverrideGroups={modifierOverrideGroups}
+          selectedPricingOverrides={selectedPricingOverrides}
+          onToggleAllCatalogOverrides={() =>
+            handleToggleAllPricingOverrides("catalog", catalogOverrideGroups)
           }
-        >
-          <div className="page-body page-body--list">
-            {renderLockedBusinessUnitInfoBox()}
-            <div className="pricing-rule-tabs">
-              <PricingRuleTabButton
-                label="Default Rule"
-                active={pricingRuleTab === "default"}
-                onClick={() => handleSetPricingRuleTab("default")}
-              />
-              <PricingRuleTabButton
-                label="Special Rule"
-                active={pricingRuleTab === "special"}
-                onClick={() => handleSetPricingRuleTab("special")}
-              />
-            </div>
-            {pricingRuleTab === "default" ? (
-              <div className="pricing-rule-grid">
-                <PricingOverrideCard
-                  title="Catalog Override Rules"
-                  groups={catalogOverrideGroups}
-                  selectedIds={selectedPricingOverrides.catalog}
-                  onToggleAll={() =>
-                    handleToggleAllPricingOverrides(
-                      "catalog",
-                      catalogOverrideGroups
-                    )
-                  }
-                  onToggleGroup={(group) =>
-                    handleTogglePricingOverrideGroup("catalog", group)
-                  }
-                  onToggleItem={(itemId) =>
-                    handleTogglePricingOverrideItem("catalog", itemId)
-                  }
-                  editing={
-                    pricingOverrideEditing?.sectionKey === "catalog"
-                      ? pricingOverrideEditing
-                      : null
-                  }
-                  onStartEdit={(itemId) =>
-                    handleStartPricingOverrideEdit("catalog", itemId)
-                  }
-                  onChangeEdit={handleChangePricingOverrideEdit}
-                  onSaveEdit={handleSavePricingOverrideEdit}
-                  onCancelEdit={handleCancelPricingOverrideEdit}
-                  editInputRef={pricingOverrideInputRef}
-                />
-                <PricingOverrideCard
-                  title="Modifier Override Rules"
-                  groups={modifierOverrideGroups}
-                  selectedIds={selectedPricingOverrides.modifier}
-                  onToggleAll={() =>
-                    handleToggleAllPricingOverrides(
-                      "modifier",
-                      modifierOverrideGroups
-                    )
-                  }
-                  onToggleGroup={(group) =>
-                    handleTogglePricingOverrideGroup("modifier", group)
-                  }
-                  onToggleItem={(itemId) =>
-                    handleTogglePricingOverrideItem("modifier", itemId)
-                  }
-                  editing={
-                    pricingOverrideEditing?.sectionKey === "modifier"
-                      ? pricingOverrideEditing
-                      : null
-                  }
-                  onStartEdit={(itemId) =>
-                    handleStartPricingOverrideEdit("modifier", itemId)
-                  }
-                  onChangeEdit={handleChangePricingOverrideEdit}
-                  onSaveEdit={handleSavePricingOverrideEdit}
-                  onCancelEdit={handleCancelPricingOverrideEdit}
-                  editInputRef={pricingOverrideInputRef}
-                />
-              </div>
-            ) : (
-              <div className="catalog-page-table-wrap">
-                <section className="table-card pricing-rule-table-card list-page-table-card">
-                  <ListPageToolbar
-                    totalRows={pricingRuleSummaryCount}
-                    totalLabel={
-                      pricingRuleSummaryCount === 1 ? "Rule" : "Rules"
-                    }
-                    filters={[]}
-                    searchPlaceholder="Search"
-                    searchValue={searchByPage["pricing-rule"]}
-                    onSearch={(value) => handleSetSearch("pricing-rule", value)}
-                    actionLabel="New Special Pricing Rule"
-                    onAction={openPricingRuleCreatePage}
-                  />
-                  <div
-                    className="table-scroll"
-                    data-scroll-top="false"
-                    onScroll={handleTableCardScroll}
-                  >
-                    <table className="lab-table">
-                      <thead>
-                        <tr>
-                          <th className="lab-table__checkbox">
-                            <LabCheckbox
-                              checked={allVisibleSelected}
-                              onChange={() =>
-                                handleToggleAllRows(
-                                  "pricing-rule",
-                                  filteredRows
-                                )
-                              }
-                              ariaLabel="Select all pricing rules"
-                            />
-                          </th>
-                          <th>
-                            <span className="lab-table__header-stack">
-                              <p className="type-title-3">Rule Name</p>
-                              <ChevronIcon
-                                name="filterChevron"
-                                size={16}
-                                direction="down"
-                              />
-                            </span>
-                          </th>
-                          <th>
-                            <p className="type-title-3">Time Window</p>
-                          </th>
-                          <th className="lab-table__action" />
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {paged.rows.length ? (
-                          paged.rows.map((row) => (
-                            <tr
-                              key={row.id}
-                              className={`lab-table__row--clickable${selectedPricingRuleDetailRow?.id === row.id
-                                ? " lab-table__row--selected"
-                                : ""
-                                }`}
-                              tabIndex={0}
-                              onClick={() => openPricingRuleDetailPanel(row.id)}
-                              onKeyDown={(event) => {
-                                if (
-                                  event.key === "Enter" ||
-                                  event.key === " "
-                                ) {
-                                  event.preventDefault();
-                                  openPricingRuleDetailPanel(row.id);
-                                }
-                              }}
-                            >
-                              <td
-                                className="lab-table__checkbox"
-                                onClick={(event) => event.stopPropagation()}
-                              >
-                                <LabCheckbox
-                                  checked={selectedRows[
-                                    "pricing-rule"
-                                  ].includes(row.id)}
-                                  onChange={() =>
-                                    handleToggleSelectedRow(
-                                      "pricing-rule",
-                                      row.id
-                                    )
-                                  }
-                                  ariaLabel={`Select ${row.name}`}
-                                />
-                              </td>
-                              <td>
-                                <p className="type-subtitle-2 lab-table__link">
-                                  {row.name}
-                                </p>
-                              </td>
-                              <td>
-                                <p className="type-subtitle-2">
-                                  {(row.timeWindowParts ?? []).map(
-                                    (part, index) => (
-                                      <span
-                                        key={`${row.id}-${index}`}
-                                        className={
-                                          part.muted
-                                            ? "text-secondary"
-                                            : undefined
-                                        }
-                                      >
-                                        {part.text}
-                                      </span>
-                                    )
-                                  )}
-                                </p>
-                              </td>
-                              <td
-                                className="lab-table__action"
-                                onClick={(event) => event.stopPropagation()}
-                              >
-                                <TableActionButton
-                                  tooltip="Delete"
-                                  onClick={() =>
-                                    requestDeleteRow(
-                                      "pricing-rule",
-                                      row.id,
-                                      row.name
-                                    )
-                                  }
-                                >
-                                  <Icon
-                                    name="delete"
-                                    className="lab-icon lab-icon--16"
-                                    alt="Delete"
-                                  />
-                                </TableActionButton>
-                              </td>
-                            </tr>
-                          ))
-                        ) : (
-                          <tr>
-                            <td colSpan="4">
-                              <EmptyState
-                                title="No special rules match the current search"
-                                copy="Use another search term to restore the full special-rule table."
-                              />
-                            </td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                  <TableFooterBar
-                    page={paged.page}
-                    totalPages={paged.totalPages}
-                    rowsPerPage={rowsPerPage["pricing-rule"]}
-                    totalRows={filteredRows.length}
-                    onRowsChange={(value) =>
-                      handleSetRowsPerPage("pricing-rule", value)
-                    }
-                    onPrev={() => handlePaginate("pricing-rule", "prev")}
-                    onNext={() => handlePaginate("pricing-rule", "next")}
-                    onSelectPage={(value) =>
-                      handleGoToPage("pricing-rule", value)
-                    }
-                    showDownload={false}
-                  />
-                </section>
-              </div>
-            )}
-          </div>
-        </div>
-        {isCreatePanelOpen
-          ? renderPricingRuleCreateSidePanel()
-          : isSpecialRuleDetailOpen
-            ? renderPricingRuleDetailSidePanel(selectedPricingRuleDetailRow)
-            : null}
-      </section>
+          onToggleCatalogOverrideGroup={(group) =>
+            handleTogglePricingOverrideGroup("catalog", group)
+          }
+          onToggleCatalogOverrideItem={(itemId) =>
+            handleTogglePricingOverrideItem("catalog", itemId)
+          }
+          catalogPricingOverrideEditing={
+            pricingOverrideEditing?.sectionKey === "catalog"
+              ? pricingOverrideEditing
+              : null
+          }
+          onStartCatalogPricingOverrideEdit={(itemId) =>
+            handleStartPricingOverrideEdit("catalog", itemId)
+          }
+          onChangePricingOverrideEdit={handleChangePricingOverrideEdit}
+          onSavePricingOverrideEdit={handleSavePricingOverrideEdit}
+          onCancelPricingOverrideEdit={handleCancelPricingOverrideEdit}
+          onToggleAllModifierOverrides={() =>
+            handleToggleAllPricingOverrides("modifier", modifierOverrideGroups)
+          }
+          onToggleModifierOverrideGroup={(group) =>
+            handleTogglePricingOverrideGroup("modifier", group)
+          }
+          onToggleModifierOverrideItem={(itemId) =>
+            handleTogglePricingOverrideItem("modifier", itemId)
+          }
+          modifierPricingOverrideEditing={
+            pricingOverrideEditing?.sectionKey === "modifier"
+              ? pricingOverrideEditing
+              : null
+          }
+          onStartModifierPricingOverrideEdit={(itemId) =>
+            handleStartPricingOverrideEdit("modifier", itemId)
+          }
+          pricingOverrideInputRef={pricingOverrideInputRef}
+          totalRows={filteredRows.length}
+          searchValue={searchByPage["pricing-rule"]}
+          onSearch={(value) => handleSetSearch("pricing-rule", value)}
+          onAction={openPricingRuleCreatePage}
+          onTableScroll={handleTableCardScroll}
+          allVisibleSelected={allVisibleSelected}
+          onToggleAllRows={() =>
+            handleToggleAllRows("pricing-rule", filteredRows)
+          }
+          rows={paged.rows}
+          selectedPricingRuleId={selectedPricingRuleDetailRow?.id ?? null}
+          selectedRowIds={selectedRows["pricing-rule"]}
+          onToggleSelectedRow={(rowId) =>
+            handleToggleSelectedRow("pricing-rule", rowId)
+          }
+          onOpenDetail={openPricingRuleDetailPanel}
+          onRequestDelete={(row) =>
+            requestDeleteRow("pricing-rule", row.id, row.name)
+          }
+          page={paged.page}
+          totalPages={paged.totalPages}
+          rowsPerPage={rowsPerPage["pricing-rule"]}
+          onRowsChange={(value) => handleSetRowsPerPage("pricing-rule", value)}
+          onPrev={() => handlePaginate("pricing-rule", "prev")}
+          onNext={() => handlePaginate("pricing-rule", "next")}
+          onSelectPage={(value) => handleGoToPage("pricing-rule", value)}
+        />
+      </PricingRuleModule>
     );
   }
 
@@ -27593,206 +27154,17 @@ export default function App() {
     }
 
     return (
-      <section className="page-canvas">
-        <div className="page-body">
-          <div className="metric-strip">
-            <MetricCard
-              label="Sales Today"
-              count={formatIdr(12450000)}
-              tone="brand"
-            />
-            <MetricCard label="Orders" count={184} tone="neutral" />
-            <MetricCard
-              label="Avg. Ticket"
-              count={formatIdr(67600)}
-              tone="success"
-            />
-          </div>
-          <section className="surface-panel">
-            <div className="surface-panel__header">
-              <div className="surface-panel__title-group">
-                <p className="surface-panel__title type-headline">
-                  Modules in Motion
-                </p>
-                <p className="surface-panel__copy type-subtitle-2 text-secondary">
-                  Each card uses the Labamu feature palette rather than generic
-                  dashboard coloring.
-                </p>
-              </div>
-            </div>
-            <div className="feature-grid">
-              <FeatureCard
-                label="Feature/Product"
-                title="Catalog"
-                copy="6 active products need price validation"
-                tone="product"
-                onOpen={() => handleSetPage("catalog")}
-              />
-              <FeatureCard
-                label="Feature/Cashier"
-                title="Cashier"
-                copy="4 live stations with no current queue"
-                tone="cashier"
-                onOpen={() => handleSetPage("dashboard")}
-              />
-              <FeatureCard
-                label="Feature/Invoice"
-                title="Invoice"
-                copy="12 settlement documents waiting review"
-                tone="invoice"
-                onOpen={() => handleSetPage("pricing-rule")}
-              />
-              <FeatureCard
-                label="Feature/Customer"
-                title="Customer"
-                copy="3 loyalty segments need campaign updates"
-                tone="customer"
-                onOpen={() => handleSetPage("user-list")}
-              />
-            </div>
-          </section>
-          <div className="dashboard-grid">
-            <section className="surface-panel">
-              <div className="surface-panel__header">
-                <div className="surface-panel__title-group">
-                  <p className="surface-panel__title type-headline">
-                    Recent Orders
-                  </p>
-                  <p className="surface-panel__copy type-subtitle-2 text-secondary">
-                    The operating view keeps the same compact table rhythm used
-                    in the catalog screen.
-                  </p>
-                </div>
-              </div>
-              <div className="table-scroll">
-                <table className="lab-table">
-                  <thead>
-                    <tr>
-                      <th>
-                        <p className="type-title-3">Order ID</p>
-                      </th>
-                      <th>
-                        <p className="type-title-3">Guest</p>
-                      </th>
-                      <th>
-                        <p className="type-title-3">Channel</p>
-                      </th>
-                      <th>
-                        <p className="type-title-3">Total</p>
-                      </th>
-                      <th>
-                        <p className="type-title-3">Status</p>
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {records.dashboardOrders.map((row) => (
-                      <tr key={row.id}>
-                        <td>
-                          <p className="type-subtitle-2">{row.id}</p>
-                        </td>
-                        <td>
-                          <p className="type-subtitle-2">{row.guest}</p>
-                        </td>
-                        <td>
-                          <p className="type-subtitle-2">{row.channel}</p>
-                        </td>
-                        <td>
-                          <p className="type-subtitle-2">
-                            {formatIdr(row.total)}
-                          </p>
-                        </td>
-                        <td>
-                          <StatusPill status={row.status} />
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </section>
-            <div className="stacked-panels">
-              <section className="surface-panel">
-                <div className="surface-panel__header">
-                  <div className="surface-panel__title-group">
-                    <p className="surface-panel__title type-headline">
-                      Operational Notes
-                    </p>
-                    <p className="surface-panel__copy type-subtitle-2 text-secondary">
-                      Sticky operational cues reuse the Infobox pattern from the
-                      design system.
-                    </p>
-                  </div>
-                </div>
-                <div className="quick-list">
-                  <div className="lab-infobox lab-infobox--blue">
-                    <div className="lab-infobox__copy">
-                      <p className="type-body">
-                        Catalog sync runs again at 17:30 and will refresh POS
-                        cache automatically.
-                      </p>
-                    </div>
-                  </div>
-                  <div className="lab-infobox lab-infobox--orange">
-                    <div className="lab-infobox__copy">
-                      <p className="type-body">
-                        Two beverage modifiers are still missing printer routing
-                        in Bandung.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </section>
-              <section className="surface-panel">
-                <div className="surface-panel__header">
-                  <div className="surface-panel__title-group">
-                    <p className="surface-panel__title type-headline">
-                      Needs Attention
-                    </p>
-                    <p className="surface-panel__copy type-subtitle-2 text-secondary">
-                      Focused, action-first list items instead of generic widget
-                      chrome.
-                    </p>
-                  </div>
-                </div>
-                <div className="quick-list">
-                  {[
-                    [
-                      "Lava Cake",
-                      "Stock level is below the dessert par threshold.",
-                      "Active catalog item",
-                    ],
-                    [
-                      "Happy Hour Beverage",
-                      "Rule expires tomorrow and still lacks weekend coverage.",
-                      "Pricing review",
-                    ],
-                    [
-                      "Bali Unit",
-                      "Branch configuration is still inactive after yesterday's launch checklist.",
-                      "Business unit",
-                    ],
-                  ].map(([title, copy, meta]) => (
-                    <div key={title} className="quick-list__item">
-                      <div className="quick-list__stack">
-                        <p className="quick-list__title type-title-3">
-                          {title}
-                        </p>
-                        <p className="quick-list__copy type-body text-secondary">
-                          {copy}
-                        </p>
-                      </div>
-                      <span className="status-pill status-pill--muted">
-                        <span className="type-body">{meta}</span>
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </section>
-            </div>
-          </div>
-        </div>
-      </section>
+      <DashboardModule>
+        <DashboardOverviewPage
+          FeatureCardComponent={FeatureCard}
+          dashboardOrders={records.dashboardOrders}
+          formatIdr={formatIdr}
+          onOpenCatalog={() => handleSetPage("catalog")}
+          onOpenDashboard={() => handleSetPage("dashboard")}
+          onOpenPricingRule={() => handleSetPage("pricing-rule")}
+          onOpenUserList={() => handleSetPage("user-list")}
+        />
+      </DashboardModule>
     );
   }
 
@@ -29276,6 +28648,28 @@ export default function App() {
     if (currentPage === "pricing-rule-create")
       return renderPricingRulePage();
     if (currentPage === "catalog") return renderCatalogPage();
+    if (currentPage === "category")
+      return (
+        <CategoryListPage
+          renderListPage={() => renderGenericListPage("category")}
+        />
+      );
+    if (currentPage === "unit")
+      return (
+        <UnitListPage renderListPage={() => renderGenericListPage("unit")} />
+      );
+    if (currentPage === "modifier")
+      return (
+        <ModifierListPage
+          renderListPage={() => renderGenericListPage("modifier")}
+        />
+      );
+    if (currentPage === "device-management")
+      return (
+        <DevicesListPage
+          renderListPage={() => renderGenericListPage("device-management")}
+        />
+      );
     if (currentPage === "pricing-rule") return renderPricingRulePage();
     if (currentPage === "dashboard") return renderDashboardPage();
     if (currentPage === "settings") return renderSettingsPage();
