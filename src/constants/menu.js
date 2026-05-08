@@ -14,6 +14,7 @@ export const MENU = [
   },
   { id: "business-unit", label: "Entity", icon: "businessUnit" },
   { id: "device-management", label: "Device Management", icon: "deviceManagement" },
+  { id: "role-management", label: "Role Management", icon: "roleManagement" },
 ];
 
 export const DETAIL_PAGE_PARENT = {
@@ -27,4 +28,5 @@ export const DETAIL_PAGE_PARENT = {
   "pricing-rule-create": "pricing-rule",
   "selling-time-create": "selling-time",
   "device-management-create": "device-management",
+  "role-management-create": "role-management",
 };

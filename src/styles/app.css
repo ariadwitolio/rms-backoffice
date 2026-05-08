@@ -2314,7 +2314,7 @@ img {
   position: sticky;
   top: 0;
   transition: box-shadow 140ms ease;
-  z-index: 2;
+  z-index: 40;
 }
 
 .table-card > .table-scroll[data-scrollable="true"] .lab-table thead th,
@@ -5496,6 +5496,12 @@ img {
   width: 100%;
 }
 
+.list-page-table-card[data-page-id="device-management"] .lab-table {
+  min-width: 100%;
+  table-layout: auto;
+  width: max-content;
+}
+
 .list-page-table-card[data-page-id="unit"] .unit-connected-catalog-th {
   min-width: 0;
   width: auto;
@@ -5530,9 +5536,11 @@ img {
 .list-page-table-card .table-scroll .lab-table__checkbox,
 .list-page-table-card .table-scroll .lab-table__title-column,
 .list-page-table-card .table-scroll .lab-table__title-cell {
+  --list-table-sticky-cell-shadow: none;
   background: var(--neutral-surface-primary);
   background-clip: padding-box;
-  transition: background-color 140ms ease;
+  box-shadow: var(--list-table-sticky-cell-shadow);
+  transition: background-color 140ms ease, box-shadow 140ms ease;
 }
 
 .list-page-table-card .table-scroll::after {
@@ -5558,34 +5566,41 @@ img {
   min-width: var(--list-table-sticky-checkbox-width);
   position: sticky;
   width: var(--list-table-sticky-checkbox-width);
-  z-index: 6;
+  z-index: 30;
 }
 
 .list-page-table-card .table-scroll .lab-table__title-column,
 .list-page-table-card .table-scroll .lab-table__title-cell {
   left: var(--list-table-sticky-checkbox-width);
   position: sticky;
-  z-index: 5;
+  z-index: 29;
 }
 
 .list-page-table-card .table-scroll tbody .lab-table__checkbox {
-  z-index: 6;
+  z-index: 30;
 }
 
 .list-page-table-card .table-scroll tbody .lab-table__title-cell {
-  z-index: 5;
+  z-index: 29;
 }
 
 .list-page-table-card .table-scroll thead .lab-table__checkbox {
-  z-index: 12;
+  z-index: 50;
 }
 
 .list-page-table-card .table-scroll thead .lab-table__title-column {
-  z-index: 11;
+  z-index: 49;
 }
 
 .list-page-table-card .table-scroll[data-scroll-left="true"]::after {
   opacity: 1;
+}
+
+.list-page-table-card .table-scroll[data-scroll-left="true"] .lab-table__title-column,
+.list-page-table-card .table-scroll[data-scroll-left="true"] .lab-table__title-cell {
+  --list-table-sticky-cell-shadow:
+    inset -1px 0 0 var(--neutral-line-outline),
+    10px 0 14px -16px rgba(15, 23, 42, 0.35);
 }
 
 .list-page-table-card .lab-table tbody tr:hover .lab-table__checkbox,
@@ -5595,150 +5610,38 @@ img {
   background: var(--feature-brand-container-lighter);
 }
 
-.lab-table.is-device-management {
-  max-width: none;
+.category-tree-cell {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  min-height: 32px;
+  padding-left: calc(var(--category-tree-depth, 0) * 24px);
+}
+
+.category-tree-cell__copy {
   min-width: 0;
-  table-layout: fixed;
-  width: max(100%, 960px);
 }
 
-.lab-table.is-device-management th,
-.lab-table.is-device-management td {
-  padding-left: 8px;
-  padding-right: 8px;
+.category-tree-cell__toggle {
+  align-items: center;
+  background: transparent;
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+  display: inline-flex;
+  flex: none;
+  height: 24px;
+  justify-content: center;
+  margin-left: auto;
+  padding: 0;
+  width: 24px;
 }
 
-.lab-table.is-device-management th,
-.lab-table.is-device-management th p,
-.lab-table.is-device-management .lab-table__header-button,
-.lab-table.is-device-management .lab-table__header-stack {
-  white-space: nowrap;
+.category-tree-cell__toggle:hover {
+  background: var(--neutral-surface-grey-lighter);
 }
 
-.lab-table.is-device-management th:first-child,
-.lab-table.is-device-management td:first-child {
-  padding-left: 8px;
-}
 
-.lab-table.is-device-management th:last-child,
-.lab-table.is-device-management td:last-child {
-  padding-right: 4px;
-}
-
-.lab-table.is-device-management .lab-table__checkbox {
-  background: var(--neutral-surface-primary);
-  left: auto;
-  min-width: 32px;
-  position: static;
-  width: 32px;
-  z-index: auto;
-}
-
-.lab-table.is-device-management .lab-table__action {
-  background: var(--neutral-surface-primary);
-  background-clip: padding-box;
-  position: sticky;
-  right: 0;
-  width: 64px;
-  z-index: 8;
-}
-
-.lab-table.is-device-management .lab-table__title-column,
-.lab-table.is-device-management .lab-table__title-cell {
-  min-width: 152px;
-}
-
-.lab-table.is-device-management .device-management-table__name {
-  background: var(--neutral-surface-primary);
-  background-clip: padding-box;
-  left: 0;
-  position: sticky;
-  z-index: 7;
-}
-
-.lab-table.is-device-management tbody .device-management-table__name {
-  z-index: 7;
-}
-
-.lab-table.is-device-management thead .device-management-table__name {
-  z-index: 12;
-}
-
-.lab-table.is-device-management .device-management-table__name::after,
-.lab-table.is-device-management .lab-table__action::before {
-  content: "";
-  opacity: 0;
-  pointer-events: none;
-  position: absolute;
-  top: 0;
-  transition: opacity 140ms ease;
-}
-
-.lab-table.is-device-management .device-management-table__name::after {
-  background: linear-gradient(
-    to right,
-    rgba(17, 24, 39, 0.14),
-    rgba(17, 24, 39, 0)
-  );
-  bottom: 0;
-  right: -16px;
-  width: 16px;
-}
-
-.lab-table.is-device-management .lab-table__action::before {
-  background: linear-gradient(
-    to left,
-    rgba(17, 24, 39, 0.14),
-    rgba(17, 24, 39, 0)
-  );
-  bottom: 0;
-  left: -16px;
-  width: 16px;
-}
-
-.list-page-table-card[data-page-id="device-management"]
-  > .table-scroll[data-scroll-left="true"]
-  .device-management-table__name::after,
-.list-page-table-card[data-page-id="device-management"]
-  > .table-scroll[data-scroll-right="true"]
-  .lab-table__action::before {
-  opacity: 1;
-}
-
-.lab-table.is-device-management .device-management-table__type {
-  min-width: 116px;
-  white-space: nowrap;
-  width: 116px;
-}
-
-.lab-table.is-device-management .device-management-table__name {
-  width: 152px;
-}
-
-.lab-table.is-device-management .device-management-table__last-active {
-  min-width: 132px;
-  white-space: nowrap;
-  width: 132px;
-}
-
-.lab-table.is-device-management .device-management-table__added-by {
-  width: 124px;
-}
-
-.lab-table.is-device-management .device-management-table__connected {
-  min-width: 0;
-  width: auto;
-}
-
-.lab-table.is-device-management .device-management-table__connected-content {
-  max-width: 100%;
-  width: 100%;
-}
-
-.lab-table.is-device-management .device-management-table__status {
-  white-space: nowrap;
-  width: 96px;
-}
 
 .list-page-table-card[data-page-id="device-management"] .lab-table tbody tr:hover .lab-table__action,
 .list-page-table-card[data-page-id="device-management"] .lab-table tbody tr:hover .device-management-table__name,
@@ -6143,6 +6046,18 @@ img {
   font-weight: 400;
   letter-spacing: 0.08px;
   line-height: 18px;
+}
+
+.catalog-detail-panel .catalog-detail-section--toggle-only .catalog-detail-section__header {
+  display: none;
+}
+
+.catalog-detail-panel .catalog-detail-section--status-only {
+  gap: 8px;
+}
+
+.catalog-detail-panel .catalog-detail-section--status-only .catalog-detail-section__body {
+  display: none;
 }
 
 .catalog-photo-grid--panel {
@@ -7684,19 +7599,36 @@ img {
 }
 
 .catalog-detail-field.is-disabled .catalog-detail-field__shell input,
-.catalog-detail-field.is-disabled .catalog-detail-field__shell select {
+.catalog-detail-field.is-disabled .catalog-detail-field__shell select,
+.catalog-detail-field.is-disabled .catalog-detail-field__shell textarea {
   color: var(--neutral-on-surface-secondary);
   cursor: not-allowed;
 }
 
 .catalog-detail-field__shell input,
-.catalog-detail-field__shell select {
+.catalog-detail-field__shell select,
+.catalog-detail-field__shell textarea {
   appearance: none;
   background: transparent;
   border: none;
   min-width: 0;
   outline: none;
   width: 100%;
+}
+
+.catalog-detail-field__textarea {
+  min-height: 72px;
+  resize: none;
+}
+
+.catalog-detail-field__shell--with-suffix {
+  gap: 12px;
+}
+
+.catalog-detail-field__suffix {
+  color: var(--neutral-on-surface-tertiary);
+  flex: none;
+  white-space: nowrap;
 }
 
 input::placeholder,

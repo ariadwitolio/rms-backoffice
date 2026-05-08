@@ -227,7 +227,7 @@ The refactor remains conservative:
 ## Intentionally Unmodeled For Now
 
 - Selling Time is still implemented in `src/App.jsx`, but it is intentionally not represented under `src/modules/` in this pass.
-- Business Unit, User List, Role Access, and Settings also remain App-owned and are not part of the current module-boundary extraction effort.
+- Business Unit, User List, Role Management, and Settings also remain App-owned and are not part of the current module-boundary extraction effort.
 
 ## What Still Remains Inside `src/App.jsx`
 
@@ -240,7 +240,7 @@ The refactor remains conservative:
 - workflow navigation and page switching
 - page and panel orchestration
 - dashboard report generation and state-heavy chart/date behavior
-- Category, Unit, Modifier, Devices, Selling Time, Business Unit, User List, Role Access, and Settings workflow implementation
+- Category, Unit, Modifier, Devices, Selling Time, Business Unit, User List, Role Management, and Settings workflow implementation
 - the add/detail/edit right-side panel logic for all current modules
 
 ## Future Extraction Rules

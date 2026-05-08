@@ -10,7 +10,8 @@ export function getStatusTone(status) {
     status === "Completed" ||
     status === "Success" ||
     status === "Available" ||
-    status === "Connected"
+    status === "Connected" ||
+    status === "Track Stock"
   ) {
     return "success";
   }

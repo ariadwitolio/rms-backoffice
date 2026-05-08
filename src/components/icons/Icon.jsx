@@ -94,6 +94,13 @@ const ICON_DEFINITIONS = {
       <path d="m9.5 11.8 1.8 1.8 3.4-3.8" ${ICON_STROKE_ATTRS} />
     `
   ),
+  roleManagement: defineIcon(
+    "0 0 24 24",
+    `
+      <path d="M12 4 6.5 6v4.8c0 4.1 2.1 6.8 5.5 8.2 3.4-1.4 5.5-4.1 5.5-8.2V6z" ${ICON_STROKE_ATTRS} />
+      <path d="m9.5 11.8 1.8 1.8 3.4-3.8" ${ICON_STROKE_ATTRS} />
+    `
+  ),
   settings: defineIcon(
     "0 0 24 24",
     `

@@ -732,6 +732,7 @@ function createInitialCatalogDraft() {
     photos: [],
     type: "single",
     name: "",
+    description: "",
     unit: "Pcs",
     category: "Uncategorized",
     modifier: [],
@@ -742,6 +743,8 @@ function createInitialCatalogDraft() {
     assignedUnits: [],
     trackStock: false,
     ingredients: [createEmptyIngredientItem()],
+    preparationTime: "",
+    routing: "KDS Kitchen",
   };
 }
 
@@ -802,6 +805,14 @@ function createInitialCategoryDraft() {
     parentCategory: "None (Main Category)",
     sellingTime: "All Day",
     color: "#F9EB9E",
+  };
+}
+
+function createInitialDeviceManagementDraft() {
+  return {
+    deviceName: "",
+    deviceType: "",
+    connectedDevices: "",
   };
 }
 
@@ -1131,6 +1142,101 @@ function isSameSellingTimeDetailEditing(currentEditing, nextEditing) {
   return false;
 }
 
+const CATEGORY_HIERARCHY_SEPARATOR = " > ";
+const MAX_CATEGORY_NESTING_LEVEL = 3;
+const DUPLICATE_CATALOG_SNACKBAR_MESSAGE =
+  "Catalog name, unit, and category combination already exists";
+
+function getCategoryHierarchyDepth(path = "") {
+  if (!path) return 0;
+  return path.split(CATEGORY_HIERARCHY_SEPARATOR).length;
+}
+
+function getCategorySubtreeDepth(categoryRows = [], rootPath = "") {
+  if (!rootPath) return 1;
+
+  const rootDepth = getCategoryHierarchyDepth(rootPath);
+  const matchingDepths = categoryRows
+    .map((row) => row.hierarchyPath || row.name)
+    .filter(
+      (path) =>
+        path === rootPath ||
+        path.startsWith(`${rootPath}${CATEGORY_HIERARCHY_SEPARATOR}`)
+    )
+    .map((path) => getCategoryHierarchyDepth(path) - rootDepth + 1);
+
+  return matchingDepths.length ? Math.max(...matchingDepths) : 1;
+}
+
+function buildCategoryParentOptions(
+  categoryRows = [],
+  {
+    excludeId = null,
+    blockedPaths = [],
+    maxDepth = MAX_CATEGORY_NESTING_LEVEL,
+    maxSubtreeDepth = 1,
+  } = {}
+) {
+  return [
+    {
+      value: "None (Main Category)",
+      label: "None (Main Category)",
+      subtitle: "Create as top-level category",
+    },
+    ...categoryRows
+      .filter((row) => {
+        if (row.id === excludeId) return false;
+
+        const path = row.hierarchyPath || row.name;
+        const itemDepth = getCategoryHierarchyDepth(path);
+        const isBlocked = blockedPaths.some(
+          (blockedPath) =>
+            path === blockedPath ||
+            path.startsWith(`${blockedPath}${CATEGORY_HIERARCHY_SEPARATOR}`)
+        );
+
+        return !isBlocked && itemDepth + maxSubtreeDepth <= maxDepth;
+      })
+      .map((row) => ({
+        value: row.name,
+        label: row.name,
+        indentLevel: Math.max(
+          0,
+          getCategoryHierarchyDepth(row.hierarchyPath || row.name) - 1
+        ),
+      })),
+  ];
+}
+
+function normalizeCatalogIdentityValue(value, fallback = "") {
+  return String(value ?? fallback).trim().toLowerCase();
+}
+
+function isDuplicateCatalogRecord(candidate, catalogRows = []) {
+  const normalizedName = normalizeCatalogIdentityValue(candidate?.name);
+  const normalizedUnit = normalizeCatalogIdentityValue(
+    candidate?.unit,
+    "Pcs"
+  );
+  const normalizedCategory = normalizeCatalogIdentityValue(
+    candidate?.category,
+    "Uncategorized"
+  );
+
+  if (!normalizedName || !normalizedUnit || !normalizedCategory) {
+    return false;
+  }
+
+  return catalogRows.some(
+    (row) =>
+      row.id !== candidate?.id &&
+      normalizeCatalogIdentityValue(row.name) === normalizedName &&
+      normalizeCatalogIdentityValue(row.unit, "Pcs") === normalizedUnit &&
+      normalizeCatalogIdentityValue(row.category, "Uncategorized") ===
+        normalizedCategory
+  );
+}
+
 function getCategoryHierarchyPath(
   categoryName,
   categoryMap,
@@ -1153,7 +1259,9 @@ function getCategoryHierarchyPath(
     nextTrail
   );
 
-  return parentPath ? `${parentPath} / ${category.name}` : category.name;
+  return parentPath
+    ? `${parentPath}${CATEGORY_HIERARCHY_SEPARATOR}${category.name}`
+    : category.name;
 }
 
 function buildCategoryRows(categories = [], catalogRows = []) {
@@ -1523,6 +1631,7 @@ function createCatalogDetailDraftFromRecord(record) {
     photos: cloneCatalogPhotos(record?.photos ?? []),
     type,
     name: record?.name ?? "",
+    description: record?.description ?? "",
     unit: record?.unit ?? "Pcs",
     category: record?.category ?? "Uncategorized",
     modifier: Array.isArray(record?.modifier) ? [...record.modifier] : [],
@@ -1541,6 +1650,8 @@ function createCatalogDetailDraftFromRecord(record) {
     ingredients: normalizeCatalogIngredients(
       cloneCatalogIngredients(record?.ingredients ?? [])
     ),
+    preparationTime: String(record?.preparationTime ?? ""),
+    routing: record?.routing ?? "KDS Kitchen",
   };
 }
 
@@ -3542,9 +3653,9 @@ function getSimulatedPairingRequestDevice(deviceType, pairingCode = "") {
 function isDevicePairingExpired(device, now = Date.now()) {
   return Boolean(
     device &&
-      device.status === "Pending" &&
-      typeof device.pairingExpiresAt === "number" &&
-      device.pairingExpiresAt <= now
+    device.status === "Pending" &&
+    typeof device.pairingExpiresAt === "number" &&
+    device.pairingExpiresAt <= now
   );
 }
 
@@ -5075,6 +5186,91 @@ function DetailField({
   );
 }
 
+
+function DetailTextAreaField({
+  label,
+  value,
+  onChange,
+  required = false,
+  placeholder = "",
+  error = false,
+  rows = 3,
+  disabled = false,
+}) {
+  return (
+    <label className={`catalog-detail-field${disabled ? " is-disabled" : ""}`}>
+      <span className="catalog-detail-field__label type-body">
+        {required ? (
+          <span className="catalog-detail-field__required">*</span>
+        ) : null}
+        {label}
+      </span>
+      <span
+        className={`catalog-detail-field__shell catalog-detail-field__shell--multiline${error ? " is-error" : ""}${disabled ? " is-disabled" : ""}`}
+      >
+        <textarea
+          className={`catalog-detail-field__textarea type-subtitle-1${value ? "" : " text-tertiary"}`}
+          value={value}
+          rows={rows}
+          placeholder={placeholder}
+          onChange={(event) => onChange?.(event.target.value)}
+          disabled={disabled}
+        />
+      </span>
+      {error ? (
+        <p className="catalog-detail-field__error type-body">
+          Field cannot be empty
+        </p>
+      ) : null}
+    </label>
+  );
+}
+
+function DetailNumberUnitField({
+  label,
+  value,
+  onChange,
+  placeholder = "0",
+  suffix = "Minutes",
+  required = false,
+  error = false,
+  disabled = false,
+}) {
+  return (
+    <label className={`catalog-detail-field${disabled ? " is-disabled" : ""}`}>
+      <span className="catalog-detail-field__label type-body">
+        {required ? (
+          <span className="catalog-detail-field__required">*</span>
+        ) : null}
+        {label}
+      </span>
+      <span
+        className={`catalog-detail-field__shell catalog-detail-field__shell--with-suffix${error ? " is-error" : ""}${disabled ? " is-disabled" : ""}`}
+      >
+        <input
+          className={`type-subtitle-1${value ? "" : " text-tertiary"}`}
+          type="text"
+          inputMode="numeric"
+          value={value}
+          placeholder={placeholder}
+          onChange={(event) =>
+            onChange?.(String(event.target.value ?? "").replace(/[^\d]/g, ""))
+          }
+          disabled={disabled}
+        />
+        <span className="catalog-detail-field__suffix type-subtitle-2">
+          {suffix}
+        </span>
+      </span>
+      {error ? (
+        <p className="catalog-detail-field__error type-body">
+          Field cannot be empty
+        </p>
+      ) : null}
+    </label>
+  );
+}
+
 function CategoryColorPicker({ value, onChange }) {
   const colors = [
     "#F9EB9E", // Default
@@ -5126,11 +5322,12 @@ function DetailSelectField({
   const rootRef = useRef(null);
   const normalizedOptions = options.map((option) =>
     typeof option === "string"
-      ? { value: option, label: option, subtitle: "" }
+      ? { value: option, label: option, subtitle: "", indentLevel: 0 }
       : {
         value: option.value ?? option.label ?? "",
         label: option.label ?? option.value ?? "",
         subtitle: option.subtitle ?? "",
+        indentLevel: Math.max(0, Number(option.indentLevel ?? 0) || 0),
       }
   );
   const normalizedValue = multiple
@@ -5250,6 +5447,13 @@ function DetailSelectField({
                   className={`catalog-detail-field__option${isSelected ? " is-selected" : ""
                     }${option.subtitle ? " has-subtitle" : ""}${multiple ? " is-multi" : ""
                     }`}
+                  style={
+                    option.indentLevel
+                      ? {
+                        paddingLeft: `${16 + option.indentLevel * 20}px`,
+                      }
+                      : undefined
+                  }
                   onClick={() => {
                     if (multiple) {
                       onChange(
@@ -5273,7 +5477,7 @@ function DetailSelectField({
                       aria-hidden="true"
                     />
                   ) : null}
-                  <span className="catalog-detail-field__option-copy">
+                  <span className="catalog-detail-field__option-copy" style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: "2px" }}>
                     <p
                       className={`catalog-detail-field__option-label ${isSelected ? "type-title-3" : "type-subtitle-2"
                         }`}
@@ -5745,7 +5949,13 @@ function ModifierReorderHandle({ onDragStart, onDragEnd, ariaLabel }) {
       type="button"
       className="modifier-option-table__handle"
       draggable
-      onDragStart={onDragStart}
+      onDragStart={(e) => {
+        const tr = e.currentTarget.closest("tr");
+        if (tr) {
+          e.dataTransfer.setDragImage(tr, 0, 0);
+        }
+        if (onDragStart) onDragStart(e);
+      }}
       onDragEnd={onDragEnd}
       aria-label={ariaLabel}
     >
@@ -11328,11 +11538,9 @@ export default function App() {
     createInitialModifierDraft
   );
   const [modifierDraftErrors, setModifierDraftErrors] = useState({});
-  const [deviceManagementDraft, setDeviceManagementDraft] = useState({
-    deviceName: "",
-    deviceType: "Tablet (POS)",
-    connectedDevices: "",
-  });
+  const [deviceManagementDraft, setDeviceManagementDraft] = useState(
+    createInitialDeviceManagementDraft
+  );
   const [deviceManagementDraftErrors, setDeviceManagementDraftErrors] = useState({});
   const [createPanelSteps, setCreatePanelSteps] = useState({
     catalog: 0,
@@ -11401,6 +11609,7 @@ export default function App() {
   const [catalogDetailPanelTab, setCatalogDetailPanelTab] = useState("general");
   const [catalogDetailEditing, setCatalogDetailEditing] = useState(null);
   const [catalogDetailSnapshot, setCatalogDetailSnapshot] = useState(null);
+  const [catalogDetailDraftErrors, setCatalogDetailDraftErrors] = useState({});
   const catalogPhotoInputRef = useRef(null);
   const catalogPhotoStateRef = useRef(catalogDraft.photos);
   const catalogDetailPhotoInputRef = useRef(null);
@@ -11792,7 +12001,7 @@ export default function App() {
     return () => {
       window.removeEventListener("keydown", handleDetailEditKeyDown);
     };
-  }, [currentPage, catalogDetailDraft, catalogDetailEditing]);
+  }, [currentPage, catalogDetailDraft?.id, catalogDetailEditing]);
 
   useEffect(() => {
     const detailSurfaceOpen =
@@ -11876,7 +12085,7 @@ export default function App() {
     });
 
     return () => window.cancelAnimationFrame(frameId);
-  }, [currentPage, catalogDetailDraft, catalogDetailEditing]);
+  }, [currentPage, catalogDetailDraft?.id, catalogDetailEditing]);
 
   useEffect(() => {
     const detailSurfaceOpen =
@@ -12313,6 +12522,7 @@ export default function App() {
   const catalogSellingTimeOptions = records["selling-time"].map(
     (row) => row.name
   );
+  const catalogRoutingOptions = ["KDS Kitchen", "KDS Bar"];
   const packageCatalogOptions = records.catalog.map((row) => row.name);
   const packageCatalogMap = Object.fromEntries(
     records.catalog.map((row) => [row.name, row])
@@ -12336,18 +12546,68 @@ export default function App() {
     records["device-management"].find(
       (row) => row.id === deviceManagementDetailId
     ) ?? null;
-  const categoryParentOptions = [
-    {
-      value: "None (Main Category)",
-      label: "None (Main Category)",
-      subtitle: "Create as top-level category",
-    },
-    ...categoryRows.map((row) => ({
-      value: row.name,
-      label: row.name,
-      subtitle: row.hierarchyDisplay,
-    })),
-  ];
+  const categoryParentOptions = buildCategoryParentOptions(categoryRows);
+
+  function getCategoryDetailContext(categoryRow, detailDraft) {
+    if (!categoryRow || !detailDraft) return null;
+
+    const normalizedCategoryName =
+      detailDraft.name.trim() || categoryRow.name;
+    const normalizedParentCategory =
+      detailDraft.parentCategory === "None (Main Category)"
+        ? ""
+        : detailDraft.parentCategory;
+    const effectiveCategoryRecords = records.category.map((item) => {
+      if (item.id === detailDraft.id) {
+        return {
+          ...item,
+          name: normalizedCategoryName,
+          parentCategory: normalizedParentCategory,
+          sellingTime: detailDraft.sellingTime,
+        };
+      }
+      if (item.parentCategory === categoryRow.name) {
+        return { ...item, parentCategory: normalizedCategoryName };
+      }
+      return item;
+    });
+    const effectiveCatalogRecords = records.catalog.map((catalog) =>
+      (catalog.category || "Uncategorized") === categoryRow.name
+        ? { ...catalog, category: normalizedCategoryName }
+        : catalog
+    );
+    const effectiveCategoryRows = buildCategoryRows(
+      effectiveCategoryRecords,
+      effectiveCatalogRecords
+    );
+    const effectiveCategoryRow =
+      effectiveCategoryRows.find((item) => item.id === detailDraft.id) ??
+      categoryRow;
+    const connectedCatalogNames = effectiveCatalogRecords
+      .filter(
+        (catalog) =>
+          (catalog.category || "Uncategorized") === effectiveCategoryRow.name
+      )
+      .map((catalog) => catalog.name);
+    const currentPath =
+      effectiveCategoryRow.hierarchyPath || effectiveCategoryRow.name;
+    const maxSubtreeDepth = getCategorySubtreeDepth(
+      effectiveCategoryRows,
+      currentPath
+    );
+    const parentOptions = buildCategoryParentOptions(effectiveCategoryRows, {
+      excludeId: detailDraft.id,
+      blockedPaths: [currentPath],
+      maxSubtreeDepth,
+    });
+
+    return {
+      connectedCatalogNames,
+      effectiveCategoryRow,
+      parentOptions,
+    };
+  }
+
   const selectedSidebarBusinessUnit =
     records["business-unit"].find(
       (unit) => unit.id === selectedSidebarBusinessUnitId
@@ -13084,7 +13344,8 @@ export default function App() {
     return Boolean(
       draft &&
       (draft.deviceName.trim() !== "" ||
-        draft.deviceType !== "Tablet (POS)")
+        String(draft.deviceType ?? "").trim() !== "" ||
+        String(draft.connectedDevices ?? "").trim() !== "")
     );
   }
 
@@ -13141,11 +13402,7 @@ export default function App() {
         resetCreatePanelStepValue("selling-time");
         break;
       case "device-management-create":
-        setDeviceManagementDraft({
-          deviceName: "",
-          deviceType: "Tablet (POS)",
-        });
-        setDeviceManagementDraftErrors({});
+        resetDeviceManagementDraft();
         break;
       default:
         break;
@@ -14284,6 +14541,7 @@ export default function App() {
     return {
       ...detailRecord,
       name: detailRecord.name.trim(),
+      description: String(detailRecord.description ?? "").trim(),
       unit: detailRecord.unit || "Pcs",
       category: detailRecord.category || "Uncategorized",
       basePrice,
@@ -14305,6 +14563,8 @@ export default function App() {
             .filter((item) => item.name)
             .map((item) => ({ ...item, qty: item.qty || "1" }))
           : [],
+      preparationTime: String(detailRecord.preparationTime ?? "").replace(/[^\d]/g, ""),
+      routing: detailRecord.routing || "KDS Kitchen",
     };
   }
 
@@ -15523,6 +15783,21 @@ export default function App() {
       return { ok: false, nextDraft: detailDraft };
     }
 
+    const currentRow = records.category.find((item) => item.id === detailDraft.id);
+    const detailContext = getCategoryDetailContext(currentRow, detailDraft);
+    if (
+      detailDraft.parentCategory !== "None (Main Category)" &&
+      !detailContext?.parentOptions.some(
+        (option) => option.value === detailDraft.parentCategory
+      )
+    ) {
+      showSnackbar(
+        `Category nesting is limited to ${MAX_CATEGORY_NESTING_LEVEL} levels`,
+        "red"
+      );
+      return { ok: false, nextDraft: detailDraft };
+    }
+
     const nextDraft = persistCategoryDetailDraft(
       detailDraft,
       showSuccess ? message : null
@@ -15753,6 +16028,8 @@ export default function App() {
     const isListPageTableCard = tableCard?.classList.contains(
       "list-page-table-card"
     );
+    const isDeviceManagementTableCard =
+      tableCard?.dataset.pageId === "device-management";
 
     if (isListPageTableCard) {
       const stickyCheckboxCell = node.querySelector("thead .lab-table__checkbox");
@@ -15796,7 +16073,8 @@ export default function App() {
     node.style.maxHeight = `${resolvedMaxHeight}px`;
     node.style.height =
       isScrollable ? `${resolvedMaxHeight}px` : "auto";
-    node.style.scrollbarGutter = isScrollable ? "stable" : "auto";
+    node.style.scrollbarGutter =
+      isScrollable && !isDeviceManagementTableCard ? "stable" : "auto";
     node.dataset.scrollable = isScrollable ? "true" : "false";
     node.dataset.scrollTop = node.scrollTop > 1 ? "true" : "false";
     const maxScrollLeft = Math.max(0, node.scrollWidth - node.clientWidth);
@@ -15836,12 +16114,32 @@ export default function App() {
       return { ok: true, nextDraft: detailDraft };
     }
 
+    setCatalogDetailDraftErrors({});
+
     const validationMessage = getCatalogDetailValidationMessage(
       detailDraft,
       detailEditing
     );
     if (validationMessage) {
       showSnackbar(validationMessage, "red");
+      return { ok: false, nextDraft: detailDraft };
+    }
+
+    if (isDuplicateCatalogRecord(detailDraft, records.catalog)) {
+      setCatalogDetailDraftErrors({
+        name: true,
+        unit: true,
+        category: true,
+      });
+      showSnackbar(DUPLICATE_CATALOG_SNACKBAR_MESSAGE, "red");
+      return { ok: false, nextDraft: detailDraft };
+    }
+
+    if (
+      detailDraft.trackStock &&
+      !(detailDraft.ingredients ?? []).some((item) => item.name)
+    ) {
+      setCatalogDetailDraftErrors({ ingredients: true });
       return { ok: false, nextDraft: detailDraft };
     }
 
@@ -15938,6 +16236,7 @@ export default function App() {
     ).ok;
   }
 
+
   function handleCatalogDetailChange(key, value) {
     if (isLockedSelectedBusinessUnit) return;
     setCatalogDetailDraft((previous) => {
@@ -15945,15 +16244,9 @@ export default function App() {
       catalogDetailDraftRef.current = nextDraft;
       return nextDraft;
     });
-
-    if (key === "trackStock") {
-      // Move to top section / keep user on section
-      const panelBody = document.querySelector(".catalog-detail-panel__body");
-      if (panelBody) {
-        panelBody.scrollTo({ top: 0, behavior: "smooth" });
-      }
-    }
+    setCatalogDetailDraftErrors((prev) => ({ ...prev, [key]: false }));
   }
+
 
   function handleCatalogDetailSingleSelectSave(field, value, message) {
     if (isLockedSelectedBusinessUnit) return;
@@ -16210,6 +16503,7 @@ export default function App() {
       catalogDetailDraftRef.current = nextDraft;
       return nextDraft;
     });
+    setCatalogDetailDraftErrors((prev) => ({ ...prev, ingredients: false }));
   }
 
   function handleRemoveCatalogDetailIngredient(itemId) {
@@ -16368,6 +16662,11 @@ export default function App() {
     setUnitDraftErrors({});
   }
 
+  function resetDeviceManagementDraft() {
+    setDeviceManagementDraft(createInitialDeviceManagementDraft());
+    setDeviceManagementDraftErrors({});
+  }
+
   function openCategoryCreatePage() {
     resetCategoryDraft();
     resetCategoryDetailState();
@@ -16382,12 +16681,24 @@ export default function App() {
     handleSetPage("unit-create");
   }
 
+  function openDeviceManagementCreatePage() {
+    resetDeviceManagementDraft();
+    setDeviceManagementDetailId(null);
+    setDeviceManagementDetailEditing(null);
+    setDeviceManagementDetailPanelTab("general");
+    handleSetPage("device-management-create");
+  }
+
   function closeCategoryCreatePage() {
     handleSetPage("category");
   }
 
   function closeUnitCreatePage() {
     handleSetPage("unit");
+  }
+
+  function closeDeviceManagementCreatePage() {
+    handleSetPage("device-management");
   }
 
   function handleCategoryDraftChange(key, value) {
@@ -16986,6 +17297,19 @@ export default function App() {
 
     if (Object.keys(nextErrors).length) {
       setCategoryDraftErrors(nextErrors);
+      return;
+    }
+
+    if (
+      categoryDraft.parentCategory !== "None (Main Category)" &&
+      !categoryParentOptions.some(
+        (option) => option.value === categoryDraft.parentCategory
+      )
+    ) {
+      showSnackbar(
+        `Category nesting is limited to ${MAX_CATEGORY_NESTING_LEVEL} levels`,
+        "red"
+      );
       return;
     }
 
@@ -17715,6 +18039,17 @@ export default function App() {
 
     if (Object.keys(nextErrors).length) {
       setCatalogDraftErrors(nextErrors);
+      return;
+    }
+
+    if (isDuplicateCatalogRecord(catalogDraft, records.catalog)) {
+      setCatalogDraftErrors((previous) => ({
+        ...previous,
+        name: true,
+        unit: true,
+        category: true,
+      }));
+      showSnackbar(DUPLICATE_CATALOG_SNACKBAR_MESSAGE, "red");
       return;
     }
 
@@ -20051,20 +20386,33 @@ export default function App() {
                       }
                       placeholder="Select Category"
                       error={catalogDraftErrors.category}
+                      treeOptions
                     />
                     {catalogDraft.type === "single" ? (
-                      <DetailSelectField
-                        label="Modifier"
-                        value={catalogDraft.modifier}
-                        options={catalogModifierOptions}
-                        onChange={(value) =>
-                          handleCatalogDraftChange("modifier", value)
-                        }
-                        placeholder="Select Modifier"
-                        multiple
-                        multipleDisplay="summary"
-                      />
+                      <div className="catalog-panel-info-list--single-column">
+                        <DetailSelectField
+                          label="Modifier"
+                          value={catalogDraft.modifier}
+                          options={catalogModifierOptions}
+                          onChange={(value) =>
+                            handleCatalogDraftChange("modifier", value)
+                          }
+                          placeholder="Select Modifier"
+                          multiple
+                          multipleDisplay="summary"
+                        />
+                      </div>
                     ) : null}
+                    <div className="catalog-panel-info-list--single-column">
+                      <DetailTextAreaField
+                        label="Description"
+                        value={catalogDraft.description}
+                        placeholder="Enter Description"
+                        onChange={(value) =>
+                          handleCatalogDraftChange("description", value)
+                        }
+                      />
+                    </div>
                   </div>
                 </DetailSection>
 
@@ -20142,6 +20490,138 @@ export default function App() {
                     ) : null}
                   </div>
                 </DetailSection>
+
+
+                {catalogDraft.type === "single" ? (
+                  <DetailSection
+                    title="Track Stock"
+                    className="catalog-create-form-card catalog-detail-section--toggle-only"
+                  >
+                    <div className="catalog-panel-info-list catalog-panel-info-list--single-column">
+                      <div className="catalog-availability-row">
+                        <div className="catalog-availability-row__copy">
+                          <p className="type-title-3">Track Stock</p>
+                        </div>
+                        <Toggle
+                          checked={catalogDraft.trackStock}
+                          onChange={() =>
+                            handleCatalogDraftChange(
+                              "trackStock",
+                              !catalogDraft.trackStock
+                            )
+                          }
+                          ariaLabel="Track stock"
+                        />
+                      </div>
+                    </div>
+                    {catalogDraft.trackStock ? (
+                      <div className="table-scroll" style={{ marginTop: "4px" }}>
+                        <table className="catalog-package-table">
+                          <thead>
+                            <tr>
+                              <th>
+                                <p className="type-title-3">Ingredient Name</p>
+                              </th>
+                              <th style={{ width: "100px" }} className="catalog-package-table__qty">
+                                <p className="type-title-3">Qty</p>
+                              </th>
+                              <th className="catalog-package-table__action" />
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {catalogDraft.ingredients.map((item, index) => {
+                              const isBlankRow = !item.name && !item.qty;
+                              const availableIngredientOptions = packageCatalogOptions.filter(opt => {
+                                const isSelectedInOtherRows = catalogDraft.ingredients.some(ing => ing.id !== item.id && ing.name === opt);
+                                return !isSelectedInOtherRows || opt === item.name;
+                              });
+
+                              return (
+                                <tr
+                                  key={item.id}
+                                  className={
+                                    isBlankRow &&
+                                      index === catalogDraft.ingredients.length - 1
+                                      ? "catalog-package-table__placeholder"
+                                      : ""
+                                  }
+                                >
+                                  <td>
+                                    <label className="catalog-package-field">
+                                      <PackageItemSelectField
+                                        value={item.name}
+                                        options={availableIngredientOptions}
+                                        placeholder="Select Ingredient"
+                                        onChange={(value) =>
+                                          handleIngredientChange(
+                                            item.id,
+                                            "name",
+                                            value
+                                          )
+                                        }
+                                      />
+                                    </label>
+                                  </td>
+                                  <td style={{ width: "100px" }}>
+                                    {item.name ? (
+                                      <div className="catalog-package-field" style={{ position: "relative" }}>
+                                        <input
+                                          className="type-subtitle-2"
+                                          type="text"
+                                          inputMode="numeric"
+                                          value={item.qty}
+                                          onChange={(event) =>
+                                            handleIngredientChange(
+                                              item.id,
+                                              "qty",
+                                              event.target.value
+                                            )
+                                          }
+                                          style={{ paddingRight: "30px", width: "100%" }}
+                                        />
+                                        <span
+                                          style={{
+                                            position: "absolute",
+                                            right: "8px",
+                                            top: "50%",
+                                            transform: "translateY(-50%)",
+                                            color: "#C2C2C2",
+                                            fontSize: "12px",
+                                            pointerEvents: "none",
+                                          }}
+                                        >
+                                          {item.unit}
+                                        </span>
+                                      </div>
+                                    ) : null}
+                                  </td>
+                                  <td className="catalog-package-table__action">
+                                    {!isBlankRow || index < catalogDraft.ingredients.length - 1 ? (
+                                      <TableActionButton
+                                        tooltip="Remove"
+                                        onClick={() =>
+                                          handleRemoveIngredient(item.id)
+                                        }
+                                        ariaLabel="Remove ingredient"
+                                      >
+                                        <Icon
+                                          name="delete"
+                                          className="lab-icon lab-icon--16"
+                                          alt="Delete"
+                                        />
+                                      </TableActionButton>
+                                    ) : null}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : null}
+                  </DetailSection>
+                ) : null}
+
 
                 {catalogDraft.type === "package" ? (
                   <DetailSection
@@ -20260,131 +20740,6 @@ export default function App() {
                   </DetailSection>
                 ) : null}
 
-                {catalogDraft.type === "single" ? (
-                  <section className="catalog-create-form-card catalog-detail-section">
-                    <div className="catalog-availability-row">
-                      <div className="catalog-availability-row__copy">
-                        <p className="type-title-3">Track Stock</p>
-                      </div>
-                      <Toggle
-                        checked={catalogDraft.trackStock}
-                        onChange={() =>
-                          handleCatalogDraftChange(
-                            "trackStock",
-                            !catalogDraft.trackStock
-                          )
-                        }
-                        ariaLabel="Track stock"
-                      />
-                    </div>
-                    {catalogDraft.trackStock ? (
-                      <div className="table-scroll" style={{ marginTop: "4px" }}>
-                        <table className="catalog-package-table">
-                          <thead>
-                            <tr>
-                              <th>
-                                <p className="type-title-3">Ingredient Name</p>
-                              </th>
-                              <th style={{ width: "100px" }} className="catalog-package-table__qty">
-                                <p className="type-title-3">Qty</p>
-                              </th>
-                              <th className="catalog-package-table__action" />
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {catalogDraft.ingredients.map((item, index) => {
-                              const isBlankRow = !item.name && !item.qty;
-                              const availableIngredientOptions = packageCatalogOptions.filter(opt => {
-                                const isSelectedInOtherRows = catalogDraft.ingredients.some(ing => ing.id !== item.id && ing.name === opt);
-                                return !isSelectedInOtherRows || opt === item.name;
-                              });
-
-                              return (
-                                <tr
-                                  key={item.id}
-                                  className={
-                                    isBlankRow &&
-                                      index === catalogDraft.ingredients.length - 1
-                                      ? "catalog-package-table__placeholder"
-                                      : ""
-                                  }
-                                >
-                                  <td>
-                                    <label className="catalog-package-field">
-                                      <PackageItemSelectField
-                                        value={item.name}
-                                        options={availableIngredientOptions}
-                                        placeholder="Select Ingredient"
-                                        onChange={(value) =>
-                                          handleIngredientChange(
-                                            item.id,
-                                            "name",
-                                            value
-                                          )
-                                        }
-                                      />
-                                    </label>
-                                  </td>
-                                  <td style={{ width: "100px" }}>
-                                    {item.name ? (
-                                      <div className="catalog-package-field" style={{ position: "relative" }}>
-                                        <input
-                                          className="type-subtitle-2"
-                                          type="text"
-                                          inputMode="numeric"
-                                          value={item.qty}
-                                          onChange={(event) =>
-                                            handleIngredientChange(
-                                              item.id,
-                                              "qty",
-                                              event.target.value
-                                            )
-                                          }
-                                          style={{ paddingRight: "30px", width: "100%" }}
-                                        />
-                                        <span
-                                          style={{
-                                            position: "absolute",
-                                            right: "8px",
-                                            top: "50%",
-                                            transform: "translateY(-50%)",
-                                            color: "#C2C2C2",
-                                            fontSize: "12px",
-                                            pointerEvents: "none",
-                                          }}
-                                        >
-                                          {item.unit}
-                                        </span>
-                                      </div>
-                                    ) : null}
-                                  </td>
-                                  <td className="catalog-package-table__action">
-                                    {!isBlankRow || index < catalogDraft.ingredients.length - 1 ? (
-                                      <TableActionButton
-                                        tooltip="Remove"
-                                        onClick={() =>
-                                          handleRemoveIngredient(item.id)
-                                        }
-                                        ariaLabel="Remove ingredient"
-                                      >
-                                        <Icon
-                                          name="delete"
-                                          className="lab-icon lab-icon--16"
-                                          alt="Delete"
-                                        />
-                                      </TableActionButton>
-                                    ) : null}
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
-                    ) : null}
-                  </section>
-                ) : null}
-
                 <DetailSection
                   title="Pricing Configuration"
                   className="catalog-create-form-card"
@@ -20408,6 +20763,8 @@ export default function App() {
                     </div>
                   </div>
                 </DetailSection>
+
+
 
               </>
             ) : null}
@@ -20620,8 +20977,8 @@ export default function App() {
     return (
       <>
         <section className="catalog-create-form-card catalog-detail-section">
-          <div className="catalog-panel-availability">
-            <div className="catalog-panel-availability__copy">
+          <div className="catalog-availability-row">
+            <div className="catalog-availability-row__copy">
               <p className="catalog-panel-availability__title type-title-3">
                 Catalog Availability
               </p>
@@ -20668,6 +21025,7 @@ export default function App() {
                   value={catalogDetailDraft.name}
                   placeholder="Enter Catalog Name"
                   onChange={(value) => handleCatalogDetailChange("name", value)}
+                  error={catalogDetailDraftErrors.name}
                 />
                 <DetailSelectField
                   label="Unit"
@@ -20684,23 +21042,36 @@ export default function App() {
                   onChange={(value) =>
                     handleCatalogDetailChange("category", value)
                   }
+                  error={catalogDetailDraftErrors.category}
                   placeholder="Select Category"
+                  treeOptions
                 />
 
-
                 {catalogDetailDraft.type === "single" ? (
-                  <DetailSelectField
-                    label="Modifier"
-                    value={catalogDetailDraft.modifier}
-                    options={catalogModifierOptions}
-                    onChange={(value) =>
-                      handleCatalogDetailChange("modifier", value)
-                    }
-                    placeholder="Select Modifier"
-                    multiple
-                    multipleDisplay="summary"
-                  />
+                  <div className="catalog-panel-info-list--single-column">
+                    <DetailSelectField
+                      label="Modifier"
+                      value={catalogDetailDraft.modifier}
+                      options={catalogModifierOptions}
+                      onChange={(value) =>
+                        handleCatalogDetailChange("modifier", value)
+                      }
+                      placeholder="Select Modifier"
+                      multiple
+                      multipleDisplay="summary"
+                    />
+                  </div>
                 ) : null}
+                <div className="catalog-panel-info-list--single-column">
+                  <DetailTextAreaField
+                    label="Description"
+                    value={catalogDetailDraft.description}
+                    placeholder="Enter Description"
+                    onChange={(value) =>
+                      handleCatalogDetailChange("description", value)
+                    }
+                  />
+                </div>
               </>
             ) : (
               <>
@@ -20725,7 +21096,6 @@ export default function App() {
                   value={catalogDetailDraft.category}
                 />
 
-
                 {catalogDetailDraft.type === "single" ? (
                   <CatalogPanelInfoRow
                     label="Modifier"
@@ -20736,13 +21106,16 @@ export default function App() {
                     }
                   />
                 ) : null}
+                <div className="catalog-panel-info-list--single-column">
+                  <CatalogPanelInfoRow
+                    label="Description"
+                    value={catalogDetailDraft.description}
+                  />
+                </div>
               </>
             )}
           </div>
         </DetailSection>
-
-
-
 
         {(!isEditing && catalogDetailDraft.photos.length === 0) ? null : (
           <DetailSection
@@ -20750,82 +21123,249 @@ export default function App() {
             className="catalog-create-form-card"
             meta={`${catalogDetailDraft.photos.length}/5 Photo`}
           >
-          <input
-            ref={catalogDetailPhotoInputRef}
-            type="file"
-            accept=".jpg,.jpeg,.png,.heic,image/jpeg,image/png,image/heic,image/heif"
-            multiple
-            hidden
-            onChange={handleCatalogDetailPhotoUpload}
-          />
-          <div className="catalog-photo-grid catalog-photo-grid--panel">
-            {catalogDetailDraft.photos.map((photo) => (
-              <div
-                key={photo.id}
-                className={`catalog-photo-card${photo.isMain ? " is-main" : ""
-                  }`}
-              >
+            <input
+              ref={catalogDetailPhotoInputRef}
+              type="file"
+              accept=".jpg,.jpeg,.png,.heic,image/jpeg,image/png,image/heic,image/heif"
+              multiple
+              hidden
+              onChange={handleCatalogDetailPhotoUpload}
+            />
+            <div className="catalog-photo-grid catalog-photo-grid--panel">
+              {catalogDetailDraft.photos.map((photo) => (
+                <div
+                  key={photo.id}
+                  className={`catalog-photo-card${photo.isMain ? " is-main" : ""
+                    }`}
+                >
+                  <button
+                    type="button"
+                    className="catalog-photo-card__button"
+                    onClick={
+                      isEditing
+                        ? () => handleSetMainCatalogDetailPhoto(photo.id)
+                        : undefined
+                    }
+                    disabled={!isEditing || isLockedSelectedBusinessUnit}
+                    aria-label={`Set ${photo.name} as main photo`}
+                  >
+                    <span className="catalog-photo-card__media">
+                      <img
+                        src={photo.url}
+                        alt={photo.name}
+                        className="catalog-photo-card__image"
+                      />
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    className="catalog-photo-card__remove"
+                    disabled={!isEditing || isLockedSelectedBusinessUnit}
+                    aria-label={`Remove ${photo.name}`}
+                    onClick={
+                      isEditing
+                        ? () => handleRemoveCatalogDetailPhoto(photo.id)
+                        : undefined
+                    }
+                  />
+                </div>
+              ))}
+              {isEditing && catalogDetailDraft.photos.length < 5 ? (
                 <button
                   type="button"
-                  className="catalog-photo-card__button"
-                  onClick={
-                    isEditing
-                      ? () => handleSetMainCatalogDetailPhoto(photo.id)
-                      : undefined
-                  }
-                  disabled={!isEditing || isLockedSelectedBusinessUnit}
-                  aria-label={`Set ${photo.name} as main photo`}
+                  className="catalog-photo-placeholder"
+                  onClick={() => catalogDetailPhotoInputRef.current?.click()}
+                  aria-label="Upload catalog photo"
                 >
-                  <span className="catalog-photo-card__media">
-                    <img
-                      src={photo.url}
-                      alt={photo.name}
-                      className="catalog-photo-card__image"
-                    />
+                  <span className="catalog-photo-placeholder__badge">
+                    <Icon name="add" className="lab-icon lab-icon--24" alt="" />
                   </span>
                 </button>
-                <button
-                  type="button"
-                  className="catalog-photo-card__remove"
-                  disabled={!isEditing || isLockedSelectedBusinessUnit}
-                  aria-label={`Remove ${photo.name}`}
-                  onClick={
-                    isEditing
-                      ? () => handleRemoveCatalogDetailPhoto(photo.id)
-                      : undefined
-                  }
-                />
-              </div>
-            ))}
-            {isEditing && catalogDetailDraft.photos.length < 5 ? (
-              <button
-                type="button"
-                className="catalog-photo-placeholder"
-                onClick={() => catalogDetailPhotoInputRef.current?.click()}
-                aria-label="Upload catalog photo"
-              >
-                <span className="catalog-photo-placeholder__badge">
-                  <Icon name="add" className="lab-icon lab-icon--24" alt="" />
-                </span>
-              </button>
-            ) : null}
-          </div>
-          {catalogDetailDraft.photos.length ? (
-            <div className="catalog-photo-meta">
-              <div className="catalog-photo-info">
-                <Icon
-                  name="infoBlue"
-                  className="lab-icon lab-icon--16"
-                  alt=""
-                />
-                <p className="type-body">
-                  Click photo to set as main photo catalog
-                </p>
-              </div>
+              ) : null}
             </div>
-          ) : null}
-        </DetailSection>
+            {catalogDetailDraft.photos.length ? (
+              <div className="catalog-photo-meta">
+                <div className="catalog-photo-info">
+                  <Icon
+                    name="infoBlue"
+                    className="lab-icon lab-icon--16"
+                    alt=""
+                  />
+                  <p className="type-body">
+                    Click photo to set as main photo catalog
+                  </p>
+                </div>
+              </div>
+            ) : null}
+          </DetailSection>
         )}
+
+
+        {catalogDetailDraft.type === "single" ? (
+          <DetailSection
+            title="Track Stock"
+            className={`catalog-create-form-card${isEditing
+              ? " catalog-detail-section--toggle-only"
+              : !catalogDetailDraft.trackStock
+                ? " catalog-detail-section--status-only"
+                : ""
+              }`}
+            meta={
+              !isEditing ? (
+                <StatusPill
+                  status={catalogDetailDraft.trackStock ? "Track Stock" : "No Track"}
+                />
+              ) : null
+            }
+          >
+            {isEditing ? (
+              <div className="catalog-panel-info-list catalog-panel-info-list--single-column">
+                <div className="catalog-availability-row">
+                  <div className="catalog-availability-row__copy">
+                    <p className="type-title-3">Track Stock</p>
+                  </div>
+                  <div className="catalog-availability-row__control">
+                    <Toggle
+                      checked={catalogDetailDraft.trackStock}
+                      onChange={
+                        !isLockedSelectedBusinessUnit
+                          ? () => handleCatalogDetailChange("trackStock", !catalogDetailDraft.trackStock)
+                          : undefined
+                      }
+                      ariaLabel="Track stock"
+                    />
+                  </div>
+                </div>
+              </div>
+            ) : null}
+
+            {catalogDetailDraft.trackStock ? (
+              <div className="table-scroll" style={{ marginTop: isEditing ? "4px" : "0" }}>
+                <table className="catalog-package-table catalog-package-table--panel">
+                  <thead>
+                    <tr>
+                      <th>
+                        <p className="type-title-3">Ingredient Name</p>
+                      </th>
+                      <th style={{ width: "100px" }} className="catalog-package-table__qty">
+                        <p className="type-title-3">Qty</p>
+                      </th>
+                      <th className="catalog-package-table__action" />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {catalogDetailDraft.ingredients.map((item, index) => {
+                      const isBlankRow = !item.name && !item.qty;
+                      if (!isEditing && isBlankRow) return null;
+
+                      const availableIngredientOptions = packageCatalogOptions.filter(opt => {
+                        const isSelectedInOtherRows = catalogDetailDraft.ingredients.some(ing => ing.id !== item.id && ing.name === opt);
+                        return !isSelectedInOtherRows || opt === item.name;
+                      });
+
+                      return (
+                        <tr
+                          key={item.id}
+                          className={
+                            isEditing && isBlankRow && index === catalogDetailDraft.ingredients.length - 1
+                              ? "catalog-package-table__placeholder"
+                              : ""
+                          }
+                        >
+                          <td>
+                            {isEditing ? (
+                              <label className="catalog-package-field">
+                                <PackageItemSelectField
+                                  value={item.name}
+                                  options={availableIngredientOptions}
+                                  placeholder="Select Ingredient"
+                                  onChange={(value) =>
+                                    handleCatalogDetailIngredientChange(
+                                      item.id,
+                                      "name",
+                                      value
+                                    )
+                                  }
+                                />
+                              </label>
+                            ) : (
+                              <p className="type-subtitle-2">{item.name}</p>
+                            )}
+                          </td>
+                          <td style={{ width: "100px" }}>
+                            {isEditing ? (
+                              item.name ? (
+                                <div className="catalog-package-field" style={{ position: "relative" }}>
+                                  <input
+                                    className={`type-subtitle-2 ${!item.qty && catalogDetailDraftErrors.ingredients ? 'catalog-package-field--error' : ''}`}
+                                    type="text"
+                                    inputMode="numeric"
+                                    value={item.qty}
+                                    onChange={(event) =>
+                                      handleCatalogDetailIngredientChange(
+                                        item.id,
+                                        "qty",
+                                        event.target.value
+                                      )
+                                    }
+                                    style={{ paddingRight: "30px", width: "100%" }}
+                                  />
+                                  <span
+                                    style={{
+                                      position: "absolute",
+                                      right: "8px",
+                                      top: "50%",
+                                      transform: "translateY(-50%)",
+                                      color: "#C2C2C2",
+                                      fontSize: "12px",
+                                      pointerEvents: "none",
+                                    }}
+                                  >
+                                    {item.unit || "g"}
+                                  </span>
+                                </div>
+                              ) : null
+                            ) : (
+                              <p className="type-subtitle-2">
+                                {item.qty}
+                                <span style={{ color: "#C2C2C2", marginLeft: "4px" }}>
+                                  {item.unit || "g"}
+                                </span>
+                              </p>
+                            )}
+                          </td>
+                          <td className="catalog-package-table__action">
+                            {isEditing && (!isBlankRow || index < catalogDetailDraft.ingredients.length - 1) ? (
+                              <TableActionButton
+                                tooltip="Remove"
+                                onClick={() =>
+                                  handleRemoveCatalogDetailIngredient(item.id)
+                                }
+                                ariaLabel="Remove ingredient"
+                              >
+                                <Icon
+                                  name="delete"
+                                  className="lab-icon lab-icon--16"
+                                  alt="Delete"
+                                />
+                              </TableActionButton>
+                            ) : null}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+                {catalogDetailDraftErrors.ingredients ? (
+                  <p className="catalog-package-error type-body">
+                    Field cannot be empty
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
+          </DetailSection>
+        ) : null}
+
 
         {catalogDetailDraft.type === "package" ? (
           <DetailSection
@@ -20855,7 +21395,7 @@ export default function App() {
                   </tr>
                 </thead>
                 <tbody>
-                {visiblePackageRows.map((item) => {
+                  {visiblePackageRows.map((item) => {
                     const matchedCatalog =
                       detailPackageCatalogMap[item.catalogId];
                     const itemTotal = matchedCatalog
@@ -20992,153 +21532,6 @@ export default function App() {
             </div>
           </DetailSection>
         ) : null}
-        {catalogDetailDraft.type === "single" ? (
-          <section className="catalog-create-form-card catalog-detail-section">
-          <div className="catalog-panel-availability">
-            <div className="catalog-panel-availability__copy">
-              <p className="type-title-3">Track Stock</p>
-            </div>
-            {isEditing ? (
-              <Toggle
-                checked={catalogDetailDraft.trackStock}
-                onChange={
-                  !isLockedSelectedBusinessUnit
-                    ? () => handleCatalogDetailChange("trackStock", !catalogDetailDraft.trackStock)
-                    : undefined
-                }
-                ariaLabel="Track stock"
-              />
-            ) : (
-              <div className="catalog-detail-section__status">
-                {catalogDetailDraft.trackStock ? (
-                  <span className="status-pill status-pill--primary status-pill--small">Track Stock</span>
-                ) : (
-                  <span className="status-pill status-pill--muted status-pill--small">No Track</span>
-                )}
-              </div>
-            )}
-          </div>
-          {catalogDetailDraft.trackStock ? (
-            <div className="table-scroll" style={{ marginTop: "0px" }}>
-              <table className="catalog-package-table catalog-package-table--panel">
-                <thead>
-                  <tr>
-                    <th>
-                      <p className="type-title-3">Ingredient Name</p>
-                    </th>
-                    <th style={{ width: "100px" }} className="catalog-package-table__qty">
-                      <p className="type-title-3">Qty</p>
-                    </th>
-                    <th className="catalog-package-table__action" />
-                  </tr>
-                </thead>
-                <tbody>
-                  {catalogDetailDraft.ingredients.map((item, index) => {
-                    const isBlankRow = !item.name && !item.qty;
-                    if (!isEditing && isBlankRow) return null;
-
-                    const availableIngredientOptions = packageCatalogOptions.filter(opt => {
-                      const isSelectedInOtherRows = catalogDetailDraft.ingredients.some(ing => ing.id !== item.id && ing.name === opt);
-                      return !isSelectedInOtherRows || opt === item.name;
-                    });
-
-                    return (
-                      <tr
-                        key={item.id}
-                        className={
-                          isEditing && isBlankRow && index === catalogDetailDraft.ingredients.length - 1
-                            ? "catalog-package-table__placeholder"
-                            : ""
-                        }
-                      >
-                        <td>
-                          {isEditing ? (
-                            <label className="catalog-package-field">
-                              <PackageItemSelectField
-                                value={item.name}
-                                options={availableIngredientOptions}
-                                placeholder="Select Ingredient"
-                                onChange={(value) =>
-                                  handleCatalogDetailIngredientChange(
-                                    item.id,
-                                    "name",
-                                    value
-                                  )
-                                }
-                              />
-                            </label>
-                          ) : (
-                            <p className="type-subtitle-2">{item.name}</p>
-                          )}
-                        </td>
-                        <td style={{ width: "100px" }}>
-                          {isEditing ? (
-                            item.name ? (
-                              <div className="catalog-package-field" style={{ position: "relative" }}>
-                                <input
-                                  className="type-subtitle-2"
-                                  type="text"
-                                  inputMode="numeric"
-                                  value={item.qty}
-                                  onChange={(event) =>
-                                    handleCatalogDetailIngredientChange(
-                                      item.id,
-                                      "qty",
-                                      event.target.value
-                                    )
-                                  }
-                                  style={{ paddingRight: "30px", width: "100%" }}
-                                />
-                                <span
-                                  style={{
-                                    position: "absolute",
-                                    right: "8px",
-                                    top: "50%",
-                                    transform: "translateY(-50%)",
-                                    color: "#C2C2C2",
-                                    fontSize: "12px",
-                                    pointerEvents: "none",
-                                  }}
-                                >
-                                  {item.unit}
-                                </span>
-                              </div>
-                            ) : null
-                          ) : (
-                            <p className="type-subtitle-2">
-                              {item.qty}
-                              <span style={{ color: "#C2C2C2", marginLeft: "4px" }}>
-                                {item.unit}
-                              </span>
-                            </p>
-                          )}
-                        </td>
-                        <td className="catalog-package-table__action">
-                            {isEditing && (!isBlankRow || index < catalogDetailDraft.ingredients.length - 1) ? (
-                              <TableActionButton
-                                tooltip="Remove"
-                                onClick={() =>
-                                  handleRemoveCatalogDetailIngredient(item.id)
-                                }
-                                ariaLabel="Remove ingredient"
-                              >
-                                <Icon
-                                  name="delete"
-                                  className="lab-icon lab-icon--16"
-                                  alt="Delete"
-                                />
-                              </TableActionButton>
-                            ) : null}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            ) : null}
-          </section>
-        ) : null}
 
         <DetailSection
           title="Pricing Configuration"
@@ -21170,6 +21563,8 @@ export default function App() {
             )}
           </div>
         </DetailSection>
+
+
       </>
     );
   }
@@ -22312,59 +22707,14 @@ export default function App() {
   function renderCategoryDetailSidePanel(categoryRow) {
     if (!categoryRow || !categoryDetailDraft) return null;
 
-    const normalizedCategoryName =
-      categoryDetailDraft.name.trim() || categoryRow.name;
-    const normalizedParentCategory =
-      categoryDetailDraft.parentCategory === "None (Main Category)"
-        ? ""
-        : categoryDetailDraft.parentCategory;
-    const effectiveCategoryRecords = records.category.map((item) => {
-      if (item.id === categoryDetailDraft.id) {
-        return {
-          ...item,
-          name: normalizedCategoryName,
-          parentCategory: normalizedParentCategory,
-          sellingTime: categoryDetailDraft.sellingTime,
-        };
-      }
-      if (item.parentCategory === categoryRow.name) {
-        return { ...item, parentCategory: normalizedCategoryName };
-      }
-      return item;
-    });
-    const effectiveCatalogRecords = records.catalog.map((catalog) =>
-      (catalog.category || "Uncategorized") === categoryRow.name
-        ? { ...catalog, category: normalizedCategoryName }
-        : catalog
-    );
-    const effectiveCategoryRows = buildCategoryRows(
-      effectiveCategoryRecords,
-      effectiveCatalogRecords
-    );
-    const effectiveCategoryRow =
-      effectiveCategoryRows.find(
-        (item) => item.id === categoryDetailDraft.id
-      ) ?? categoryRow;
-    const connectedCatalogNames = effectiveCatalogRecords
-      .filter(
-        (catalog) =>
-          (catalog.category || "Uncategorized") === effectiveCategoryRow.name
-      )
-      .map((catalog) => catalog.name);
-    const categoryDetailParentOptions = [
-      {
-        value: "None (Main Category)",
-        label: "None (Main Category)",
-        subtitle: "Create as top-level category",
-      },
-      ...effectiveCategoryRows
-        .filter((item) => item.id !== categoryDetailDraft.id)
-        .map((item) => ({
-          value: item.name,
-          label: item.name,
-          subtitle: item.hierarchyDisplay,
-        })),
-    ];
+    const detailContext = getCategoryDetailContext(categoryRow, categoryDetailDraft);
+    if (!detailContext) return null;
+
+    const {
+      connectedCatalogNames,
+      effectiveCategoryRow,
+      parentOptions: categoryDetailParentOptions,
+    } = detailContext;
 
     const isEditing = categoryDetailEditing?.kind === "all";
 
@@ -22432,12 +22782,14 @@ export default function App() {
                     value={categoryDetailDraft.color}
                     onChange={(value) => handleCategoryDetailChange("color", value)}
                   />
-                  <DetailField
-                    label="Hierarchy"
-                    value={effectiveCategoryRow.hierarchyPath || effectiveCategoryRow.name}
-                    disabled
-                    ellipsis
-                  />
+                  <div style={{ gridColumn: "1 / -1" }}>
+                    <DetailField
+                      label="Hierarchy"
+                      value={effectiveCategoryRow.hierarchyPath || effectiveCategoryRow.name}
+                      disabled
+                      ellipsis
+                    />
+                  </div>
 
 
                 </>
@@ -22465,11 +22817,13 @@ export default function App() {
                       />
                     }
                   />
-                  <CatalogPanelInfoRow
-                    label="Hierarchy"
-                    value={effectiveCategoryRow.hierarchyPath || effectiveCategoryRow.name}
-                    disabled
-                  />
+                  <div style={{ gridColumn: "1 / -1" }}>
+                    <CatalogPanelInfoRow
+                      label="Hierarchy"
+                      value={effectiveCategoryRow.hierarchyPath || effectiveCategoryRow.name}
+                      disabled
+                    />
+                  </div>
 
                 </>
               )}
@@ -23380,20 +23734,11 @@ export default function App() {
                                   className="modifier-detail-options-table__handle"
                                   aria-hidden="true"
                                 >
-                                  <span
-                                    className="modifier-option-table__handle-dots"
-                                    aria-hidden="true"
-                                  >
-                                    {Array.from(
-                                      { length: 6 },
-                                      (_, dotIndex) => (
-                                        <span
-                                          key={dotIndex}
-                                          className="modifier-option-table__handle-dot"
-                                        />
-                                      )
-                                    )}
-                                  </span>
+                                  <Icon
+                                    name="modifierReorder"
+                                    className="lab-icon lab-icon--20"
+                                    color="var(--neutral-on-surface-tertiary)"
+                                  />
                                 </span>
                               </td>
                               <td className="modifier-detail-options-table__name">
@@ -23958,7 +24303,7 @@ export default function App() {
     );
   }
 
-  function renderGenericListPage(pageId) {
+  function renderGenericListPage(pageId, customTable = null) {
     const config = PAGE_CONFIGS[pageId];
     const filteredRows = getRowsForPage(pageId);
     const paged = getPagedRows(pageId, filteredRows);
@@ -24037,7 +24382,7 @@ export default function App() {
       }
 
       if (pageId === "device-management") {
-        handleSetPage("device-management-create");
+        openDeviceManagementCreatePage();
         return;
       }
 
@@ -24088,347 +24433,351 @@ export default function App() {
                 data-scroll-top="false"
                 onScroll={handleTableCardScroll}
               >
-                <table
-                  className={`lab-table${pageId === "unit" ? " is-layout-fixed" : ""
-                    }${pageId === "device-management" ? " is-device-management" : ""}`}
-                >
-                  <thead>
-                    <tr>
-                      <th className="lab-table__checkbox">
-                        <LabCheckbox
-                          checked={allVisibleSelected}
-                          onChange={() =>
-                            handleToggleAllRows(pageId, filteredRows)
-                          }
-                          ariaLabel={`Select all ${config.title} rows`}
-                        />
-                      </th>
-                      {config.columns.map((column) => {
-                        const isTitleColumn = column.key === titleColumnKey;
-                        const headerClassName =
-                          column.type === "delete"
-                            ? "lab-table__action"
-                            : [
-                              column.thClassName,
-                              isTitleColumn ? "lab-table__title-column" : "",
-                            ]
-                              .filter(Boolean)
-                              .join(" ") || undefined;
-
-                        return (
-                        <th
-                          key={column.key}
-                          className={headerClassName}
-                          style={column.width ? { width: column.width } : undefined}
-                        >
-                          {column.label ? (
-                            column.sortable ? (
-                              <span className="lab-table__header-stack">
-                                <button
-                                  type="button"
-                                  className="lab-table__header-button"
-                                  onClick={() => handleSetSort(pageId, column.key)}
-                                >
-                                  <p className={`type-title-3${column.key === "addedByName" ? " text-primary" : ""}`}>{column.label}</p>
-                                </button>
-                                <ChevronIcon
-                                  name="filterChevron"
-                                  size={16}
-                                  color="#C2C2C2"
-                                  direction={
-                                    sortByPage[pageId] === column.key
-                                      ? (sortDirectionByPage[pageId] === "asc" ? "up" : "down")
-                                      : "down"
-                                  }
-                                />
-                              </span>
-                            ) : (
-                              <p className={`type-title-3${column.key === "addedByName" ? " text-primary" : ""}`}>{column.label}</p>
-                            )
-                          ) : null}
+                {customTable ? (
+                  customTable
+                ) : (
+                  <table
+                    className={`lab-table${pageId === "unit" ? " is-layout-fixed" : ""
+                      }${pageId === "device-management" ? " is-device-management" : ""}`}
+                  >
+                    <thead>
+                      <tr>
+                        <th className="lab-table__checkbox">
+                          <LabCheckbox
+                            checked={allVisibleSelected}
+                            onChange={() =>
+                              handleToggleAllRows(pageId, filteredRows)
+                            }
+                            ariaLabel={`Select all ${config.title} rows`}
+                          />
                         </th>
-                        );
-                      })}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {paged.rows.length ? (
-                      paged.rows.map((row) => (
-                        <tr
-                          key={row.id}
-                          className={
-                            isSplitDetailPage
-                              ? `lab-table__row--clickable${(
-                                isCategoryPage
-                                  ? categoryDetailId === row.id
-                                  : isUnitPage
-                                    ? unitDetailId === row.id
-                                    : isModifierPage
-                                      ? modifierDetailId === row.id
-                                      : isSellingTimePage
-                                        ? sellingTimeDetailId === row.id
-                                        : isDeviceManagementPage
-                                          ? deviceManagementDetailId === row.id
-                                          : false
-                              )
-                                ? " lab-table__row--selected"
-                                : ""
-                              }`
-                              : undefined
-                          }
-                          tabIndex={isSplitDetailPage ? 0 : undefined}
-                          onClick={
-                            isCategoryPage
-                              ? () => openCategoryDetailPanel(row.id)
-                              : isUnitPage
-                                ? () => openUnitDetailPanel(row.id)
-                                : isModifierPage
-                                  ? () => openModifierDetailPanel(row.id)
-                                  : isSellingTimePage
-                                    ? () => openSellingTimeDetailPanel(row.id)
-                                    : isDeviceManagementPage
-                                      ? () => openDeviceManagementDetailPanel(row.id)
-                                      : undefined
-                          }
-                          onKeyDown={
-                            isSplitDetailPage
-                              ? (event) => {
-                                if (
-                                  event.key === "Enter" ||
-                                  event.key === " "
-                                ) {
-                                  event.preventDefault();
-                                  if (isCategoryPage) {
-                                    openCategoryDetailPanel(row.id);
-                                  } else if (isUnitPage) {
-                                    openUnitDetailPanel(row.id);
-                                  } else if (isModifierPage) {
-                                    openModifierDetailPanel(row.id);
-                                  } else if (isSellingTimePage) {
-                                    openSellingTimeDetailPanel(row.id);
-                                  } else if (isDeviceManagementPage) {
-                                    openDeviceManagementDetailPanel(row.id);
-                                  }
-                                }
-                              }
-                              : undefined
-                          }
-                        >
-                          <td
-                            className="lab-table__checkbox"
-                            onClick={(event) => event.stopPropagation()}
-                          >
-                            <LabCheckbox
-                              checked={selectedRows[pageId].includes(row.id)}
-                              onChange={() =>
-                                handleToggleSelectedRow(pageId, row.id)
-                              }
-                              ariaLabel={`Select ${row.name}`}
-                            />
-                          </td>
-                          {config.columns.map((column) => {
-                            const isTitleColumn = column.key === titleColumnKey;
-                            const cellClassName =
-                              [
-                                column.tdClassName,
-                                isTitleColumn ? "lab-table__title-cell" : "",
+                        {config.columns.map((column) => {
+                          const isTitleColumn = column.key === titleColumnKey;
+                          const headerClassName =
+                            column.type === "delete"
+                              ? "lab-table__action"
+                              : [
+                                column.thClassName,
+                                isTitleColumn ? "lab-table__title-column" : "",
                               ]
                                 .filter(Boolean)
                                 .join(" ") || undefined;
-                            const cellStyle =
-                              column.width ? { width: column.width } : undefined;
-                            const cellValue =
-                              isDeviceManagementPage && column.key === "deviceConnected"
-                                ? (row.deviceType === "Printer" ? row.deviceConnected : getDeviceConnectedDisplayValue(row))
-                                : row[column.key] || "-";
 
-                            if (column.type === "delete") {
-                              const isPrinterDevice = row.deviceType === "Printer";
-                              const isDisconnectedDevice = row.status === "Disconnected";
-                              const isPendingDevice = row.status === "Pending";
-                              const isExpiredDevice = row.status === "Expired";
-                              const isPrimaryPowerAction =
-                                isDisconnectedDevice || isExpiredDevice;
-                              const powerTooltip = isPrinterDevice
-                                ? "Disconnect unavailable for printers"
-                                : isExpiredDevice
-                                  ? "Regenerate"
-                                  : isDisconnectedDevice
-                                    ? "Turn On"
-                                    : isPendingDevice
-                                      ? "Turn Off"
-                                      : "Disconnect";
-                              const powerAriaLabel = isPrinterDevice
-                                ? "Disconnect unavailable for printers"
-                                : isExpiredDevice
-                                  ? "Regenerate pairing code"
-                                  : isDisconnectedDevice
-                                    ? "Turn on device connection"
-                                    : isPendingDevice
-                                      ? "Turn off device connection"
-                                      : "Disconnect device";
+                          return (
+                            <th
+                              key={column.key}
+                              className={headerClassName}
+                              style={column.width ? { width: column.width } : undefined}
+                            >
+                              {column.label ? (
+                                column.sortable ? (
+                                  <span className="lab-table__header-stack">
+                                    <button
+                                      type="button"
+                                      className="lab-table__header-button"
+                                      onClick={() => handleSetSort(pageId, column.key)}
+                                    >
+                                      <p className={`type-title-3${column.key === "addedByName" ? " text-primary" : ""}`}>{column.label}</p>
+                                    </button>
+                                    <ChevronIcon
+                                      name="filterChevron"
+                                      size={16}
+                                      color="#C2C2C2"
+                                      direction={
+                                        sortByPage[pageId] === column.key
+                                          ? (sortDirectionByPage[pageId] === "asc" ? "up" : "down")
+                                          : "down"
+                                      }
+                                    />
+                                  </span>
+                                ) : (
+                                  <p className={`type-title-3${column.key === "addedByName" ? " text-primary" : ""}`}>{column.label}</p>
+                                )
+                              ) : null}
+                            </th>
+                          );
+                        })}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {paged.rows.length ? (
+                        paged.rows.map((row) => (
+                          <tr
+                            key={row.id}
+                            className={
+                              isSplitDetailPage
+                                ? `lab-table__row--clickable${(
+                                  isCategoryPage
+                                    ? categoryDetailId === row.id
+                                    : isUnitPage
+                                      ? unitDetailId === row.id
+                                      : isModifierPage
+                                        ? modifierDetailId === row.id
+                                        : isSellingTimePage
+                                          ? sellingTimeDetailId === row.id
+                                          : isDeviceManagementPage
+                                            ? deviceManagementDetailId === row.id
+                                            : false
+                                )
+                                  ? " lab-table__row--selected"
+                                  : ""
+                                }`
+                                : undefined
+                            }
+                            tabIndex={isSplitDetailPage ? 0 : undefined}
+                            onClick={
+                              isCategoryPage
+                                ? () => openCategoryDetailPanel(row.id)
+                                : isUnitPage
+                                  ? () => openUnitDetailPanel(row.id)
+                                  : isModifierPage
+                                    ? () => openModifierDetailPanel(row.id)
+                                    : isSellingTimePage
+                                      ? () => openSellingTimeDetailPanel(row.id)
+                                      : isDeviceManagementPage
+                                        ? () => openDeviceManagementDetailPanel(row.id)
+                                        : undefined
+                            }
+                            onKeyDown={
+                              isSplitDetailPage
+                                ? (event) => {
+                                  if (
+                                    event.key === "Enter" ||
+                                    event.key === " "
+                                  ) {
+                                    event.preventDefault();
+                                    if (isCategoryPage) {
+                                      openCategoryDetailPanel(row.id);
+                                    } else if (isUnitPage) {
+                                      openUnitDetailPanel(row.id);
+                                    } else if (isModifierPage) {
+                                      openModifierDetailPanel(row.id);
+                                    } else if (isSellingTimePage) {
+                                      openSellingTimeDetailPanel(row.id);
+                                    } else if (isDeviceManagementPage) {
+                                      openDeviceManagementDetailPanel(row.id);
+                                    }
+                                  }
+                                }
+                                : undefined
+                            }
+                          >
+                            <td
+                              className="lab-table__checkbox"
+                              onClick={(event) => event.stopPropagation()}
+                            >
+                              <LabCheckbox
+                                checked={selectedRows[pageId].includes(row.id)}
+                                onChange={() =>
+                                  handleToggleSelectedRow(pageId, row.id)
+                                }
+                                ariaLabel={`Select ${row.name}`}
+                              />
+                            </td>
+                            {config.columns.map((column) => {
+                              const isTitleColumn = column.key === titleColumnKey;
+                              const cellClassName =
+                                [
+                                  column.tdClassName,
+                                  isTitleColumn ? "lab-table__title-cell" : "",
+                                ]
+                                  .filter(Boolean)
+                                  .join(" ") || undefined;
+                              const cellStyle =
+                                column.width ? { width: column.width } : undefined;
+                              const cellValue =
+                                isDeviceManagementPage && column.key === "deviceConnected"
+                                  ? (row.deviceType === "Printer" ? row.deviceConnected : getDeviceConnectedDisplayValue(row))
+                                  : row[column.key] || "-";
 
-                              return (
-                                <td
-                                  key={column.key}
-                                  className="lab-table__action"
-                                  onClick={(event) => event.stopPropagation()}
-                                >
-                                  <div className="lab-table__action-group">
-                                    {isDeviceManagementPage ? (
-                                      <TableActionButton
-                                        tooltip={powerTooltip}
-                                        className={`table-row-action ${isPrimaryPowerAction
-                                          ? "table-row-action--primary"
-                                          : "table-row-action--danger"
-                                          }`}
-                                        disabled={isPrinterDevice}
-                                        onClick={() => {
-                                          if (isPrinterDevice) {
-                                            return;
-                                          }
+                              if (column.type === "delete") {
+                                const isPrinterDevice = row.deviceType === "Printer";
+                                const isDisconnectedDevice = row.status === "Disconnected";
+                                const isPendingDevice = row.status === "Pending";
+                                const isExpiredDevice = row.status === "Expired";
+                                const isPrimaryPowerAction =
+                                  isDisconnectedDevice || isExpiredDevice;
+                                const powerTooltip = isPrinterDevice
+                                  ? "Unavailable for printers"
+                                  : isExpiredDevice
+                                    ? "Regenerate"
+                                    : isDisconnectedDevice
+                                      ? "Turn On"
+                                      : isPendingDevice
+                                        ? "Turn Off"
+                                        : "Disconnect";
+                                const powerAriaLabel = isPrinterDevice
+                                  ? "Unavailable for printers"
+                                  : isExpiredDevice
+                                    ? "Regenerate pairing code"
+                                    : isDisconnectedDevice
+                                      ? "Turn on device connection"
+                                      : isPendingDevice
+                                        ? "Turn off device connection"
+                                        : "Disconnect device";
 
-                                          if (isExpiredDevice) {
-                                            handleStartDevicePendingPairing(
+                                return (
+                                  <td
+                                    key={column.key}
+                                    className="lab-table__action"
+                                    onClick={(event) => event.stopPropagation()}
+                                  >
+                                    <div className="lab-table__action-group">
+                                      {isDeviceManagementPage ? (
+                                        <TableActionButton
+                                          tooltip={powerTooltip}
+                                          className={`table-row-action ${isPrimaryPowerAction
+                                            ? "table-row-action--primary"
+                                            : "table-row-action--danger"
+                                            }`}
+                                          disabled={isPrinterDevice}
+                                          onClick={() => {
+                                            if (isPrinterDevice) {
+                                              return;
+                                            }
+
+                                            if (isExpiredDevice) {
+                                              handleStartDevicePendingPairing(
+                                                row,
+                                                Boolean(row.isReconnectFromDisconnect)
+                                              );
+                                              return;
+                                            }
+
+                                            if (isDisconnectedDevice) {
+                                              requestDeviceStatusChange(row, "Connected");
+                                              return;
+                                            }
+
+                                            requestDeviceStatusChange(
                                               row,
-                                              Boolean(row.isReconnectFromDisconnect)
+                                              "Disconnected",
+                                              isPendingDevice
+                                                ? { disconnectLabel: "Turn Off Connection" }
+                                                : undefined
                                             );
+                                          }}
+                                          ariaLabel={powerAriaLabel}
+                                        >
+                                          <Icon
+                                            name="power"
+                                            className="lab-icon lab-icon--16"
+                                            alt=""
+                                            color={
+                                              isPrinterDevice
+                                                ? "var(--neutral-on-surface-tertiary)"
+                                                : isPrimaryPowerAction
+                                                  ? "var(--feature-brand-primary)"
+                                                  : "var(--status-red-primary)"
+                                            }
+                                          />
+                                        </TableActionButton>
+                                      ) : null}
+                                      <TableActionButton
+                                        tooltip={
+                                          row.deviceType === "Printer"
+                                            ? "Delete unavailable for printers"
+                                            : "Delete"
+                                        }
+                                        disabled={row.deviceType === "Printer"}
+                                        onClick={() => {
+                                          if (row.deviceType === "Printer") {
                                             return;
                                           }
 
-                                          if (isDisconnectedDevice) {
-                                            requestDeviceStatusChange(row, "Connected");
-                                            return;
-                                          }
-
-                                          requestDeviceStatusChange(
-                                            row,
-                                            "Disconnected",
-                                            isPendingDevice
-                                              ? { disconnectLabel: "Turn Off Connection" }
-                                              : undefined
+                                          requestDeleteRow(
+                                            pageId,
+                                            row.id,
+                                            row.deviceName ??
+                                            row.name ??
+                                            row.label ??
+                                            row.title ??
+                                            row.id
                                           );
                                         }}
-                                        ariaLabel={powerAriaLabel}
                                       >
                                         <Icon
-                                          name="power"
+                                          name="delete"
                                           className="lab-icon lab-icon--16"
-                                          alt=""
-                                          color={
-                                            isPrinterDevice
-                                              ? "var(--neutral-on-surface-tertiary)"
-                                              : isPrimaryPowerAction
-                                                ? "var(--feature-brand-primary)"
-                                                : "var(--status-red-primary)"
-                                          }
+                                          alt="Delete"
                                         />
                                       </TableActionButton>
-                                    ) : null}
-                                    <TableActionButton
-                                      tooltip={
-                                        row.deviceType === "Printer"
-                                          ? "Delete unavailable for printers"
-                                          : "Delete"
-                                      }
-                                      disabled={row.deviceType === "Printer"}
-                                      onClick={() => {
-                                        if (row.deviceType === "Printer") {
-                                          return;
-                                        }
+                                    </div>
+                                  </td>
+                                );
+                              }
 
-                                        requestDeleteRow(
-                                          pageId,
-                                          row.id,
-                                          row.deviceName ??
-                                          row.name ??
-                                          row.label ??
-                                          row.title ??
-                                          row.id
-                                        );
-                                      }}
-                                    >
-                                      <Icon
-                                        name="delete"
-                                        className="lab-icon lab-icon--16"
-                                        alt="Delete"
-                                      />
-                                    </TableActionButton>
-                                  </div>
-                                </td>
-                              );
-                            }
+                              if (column.type === "status") {
+                                return (
+                                  <td
+                                    key={column.key}
+                                    className={cellClassName}
+                                    style={cellStyle}
+                                  >
+                                    <StatusPill status={row[column.key]} />
+                                  </td>
+                                );
+                              }
 
-                            if (column.type === "status") {
-                              return (
-                                <td
-                                  key={column.key}
-                                  className={cellClassName}
-                                  style={cellStyle}
-                                >
-                                  <StatusPill status={row[column.key]} />
-                                </td>
-                              );
-                            }
+                              if (column.type === "link") {
+                                const cellValueToRender = cellValue;
 
-                            if (column.type === "link") {
-                              const cellValueToRender = cellValue;
-
-                              return (
-                                <td
-                                  key={column.key}
-                                  className={cellClassName}
-                                  style={cellStyle}
-                                >
-                                  <div className="lab-table__cell-stack">
-                                    <p
-                                      className="type-subtitle-2 lab-table__link"
-                                      style={column.key === "addedByName" ? { color: "var(--neutral-on-surface-primary)" } : {}}
-                                    >
-                                      {cellValueToRender}
-                                    </p>
-                                    {column.subtitleKey &&
-                                      row[column.subtitleKey] ? (
-                                      <p className="lab-table__cell-subtitle type-body text-secondary">
-                                        {row[column.subtitleKey]}
+                                return (
+                                  <td
+                                    key={column.key}
+                                    className={cellClassName}
+                                    style={cellStyle}
+                                  >
+                                    <div className="lab-table__cell-stack">
+                                      <p
+                                        className="type-subtitle-2 lab-table__link"
+                                        style={column.key === "addedByName" ? { color: "var(--neutral-on-surface-primary)" } : {}}
+                                      >
+                                        {cellValueToRender}
                                       </p>
-                                    ) : null}
-                                  </div>
+                                      {column.subtitleKey &&
+                                        row[column.subtitleKey] ? (
+                                        <p className="lab-table__cell-subtitle type-body text-secondary">
+                                          {row[column.subtitleKey]}
+                                        </p>
+                                      ) : null}
+                                    </div>
+                                  </td>
+                                );
+                              }
+
+                              return (
+                                <td
+                                  key={column.key}
+                                  className={cellClassName}
+                                  style={cellStyle}
+                                >
+                                  <p
+                                    className={`type-subtitle-2${column.contentClassName
+                                      ? ` ${column.contentClassName}`
+                                      : ""
+                                      }`}
+                                  >
+                                    {cellValue}
+                                  </p>
                                 </td>
                               );
-                            }
-
-                            return (
-                              <td
-                                key={column.key}
-                                className={cellClassName}
-                                style={cellStyle}
-                              >
-                                <p
-                                  className={`type-subtitle-2${column.contentClassName
-                                    ? ` ${column.contentClassName}`
-                                    : ""
-                                    }`}
-                                >
-                                  {cellValue}
-                                </p>
-                              </td>
-                            );
-                          })}
+                            })}
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan={config.columns.length + 1}>
+                            <EmptyState
+                              title={`No ${config.title.toLowerCase()} records match the current filters`}
+                              copy="Use another search term or reset the active chip filters."
+                            />
+                          </td>
                         </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td colSpan={config.columns.length + 1}>
-                          <EmptyState
-                            title={`No ${config.title.toLowerCase()} records match the current filters`}
-                            copy="Use another search term or reset the active chip filters."
-                          />
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
+                      )}
+                    </tbody>
+                  </table>
+                )}
               </div>
               <TableFooterBar
                 page={paged.page}
@@ -24533,12 +24882,7 @@ export default function App() {
     setDeviceManagementDetailId(rowId);
     setDeviceManagementDetailEditing(null);
     setDeviceManagementDetailPanelTab("general");
-    setDeviceManagementDraft({
-      deviceName: "",
-      deviceType: "Tablet (POS)",
-      connectedDevices: "",
-    });
-    setDeviceManagementDraftErrors({});
+    resetDeviceManagementDraft();
   }
 
   function handleSaveDeviceManagementDraft() {
@@ -24585,11 +24929,7 @@ export default function App() {
     setDiscardCreateModalOpen(false);
     setPairingCodePopup(newDevice);
     scheduleDevicePairingSimulation(newDevice);
-    setDeviceManagementDraft({
-      deviceName: "",
-      deviceType: "Tablet (POS)",
-    });
-    setDeviceManagementDraftErrors({});
+    resetDeviceManagementDraft();
     handleSetPage("device-management", { skipCreateGuard: true });
   }
 
@@ -24610,7 +24950,7 @@ export default function App() {
               <button
                 type="button"
                 className="catalog-detail-panel__close"
-                onClick={() => handleSetPage("device-management")}
+                onClick={closeDeviceManagementCreatePage}
                 aria-label="Close add device panel"
               >
                 <Icon name="panelClose" className="lab-icon lab-icon--16" alt="Close" />
@@ -24650,7 +24990,7 @@ export default function App() {
           <CreatePanelFooter
             isFirstStep
             isLastStep
-            onCancel={() => handleSetPage("device-management")}
+            onCancel={closeDeviceManagementCreatePage}
             onSubmit={handleSaveDeviceManagementDraft}
             submitLabel="Generate Pairing Code"
           />
@@ -24699,10 +25039,10 @@ export default function App() {
     const connectionActionLabel = isExpired
       ? "Regenerate"
       : isDisconnected
-      ? "Turn On"
-      : isPending
-        ? "Turn Off"
-        : "Disconnect";
+        ? "Turn On"
+        : isPending
+          ? "Turn Off"
+          : "Disconnect";
     const deviceConnectedValue = getDeviceConnectedDisplayValue(row);
     const deviceOsValue = row.status === "Connected" ? row.deviceOs ?? "-" : "-";
     const isConnectionActionDisabled = detailActionsDisabled;
@@ -28632,13 +28972,49 @@ export default function App() {
   }
 
   function renderCurrentPage() {
+    const renderCategoryListSurface = () => {
+      const filteredCategoryRows = getRowsForPage("category");
+      const allVisibleCategoryRowsSelected =
+        filteredCategoryRows.length > 0 &&
+        filteredCategoryRows.every((row) =>
+          selectedRows.category.includes(row.id)
+        );
+
+      return (
+        <CategoryListPage
+          renderListPage={(customTable) =>
+            renderGenericListPage("category", customTable)
+          }
+          categoryRows={filteredCategoryRows}
+          selectedRows={selectedRows.category}
+          onToggleSelectedRow={(rowId) =>
+            handleToggleSelectedRow("category", rowId)
+          }
+          onRowClick={(rowId) => openCategoryDetailPanel(rowId)}
+          categoryDetailId={categoryDetailId}
+          config={PAGE_CONFIGS.category}
+          allVisibleSelected={allVisibleCategoryRowsSelected}
+          onToggleAllRows={() =>
+            handleToggleAllRows("category", filteredCategoryRows)
+          }
+          sortByPage={sortByPage}
+          sortDirectionByPage={sortDirectionByPage}
+          onSort={(key) => handleSetSort("category", key)}
+          handleDelete={(rowId) => {
+            const row = categoryRows.find((item) => item.id === rowId);
+            requestDeleteRow("category", rowId, row?.name ?? rowId);
+          }}
+        />
+      );
+    };
+
     if (currentPage === "dashboard-discount-report-detail")
       return renderDashboardDiscountReportDetailPage();
     if (currentPage === "dashboard-report-detail")
       return renderDashboardReportDetailPage();
     if (currentPage === "catalog-create") return renderCatalogPage();
     if (currentPage === "catalog-detail") return renderCatalogPage();
-    if (currentPage === "category-create") return renderGenericListPage("category");
+    if (currentPage === "category-create") return renderCategoryListSurface();
     if (currentPage === "unit-create") return renderGenericListPage("unit");
     if (currentPage === "modifier-create") return renderGenericListPage("modifier");
     if (currentPage === "selling-time-create")
@@ -28648,12 +29024,7 @@ export default function App() {
     if (currentPage === "pricing-rule-create")
       return renderPricingRulePage();
     if (currentPage === "catalog") return renderCatalogPage();
-    if (currentPage === "category")
-      return (
-        <CategoryListPage
-          renderListPage={() => renderGenericListPage("category")}
-        />
-      );
+    if (currentPage === "category") return renderCategoryListSurface();
     if (currentPage === "unit")
       return (
         <UnitListPage renderListPage={() => renderGenericListPage("unit")} />
