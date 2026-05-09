@@ -160,7 +160,7 @@ export const PAGE_CONFIGS = {
   },
   "device-management": {
     title: "Device",
-    actionLabel: "Add Device",
+    actionLabel: "New Device",
     searchPlaceholder: "Search device",
     filters: [
       {

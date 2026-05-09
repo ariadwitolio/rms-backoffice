@@ -1146,6 +1146,12 @@ const CATEGORY_HIERARCHY_SEPARATOR = " > ";
 const MAX_CATEGORY_NESTING_LEVEL = 3;
 const DUPLICATE_CATALOG_SNACKBAR_MESSAGE =
   "Catalog name, unit, and category combination already exists";
+const DUPLICATE_CATEGORY_ERROR_MESSAGE = "Category name already exists";
+const DUPLICATE_UNIT_ERROR_MESSAGE = "Unit name already exists";
+const DUPLICATE_MODIFIER_ERROR_MESSAGE = "Modifier name already exists";
+const DUPLICATE_PRICING_RULE_ERROR_MESSAGE =
+  "Special pricing rule name already exists";
+const DUPLICATE_DEVICE_ERROR_MESSAGE = "Device name already exists";
 
 function getCategoryHierarchyDepth(path = "") {
   if (!path) return 0;
@@ -1168,6 +1174,52 @@ function getCategorySubtreeDepth(categoryRows = [], rootPath = "") {
   return matchingDepths.length ? Math.max(...matchingDepths) : 1;
 }
 
+function buildOrderedCategoryRows(categoryRows = []) {
+  const rowsByParent = new Map();
+
+  categoryRows.forEach((row) => {
+    const parentKey = row.parentCategory || "";
+    if (!rowsByParent.has(parentKey)) {
+      rowsByParent.set(parentKey, []);
+    }
+    rowsByParent.get(parentKey).push(row);
+  });
+
+  const visitedIds = new Set();
+
+  function visit(parentKey = "", trail = new Set()) {
+    const children = rowsByParent.get(parentKey) ?? [];
+
+    return children.flatMap((row) => {
+      if (visitedIds.has(row.id) || trail.has(row.name)) {
+        return [];
+      }
+
+      visitedIds.add(row.id);
+      const nextTrail = new Set(trail);
+      nextTrail.add(row.name);
+
+      return [row, ...visit(row.name, nextTrail)];
+    });
+  }
+
+  const orderedRows = visit("");
+  return orderedRows.concat(
+    categoryRows.filter((row) => !visitedIds.has(row.id))
+  );
+}
+
+function createCategoryTreeOption(row) {
+  return {
+    value: row.name,
+    label: row.name,
+    indentLevel: Math.max(
+      0,
+      getCategoryHierarchyDepth(row.hierarchyPath || row.name) - 1
+    ),
+  };
+}
+
 function buildCategoryParentOptions(
   categoryRows = [],
   {
@@ -1177,13 +1229,14 @@ function buildCategoryParentOptions(
     maxSubtreeDepth = 1,
   } = {}
 ) {
+  const orderedRows = buildOrderedCategoryRows(categoryRows);
+
   return [
     {
       value: "None (Main Category)",
       label: "None (Main Category)",
-      subtitle: "Create as top-level category",
     },
-    ...categoryRows
+    ...orderedRows
       .filter((row) => {
         if (row.id === excludeId) return false;
 
@@ -1197,14 +1250,7 @@ function buildCategoryParentOptions(
 
         return !isBlocked && itemDepth + maxSubtreeDepth <= maxDepth;
       })
-      .map((row) => ({
-        value: row.name,
-        label: row.name,
-        indentLevel: Math.max(
-          0,
-          getCategoryHierarchyDepth(row.hierarchyPath || row.name) - 1
-        ),
-      })),
+      .map(createCategoryTreeOption),
   ];
 }
 
@@ -1235,6 +1281,133 @@ function isDuplicateCatalogRecord(candidate, catalogRows = []) {
       normalizeCatalogIdentityValue(row.category, "Uncategorized") ===
         normalizedCategory
   );
+}
+
+function normalizeDuplicateNameValue(value) {
+  return String(value ?? "").trim().toLowerCase();
+}
+
+function hasDuplicateRecordName(
+  candidateName,
+  rows = [],
+  { excludeId = null, field = "name" } = {}
+) {
+  const normalizedCandidateName = normalizeDuplicateNameValue(candidateName);
+
+  if (!normalizedCandidateName) {
+    return false;
+  }
+
+  return rows.some(
+    (row) =>
+      row.id !== excludeId &&
+      normalizeDuplicateNameValue(row?.[field]) === normalizedCandidateName
+  );
+}
+
+function buildCatalogCategoryOptions(categoryRows = [], catalogRows = []) {
+  const orderedRows = buildOrderedCategoryRows(categoryRows);
+  const nextOptions = [{ value: "Uncategorized", label: "Uncategorized" }];
+  const seenValues = new Set(["uncategorized"]);
+
+  orderedRows.forEach((row) => {
+    nextOptions.push(createCategoryTreeOption(row));
+    seenValues.add(normalizeDuplicateNameValue(row.name));
+  });
+
+  catalogRows.forEach((row) => {
+    const categoryName = row.category || "Uncategorized";
+    const normalizedCategoryName = normalizeDuplicateNameValue(categoryName);
+
+    if (!categoryName || seenValues.has(normalizedCategoryName)) {
+      return;
+    }
+
+    seenValues.add(normalizedCategoryName);
+    nextOptions.push({
+      value: categoryName,
+      label: categoryName,
+    });
+  });
+
+  return nextOptions;
+}
+
+function buildModifierCatalogGroups(categoryRows = [], catalogRows = []) {
+  const orderedCategoryRows = buildOrderedCategoryRows(categoryRows);
+  const catalogsByCategory = new Map();
+
+  catalogRows.forEach((row) => {
+    const categoryName = row.category || "Uncategorized";
+    if (!catalogsByCategory.has(categoryName)) {
+      catalogsByCategory.set(categoryName, []);
+    }
+    catalogsByCategory.get(categoryName).push(row);
+  });
+
+  const groups = [];
+  const usedCategories = new Set();
+
+  if (catalogsByCategory.has("Uncategorized")) {
+    groups.push({
+      id: "Uncategorized",
+      label: "Uncategorized",
+      indentLevel: 0,
+      items: catalogsByCategory.get("Uncategorized").map((row) => ({
+        id: row.id,
+        label: row.name,
+        value: row.name,
+        indentLevel: 1,
+      })),
+    });
+    usedCategories.add("uncategorized");
+  }
+
+  orderedCategoryRows.forEach((row) => {
+    const groupItems = catalogsByCategory.get(row.name) ?? [];
+    if (!groupItems.length) {
+      return;
+    }
+
+    const groupIndentLevel = Math.max(
+      0,
+      getCategoryHierarchyDepth(row.hierarchyPath || row.name) - 1
+    );
+
+    groups.push({
+      id: row.id,
+      label: row.name,
+      indentLevel: groupIndentLevel,
+      items: groupItems.map((item) => ({
+        id: item.id,
+        label: item.name,
+        value: item.name,
+        indentLevel: groupIndentLevel + 1,
+      })),
+    });
+    usedCategories.add(normalizeDuplicateNameValue(row.name));
+  });
+
+  catalogsByCategory.forEach((groupItems, categoryName) => {
+    const normalizedCategoryName = normalizeDuplicateNameValue(categoryName);
+    if (usedCategories.has(normalizedCategoryName)) {
+      return;
+    }
+
+    groups.push({
+      id: categoryName,
+      label: categoryName,
+      indentLevel: 0,
+      items: groupItems.map((item) => ({
+        id: item.id,
+        label: item.name,
+        value: item.name,
+        indentLevel: 1,
+      })),
+    });
+  });
+
+  return groups;
 }
 
 function getCategoryHierarchyPath(
@@ -5153,6 +5326,14 @@ function DetailField({
   disabled = false,
   ellipsis = false,
 }) {
+  const errorMessage =
+    typeof error === "string"
+      ? error
+      : error
+        ? "Field cannot be empty"
+        : "";
+  const hasError = Boolean(errorMessage);
+
   return (
     <label className={`catalog-detail-field${disabled ? " is-disabled" : ""}`}>
       <span className="catalog-detail-field__label type-body">
@@ -5162,7 +5343,7 @@ function DetailField({
         {label}
       </span>
       <span
-        className={`catalog-detail-field__shell${error ? " is-error" : ""}${disabled ? " is-disabled" : ""}`}
+        className={`catalog-detail-field__shell${hasError ? " is-error" : ""}${disabled ? " is-disabled" : ""}`}
       >
         <input
           className={`type-subtitle-1${value ? "" : " text-tertiary"}${ellipsis ? " catalog-detail-field__input--ellipsis" : ""}`}
@@ -5177,9 +5358,9 @@ function DetailField({
           disabled={disabled}
         />
       </span>
-      {error ? (
+      {hasError ? (
         <p className="catalog-detail-field__error type-body">
-          Field cannot be empty
+          {errorMessage}
         </p>
       ) : null}
     </label>
@@ -5197,6 +5378,14 @@ function DetailTextAreaField({
   rows = 3,
   disabled = false,
 }) {
+  const errorMessage =
+    typeof error === "string"
+      ? error
+      : error
+        ? "Field cannot be empty"
+        : "";
+  const hasError = Boolean(errorMessage);
+
   return (
     <label className={`catalog-detail-field${disabled ? " is-disabled" : ""}`}>
       <span className="catalog-detail-field__label type-body">
@@ -5206,7 +5395,7 @@ function DetailTextAreaField({
         {label}
       </span>
       <span
-        className={`catalog-detail-field__shell catalog-detail-field__shell--multiline${error ? " is-error" : ""}${disabled ? " is-disabled" : ""}`}
+        className={`catalog-detail-field__shell catalog-detail-field__shell--multiline${hasError ? " is-error" : ""}${disabled ? " is-disabled" : ""}`}
       >
         <textarea
           className={`catalog-detail-field__textarea type-subtitle-1${value ? "" : " text-tertiary"}`}
@@ -5217,9 +5406,9 @@ function DetailTextAreaField({
           disabled={disabled}
         />
       </span>
-      {error ? (
+      {hasError ? (
         <p className="catalog-detail-field__error type-body">
-          Field cannot be empty
+          {errorMessage}
         </p>
       ) : null}
     </label>
@@ -5236,6 +5425,14 @@ function DetailNumberUnitField({
   error = false,
   disabled = false,
 }) {
+  const errorMessage =
+    typeof error === "string"
+      ? error
+      : error
+        ? "Field cannot be empty"
+        : "";
+  const hasError = Boolean(errorMessage);
+
   return (
     <label className={`catalog-detail-field${disabled ? " is-disabled" : ""}`}>
       <span className="catalog-detail-field__label type-body">
@@ -5245,7 +5442,7 @@ function DetailNumberUnitField({
         {label}
       </span>
       <span
-        className={`catalog-detail-field__shell catalog-detail-field__shell--with-suffix${error ? " is-error" : ""}${disabled ? " is-disabled" : ""}`}
+        className={`catalog-detail-field__shell catalog-detail-field__shell--with-suffix${hasError ? " is-error" : ""}${disabled ? " is-disabled" : ""}`}
       >
         <input
           className={`type-subtitle-1${value ? "" : " text-tertiary"}`}
@@ -5262,9 +5459,9 @@ function DetailNumberUnitField({
           {suffix}
         </span>
       </span>
-      {error ? (
+      {hasError ? (
         <p className="catalog-detail-field__error type-body">
-          Field cannot be empty
+          {errorMessage}
         </p>
       ) : null}
     </label>
@@ -5317,7 +5514,13 @@ function DetailSelectField({
   multipleDisplay = "chips",
   ellipsis = false,
 }) {
-
+  const errorMessage =
+    typeof error === "string"
+      ? error
+      : error
+        ? "Field cannot be empty"
+        : "";
+  const hasError = Boolean(errorMessage);
   const [isOpen, setIsOpen] = useState(false);
   const rootRef = useRef(null);
   const normalizedOptions = options.map((option) =>
@@ -5382,7 +5585,7 @@ function DetailSelectField({
         {label}
       </span>
       <span
-        className={`catalog-detail-field__shell${error ? " is-error" : ""}${multiple && !isMultipleSummary
+        className={`catalog-detail-field__shell${hasError ? " is-error" : ""}${multiple && !isMultipleSummary
           ? " catalog-detail-field__shell--multiline"
           : ""
           }`}
@@ -5502,9 +5705,9 @@ function DetailSelectField({
           </div>
         ) : null}
       </span>
-      {error ? (
+      {hasError ? (
         <p className="catalog-detail-field__error type-body">
-          Field cannot be empty
+          {errorMessage}
         </p>
       ) : null}
     </div>
@@ -5613,7 +5816,13 @@ function ModifierCatalogSelectField({
   error = false,
   ellipsis = false,
 }) {
-
+  const errorMessage =
+    typeof error === "string"
+      ? error
+      : error
+        ? "Field cannot be empty"
+        : "";
+  const hasError = Boolean(errorMessage);
   const [isOpen, setIsOpen] = useState(false);
   const [menuStyle, setMenuStyle] = useState(null);
   const rootRef = useRef(null);
@@ -5753,7 +5962,7 @@ function ModifierCatalogSelectField({
         {label}
       </span>
       <span
-        className={`catalog-detail-field__shell${error ? " is-error" : ""}`}
+        className={`catalog-detail-field__shell${hasError ? " is-error" : ""}`}
       >
         <button
           ref={triggerRef}
@@ -5821,6 +6030,13 @@ function ModifierCatalogSelectField({
                       <button
                         type="button"
                         className="modifier-catalog-select__group-header"
+                        style={
+                          group.indentLevel
+                            ? {
+                              paddingLeft: `${16 + group.indentLevel * 20}px`,
+                            }
+                            : undefined
+                        }
                         onClick={() => toggleGroup(group)}
                       >
                         <span
@@ -5842,6 +6058,9 @@ function ModifierCatalogSelectField({
                             type="button"
                             className={`modifier-catalog-select__item${isSelected ? " is-selected" : ""
                               }`}
+                            style={{
+                              paddingLeft: `${16 + (item.indentLevel ?? group.indentLevel + 1) * 20}px`,
+                            }}
                             onClick={() => toggleItem(item.value)}
                           >
                             <span
@@ -5868,9 +6087,9 @@ function ModifierCatalogSelectField({
           document.body
         )
         : null}
-      {error ? (
+      {hasError ? (
         <p className="catalog-detail-field__error type-body">
-          Field cannot be empty
+          {errorMessage}
         </p>
       ) : null}
     </div>
@@ -5884,7 +6103,13 @@ function ModifierCreateNameField({
   maxLength = 40,
   ellipsis = false,
 }) {
-
+  const errorMessage =
+    typeof error === "string"
+      ? error
+      : error
+        ? "Field cannot be empty"
+        : "";
+  const hasError = Boolean(errorMessage);
   return (
     <label className="modifier-create-field">
       <span className="modifier-create-field__label-row">
@@ -5894,7 +6119,7 @@ function ModifierCreateNameField({
         </span>
       </span>
       <span
-        className={`catalog-detail-field__shell${error ? " is-error" : ""}`}
+        className={`catalog-detail-field__shell${hasError ? " is-error" : ""}`}
       >
         <input
           className={`type-subtitle-1${value ? "" : " text-tertiary"}${ellipsis ? " catalog-detail-field__input--ellipsis" : ""}`}
@@ -5909,9 +6134,9 @@ function ModifierCreateNameField({
           {value.length}/{maxLength}
         </p>
       </span>
-      {error ? (
+      {hasError ? (
         <p className="catalog-detail-field__error type-body">
-          Field cannot be empty
+          {errorMessage}
         </p>
       ) : null}
     </label>
@@ -12493,29 +12718,19 @@ export default function App() {
     );
   }
 
-  const catalogCategoryOptions = Array.from(
-    new Set(["Uncategorized", ...records.category.map((row) => row.name)])
+  const categoryRows = buildCategoryRows(records.category, records.catalog);
+  const modifierRows = buildModifierRows(records.modifier);
+  const unitRows = buildUnitRows(records.unit, records.catalog);
+  const sellingTimeRows = buildSellingTimeRows(records["selling-time"]);
+  const catalogCategoryOptions = buildCatalogCategoryOptions(
+    categoryRows,
+    records.catalog
   );
   const catalogUnitOptions = records.unit.map((row) => row.name);
-  const modifierCatalogGroups = Array.from(
-    new Set([
-      "Uncategorized",
-      ...records.category.map((row) => row.name),
-      ...records.catalog.map((row) => row.category || "Uncategorized"),
-    ])
-  )
-    .map((category) => ({
-      id: category,
-      label: category,
-      items: records.catalog
-        .filter((row) => (row.category || "Uncategorized") === category)
-        .map((row) => ({
-          id: row.id,
-          label: row.name,
-          value: row.name,
-        })),
-    }))
-    .filter((group) => group.items.length);
+  const modifierCatalogGroups = buildModifierCatalogGroups(
+    categoryRows,
+    records.catalog
+  );
   const catalogModifierOptions = Array.from(
     new Set(records.modifier.map((row) => row.name))
   );
@@ -12527,10 +12742,6 @@ export default function App() {
   const packageCatalogMap = Object.fromEntries(
     records.catalog.map((row) => [row.name, row])
   );
-  const categoryRows = buildCategoryRows(records.category, records.catalog);
-  const modifierRows = buildModifierRows(records.modifier);
-  const unitRows = buildUnitRows(records.unit, records.catalog);
-  const sellingTimeRows = buildSellingTimeRows(records["selling-time"]);
   const selectedSellingTimeDetailRow =
     sellingTimeRows.find((row) => row.id === sellingTimeDetailId) ?? null;
   const selectedPricingRuleDetailRow =
@@ -16660,6 +16871,22 @@ export default function App() {
   function resetUnitDraft() {
     setUnitDraft(createInitialUnitDraft());
     setUnitDraftErrors({});
+  }
+
+  function clearDeviceManagementDraftError(...keys) {
+    setDeviceManagementDraftErrors((previous) => {
+      const next = { ...previous };
+      let hasChanges = false;
+
+      keys.forEach((key) => {
+        if (next[key]) {
+          delete next[key];
+          hasChanges = true;
+        }
+      });
+
+      return hasChanges ? next : previous;
+    });
   }
 
   function resetDeviceManagementDraft() {
