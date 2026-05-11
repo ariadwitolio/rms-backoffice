@@ -20721,13 +20721,16 @@ export default function App() {
 
                 {catalogDraft.type === "single" ? (
                   <DetailSection
-                    title="Track Stock"
+                    title="Recipe"
                     className="catalog-create-form-card catalog-detail-section--toggle-only"
                   >
                     <div className="catalog-panel-info-list catalog-panel-info-list--single-column">
                       <div className="catalog-availability-row">
                         <div className="catalog-availability-row__copy">
-                          <p className="type-title-3">Track Stock</p>
+                          <p className="type-title-3">Recipe</p>
+                          <p className="type-body text-secondary">
+                            Track stock movement of ingredients connected as Recipe
+                          </p>
                         </div>
                         <Toggle
                           checked={catalogDraft.trackStock}
@@ -21430,7 +21433,7 @@ export default function App() {
 
         {catalogDetailDraft.type === "single" ? (
           <DetailSection
-            title="Track Stock"
+            title="Recipe"
             className={`catalog-create-form-card${isEditing
               ? " catalog-detail-section--toggle-only"
               : !catalogDetailDraft.trackStock
@@ -21449,7 +21452,10 @@ export default function App() {
               <div className="catalog-panel-info-list catalog-panel-info-list--single-column">
                 <div className="catalog-availability-row">
                   <div className="catalog-availability-row__copy">
-                    <p className="type-title-3">Track Stock</p>
+                    <p className="type-title-3">Recipe</p>
+                    <p className="type-body text-secondary">
+                      Track stock movement of ingredients connected as Recipe
+                    </p>
                   </div>
                   <div className="catalog-availability-row__control">
                     <Toggle
