@@ -220,8 +220,11 @@ The refactor remains conservative:
   - `panels/DeviceAddPanel.jsx`
   - `panels/DeviceDetailPanel.jsx`
   - `panels/DeviceEditPanel.jsx`
+  - `panels/GroupedDeviceAddPanel.jsx`
+  - `panels/GroupedDeviceDetailPanel.jsx`
+  - `panels/GroupedDeviceEditPanel.jsx`
 - Notes:
-  - the current page id is still `device-management`
+  - the current page id is still `device-management` and `grouped-device`
 - See [devices README](/Users/aria/Documents/RMS-Backoffice2/src/modules/devices/README.md).
 
 ## Intentionally Unmodeled For Now

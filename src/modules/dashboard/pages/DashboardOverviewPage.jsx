@@ -103,7 +103,7 @@ export default function DashboardOverviewPage({
                 </tr>
               </thead>
               <tbody>
-                {dashboardOrders.map((row) => (
+                {(dashboardOrders || []).map((row) => (
                   <tr key={row.id}>
                     <td>
                       <p className="type-subtitle-2">{row.id}</p>

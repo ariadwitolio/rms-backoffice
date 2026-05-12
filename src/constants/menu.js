@@ -13,7 +13,15 @@ export const MENU = [
     ],
   },
   { id: "business-unit", label: "Entity", icon: "businessUnit" },
-  { id: "device-management", label: "Device Management", icon: "deviceManagement" },
+  {
+    id: "device-group",
+    label: "Device Management",
+    icon: "deviceManagement",
+    children: [
+      { id: "device-management", label: "Device List" },
+      { id: "grouped-device", label: "Device Group" },
+    ],
+  },
   { id: "role-management", label: "Role Management", icon: "roleManagement" },
 ];
 
@@ -28,5 +36,6 @@ export const DETAIL_PAGE_PARENT = {
   "pricing-rule-create": "pricing-rule",
   "selling-time-create": "selling-time",
   "device-management-create": "device-management",
+  "grouped-device-create": "grouped-device",
   "role-management-create": "role-management",
 };
