@@ -21799,7 +21799,7 @@ export default function App() {
                     label="Modifier"
                     value={
                       catalogDetailDraft.modifier.length
-                        ? `${catalogDetailDraft.modifier.length} Selected`
+                        ? `${catalogDetailDraft.modifier.length} Modifiers Selected`
                         : "-"
                     }
                   />

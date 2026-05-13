@@ -61,6 +61,9 @@ export default function CategoryListPage({
               return (
                 <td key={col.key} className="lab-table__title-cell">
                   <div style={{ display: "flex", alignItems: "center", paddingLeft: `${depth * 24}px` }}>
+                    <div>
+                      <p className="type-subtitle-2" style={{ color: "var(--feature-brand-primary)" }}>{row[col.key]}</p>
+                    </div>
                     {hasChildren ? (
                       <button 
                         style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: "4px", marginRight: "4px" }}
@@ -76,9 +79,7 @@ export default function CategoryListPage({
                     ) : (
                        <span style={{ width: "24px", display: "inline-block", marginRight: "4px" }} />
                     )}
-                    <div>
-                      <p className="type-subtitle-2" style={{ color: "var(--feature-brand-primary)" }}>{row[col.key]}</p>
-                    </div>
+                    
                   </div>
                 </td>
               );

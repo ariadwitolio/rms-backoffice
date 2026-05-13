@@ -2,7 +2,7 @@ export const MENU = [
   { id: "dashboard", label: "Dashboard", icon: "dashboard" },
   {
     id: "catalog-group",
-    label: "Catalog",
+    label: "Catalog Management",
     icon: "catalog",
     children: [
       { id: "catalog", label: "Catalog" },
@@ -12,7 +12,7 @@ export const MENU = [
       { id: "pricing-rule", label: "Pricing Rule" },
     ],
   },
-  { id: "business-unit", label: "Entity", icon: "businessUnit" },
+  { id: "business-unit", label: "Entity Management", icon: "businessUnit" },
   {
     id: "device-group",
     label: "Device Management",
