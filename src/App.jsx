@@ -818,40 +818,92 @@ function createInitialGroupedDeviceDraft() {
   };
 }
 
+const ACCOUNT_ROLE_PERMISSION_MODULES = [
+  {
+    id: "user-management",
+    label: "User Management",
+    additionalAccess: [
+      { id: "suspendUser", label: "Suspend user" },
+      { id: "regeneratePin", label: "Regenerate PIN" },
+      { id: "assignOtherEntities", label: "Assign to other entities" },
+    ],
+  },
+  {
+    id: "role-management",
+    label: "Role Management",
+    additionalAccess: [{ id: "suspendEntity", label: "Suspend entity" }],
+  },
+  { id: "entity-management", label: "Entity Management" },
+];
+
+const ENTITY_BACK_OFFICE_ROLE_PERMISSION_MODULES = [
+  { id: "catalog", label: "Catalog" },
+  { id: "category", label: "Category" },
+  { id: "unit", label: "Unit" },
+  { id: "modifier", label: "Modifier" },
+  { id: "device", label: "Device" },
+  { id: "grouped-device", label: "Device Group" },
+  { id: "table-management", label: "Table Management" },
+  { id: "device-management", label: "Device Management" },
+];
+
+const ENTITY_APP_ROLE_PERMISSION_MODULES = [
+  {
+    id: "cashier",
+    label: "Cashier",
+    additionalAccess: [{ id: "approveVoid", label: "Can approve VOID request" }],
+  },
+  { id: "kitchen-display-system", label: "Kitchen Display System" },
+  { id: "printer-settings", label: "Printer Settings" },
+];
+
+const ALL_ROLE_PERMISSION_MODULES = [
+  ...ACCOUNT_ROLE_PERMISSION_MODULES,
+  ...ENTITY_BACK_OFFICE_ROLE_PERMISSION_MODULES,
+  ...ENTITY_APP_ROLE_PERMISSION_MODULES,
+];
+
+function createRolePermissions(overrides = {}) {
+  return ALL_ROLE_PERMISSION_MODULES.reduce(
+    (permissions, module) => ({
+      ...permissions,
+      [module.id]: overrides[module.id] ?? "none",
+    }),
+    {}
+  );
+}
+
+function getRolePermissionsStructure(isEntitySide = false) {
+  const groups = [
+    {
+      group: "Account Module",
+      modules: ACCOUNT_ROLE_PERMISSION_MODULES,
+    },
+  ];
+
+  if (isEntitySide) {
+    groups.push(
+      {
+        group: "RMS Back Office",
+        modules: ENTITY_BACK_OFFICE_ROLE_PERMISSION_MODULES,
+      },
+      {
+        group: "RMS App",
+        modules: ENTITY_APP_ROLE_PERMISSION_MODULES,
+      }
+    );
+  }
+
+  return groups;
+}
+
 function createInitialRoleAccessDraft() {
   return {
     name: "",
     description: "",
-    permissions: {},
+    permissions: createRolePermissions(),
   };
 }
-
-const ROLE_PERMISSIONS_STRUCTURE = [
-  {
-    group: "Core Modules",
-    modules: [
-      { id: "dashboard", label: "Dashboard" },
-      { id: "catalog", label: "Catalog Management", children: ["Products", "Modifiers", "Categories"] },
-      { id: "orders", label: "Order Management" },
-    ],
-  },
-  {
-    group: "Operations",
-    modules: [
-      { id: "inventory", label: "Inventory Management" },
-      { id: "reports", label: "Reports & Analytics" },
-      { id: "devices", label: "Device Management" },
-    ],
-  },
-  {
-    group: "Administration",
-    modules: [
-      { id: "users", label: "User Management" },
-      { id: "roles", label: "Role & Access" },
-      { id: "settings", label: "System Settings" },
-    ],
-  },
-];
 
 function createInitialDeviceManagementDraft() {
   return {
@@ -1627,7 +1679,7 @@ function getModifierConnectedCatalogSummary(
   const totalCatalogs = groups.flatMap((group) => group.items ?? []).length;
 
   if (totalCatalogs && normalizedValues.length === totalCatalogs) {
-    return "All Selected";
+    return "All Catalogs Selected";
   }
 
   if (normalizedValues.length === 1) {
@@ -1635,7 +1687,7 @@ function getModifierConnectedCatalogSummary(
   }
 
   if (normalizedValues.length > 1) {
-    return `${normalizedValues.length} Selected`;
+    return `${normalizedValues.length} Catalogs Selected`;
   }
 
   return "-";
@@ -2450,51 +2502,154 @@ function createInitialDataStore() {
     "role-access": [
       {
         id: "rl-001",
-        name: "Owner",
-        members: "3 users",
-        scope: "All modules",
+        name: "Holding Owner",
+        members: "1 member",
+        membersList: [
+          { id: "mbr-001", name: "John Manager", email: "john.manager@restaurant.com", status: "Active" },
+        ],
+        description: "Full access across account controls and entity operations.",
         status: "Active",
         updated: "2 Apr 2026",
+        permissions: createRolePermissions(
+          Object.fromEntries(
+            ALL_ROLE_PERMISSION_MODULES.map((module) => [module.id, "full"])
+          )
+        ),
       },
       {
         id: "rl-002",
-        name: "Operations Manager",
-        members: "5 users",
-        scope: "Catalog, Cashier, Invoice",
+        name: "Account Administrator",
+        members: "2 members",
+        membersList: [
+          { id: "mbr-002", name: "Sarah Admin", email: "sarah.admin@restaurant.com", status: "Active" },
+          { id: "mbr-003", name: "Mike Invited", email: "mike.invited@restaurant.com", status: "Invited" },
+        ],
+        description: "Manages user, role, and entity access for the main account.",
         status: "Active",
         updated: "30 Mar 2026",
+        permissions: createRolePermissions({
+          "user-management": {
+            level: "full",
+            additionalAccess: {
+              suspendUser: true,
+              regeneratePin: true,
+              assignOtherEntities: true,
+            },
+          },
+          "role-management": {
+            level: "full",
+            additionalAccess: {
+              suspendEntity: true,
+            },
+          },
+          "entity-management": "edit",
+        }),
       },
       {
         id: "rl-003",
-        name: "Kitchen Lead",
-        members: "4 users",
-        scope: "Catalog, Modifier",
+        name: "Outlet Manager",
+        members: "5 members",
+        membersList: [
+          { id: "mbr-004", name: "Lisa Manager", email: "lisa.manager@restaurant.com", status: "Active" },
+          { id: "mbr-005", name: "James Staff", email: "james.staff@restaurant.com", status: "Active" },
+          { id: "mbr-006", name: "Emma Invited", email: "emma.invited@restaurant.com", status: "Invited" },
+          { id: "mbr-007", name: "Robert Inactive", email: "robert.inactive@restaurant.com", status: "Locked" },
+          { id: "mbr-008", name: "Patricia Staff", email: "patricia.staff@restaurant.com", status: "Active" },
+        ],
+        description: "Handles outlet setup, catalog upkeep, and operational device access.",
         status: "Active",
         updated: "28 Mar 2026",
+        permissions: createRolePermissions({
+          "entity-management": "view",
+          catalog: "full",
+          category: "edit",
+          unit: "edit",
+          modifier: "edit",
+          device: "edit",
+          "grouped-device": "edit",
+          "table-management": "full",
+          "device-management": "full",
+          cashier: "full",
+          "kitchen-display-system": "view",
+          "printer-settings": "edit",
+        }),
       },
       {
         id: "rl-004",
-        name: "Outlet Viewer",
-        members: "2 users",
-        scope: "Dashboard, Reports",
+        name: "Kitchen Lead",
+        members: "3 members",
+        membersList: [
+          { id: "mbr-009", name: "Chef David", email: "david.chef@restaurant.com", status: "Active" },
+          { id: "mbr-010", name: "Cook Alex", email: "alex.cook@restaurant.com", status: "Invited" },
+          { id: "mbr-011", name: "Sous Chef Tom", email: "tom.sous@restaurant.com", status: "Locked" },
+        ],
+        description: "Oversees kitchen display workflows and printer coordination.",
         status: "Inactive",
         updated: "19 Mar 2026",
+        permissions: createRolePermissions({
+          catalog: "view",
+          category: "view",
+          modifier: "view",
+          device: "view",
+          "kitchen-display-system": "full",
+          "printer-settings": "edit",
+        }),
       },
       {
         id: "rl-005",
-        name: "Inventory Control",
-        members: "2 users",
-        scope: "Inventory, Catalog",
+        name: "Cashier Supervisor",
+        members: "4 members",
+        membersList: [
+          { id: "mbr-012", name: "Cashier Lead", email: "lead.cashier@restaurant.com", status: "Active" },
+          { id: "mbr-013", name: "Register Op", email: "register.op@restaurant.com", status: "Active" },
+          { id: "mbr-014", name: "New Cashier", email: "new.cashier@restaurant.com", status: "Invited" },
+          { id: "mbr-015", name: "Old Cashier", email: "old.cashier@restaurant.com", status: "Locked" },
+        ],
+        description: "Monitors POS access, cashier operations, and receipt printer setup.",
         status: "Active",
         updated: "15 Mar 2026",
+        permissions: createRolePermissions({
+          catalog: "view",
+          category: "view",
+          unit: "view",
+          cashier: {
+            level: "full",
+            additionalAccess: { approveVoid: true },
+          },
+          "printer-settings": "edit",
+        }),
       },
       {
         id: "rl-006",
-        name: "Branch Supervisor",
-        members: "3 users",
-        scope: "Dashboard, Reports, User List",
+        name: "Audit Viewer",
+        members: "6 members",
+        membersList: [
+          { id: "mbr-016", name: "Auditor Prime", email: "auditor.prime@restaurant.com", status: "Active" },
+          { id: "mbr-017", name: "Auditor Second", email: "auditor.second@restaurant.com", status: "Active" },
+          { id: "mbr-018", name: "Auditor Third", email: "auditor.third@restaurant.com", status: "Active" },
+          { id: "mbr-019", name: "Pending Auditor", email: "pending.auditor@restaurant.com", status: "Invited" },
+          { id: "mbr-020", name: "Former Auditor", email: "former.auditor@restaurant.com", status: "Locked" },
+          { id: "mbr-021", name: "Temp Auditor", email: "temp.auditor@restaurant.com", status: "Locked" },
+        ],
+        description: "Read-only access for compliance reviews and operational visibility.",
         status: "Active",
         updated: "10 Mar 2026",
+        permissions: createRolePermissions({
+          "user-management": "view",
+          "role-management": "view",
+          "entity-management": "view",
+          catalog: "view",
+          category: "view",
+          unit: "view",
+          modifier: "view",
+          device: "view",
+          "grouped-device": "view",
+          "table-management": "view",
+          "device-management": "view",
+          cashier: "view",
+          "kitchen-display-system": "view",
+          "printer-settings": "view",
+        }),
       },
     ],
     "device-management": [
@@ -5908,11 +6063,11 @@ function ModifierCatalogSelectField({
   const allItemValues = allItems.map((item) => item.value);
   const isAllSelected = totalItems > 0 && normalizedValue.length === totalItems;
   const displayValue = isAllSelected
-    ? "All Selected"
+    ? "All Catalogs Selected"
     : normalizedValue.length === 1
       ? normalizedValue[0]
       : normalizedValue.length > 1
-        ? `${normalizedValue.length} Selected`
+        ? `${normalizedValue.length} Catalogs Selected`
         : placeholder;
 
   useEffect(() => {
@@ -11907,6 +12062,8 @@ export default function App() {
   const [roleAccessDetailDraft, setRoleAccessDetailDraft] = useState(null);
   const [roleAccessDetailEditing, setRoleAccessDetailEditing] = useState(null);
   const [roleAccessDetailSnapshot, setRoleAccessDetailSnapshot] = useState(null);
+  const [roleAccessDetailErrors, setRoleAccessDetailErrors] = useState({});
+  const [roleAccessDetailPanelTab, setRoleAccessDetailPanelTab] = useState("general");
   const [roleAccessDraft, setRoleAccessDraft] = useState(createInitialRoleAccessDraft);
   const [roleAccessDraftErrors, setRoleAccessDraftErrors] = useState({});
   const [deviceManagementDetailId, setDeviceManagementDetailId] = useState(null);
@@ -12770,6 +12927,10 @@ export default function App() {
   }
 
   function getNavigationPageId(pageId) {
+    if (pageId === "role-access" || pageId === "role-access-create") {
+      return "role-management";
+    }
+
     return DETAIL_PAGE_PARENT[pageId] ?? pageId;
   }
 
@@ -13422,6 +13583,9 @@ export default function App() {
     if (pageId !== "selling-time") {
       resetSellingTimeDetailState();
     }
+    if (pageId !== "role-management" && pageId !== "role-access") {
+      resetRoleAccessDetailState();
+    }
     if (pageId === "device-management") {
       setDeviceManagementDetailId(null);
       setDeviceManagementDetailEditing(null);
@@ -13483,6 +13647,7 @@ export default function App() {
     resetModifierDetailState();
     resetCatalogDetailState();
     resetSellingTimeDetailState();
+    resetRoleAccessDetailState();
     resetPricingRuleDetailState();
     if (fallbackPage === "dashboard") {
       setDashboardReportTab("sales-report");
@@ -13562,6 +13727,14 @@ export default function App() {
           pageId,
           parentPage: "device-management",
           label: "Add New Device",
+        };
+      case "role-management-create":
+      case "role-access-create":
+        return {
+          panelId: "role-management",
+          pageId,
+          parentPage: "role-management",
+          label: "New Role Access",
         };
       default:
         return null;
@@ -13672,6 +13845,19 @@ export default function App() {
     );
   }
 
+  function hasRoleAccessCreateChanges(draft) {
+    return Boolean(
+      draft &&
+      (
+        draft.name.trim() !== "" ||
+        draft.description.trim() !== "" ||
+        Object.values(draft.permissions ?? {}).some(
+          (permission) => permission && permission !== "none"
+        )
+      )
+    );
+  }
+
   function hasCreatePanelChanges(pageId = currentPage) {
     switch (pageId) {
       case "catalog-create":
@@ -13688,6 +13874,9 @@ export default function App() {
         return hasSellingTimeCreateChanges(sellingTimeDraft);
       case "device-management-create":
         return hasDeviceManagementCreateChanges(deviceManagementDraft);
+      case "role-management-create":
+      case "role-access-create":
+        return hasRoleAccessCreateChanges(roleAccessDraft);
       default:
         return false;
     }
@@ -13726,6 +13915,10 @@ export default function App() {
         break;
       case "device-management-create":
         resetDeviceManagementDraft();
+        break;
+      case "role-management-create":
+      case "role-access-create":
+        resetRoleAccessDraft();
         break;
       default:
         break;
@@ -14579,6 +14772,9 @@ export default function App() {
     }
     if (pageId === "pricing-rule" && pricingRuleDetailId === rowId) {
       resetPricingRuleDetailState();
+    }
+    if (pageId === "role-access" && roleAccessDetailId === rowId) {
+      resetRoleAccessDetailState();
     }
     const deletedUnitRecord =
       pageId === "unit" ? (records.unit || []).find((row) => row.id === rowId) : null;
@@ -17026,17 +17222,27 @@ export default function App() {
   }
 
   function openRoleAccessCreatePage() {
-    handleSetPage("role-access-create");
+    resetRoleAccessDetailState();
+    handleSetPage("role-management-create");
     resetRoleAccessDraft();
   }
 
   function closeRoleAccessCreatePage() {
-    handleSetPage("role-access");
+    handleSetPage("role-management");
   }
 
   function resetRoleAccessDraft() {
     setRoleAccessDraft(createInitialRoleAccessDraft());
     setRoleAccessDraftErrors({});
+  }
+
+  function resetRoleAccessDetailState() {
+    setRoleAccessDetailId(null);
+    setRoleAccessDetailDraft(null);
+    setRoleAccessDetailEditing(null);
+    setRoleAccessDetailSnapshot(null);
+    setRoleAccessDetailErrors({});
+    setRoleAccessDetailPanelTab("general");
   }
 
   function openRoleAccessDetailPanel(rowId) {
@@ -17046,6 +17252,8 @@ export default function App() {
     setRoleAccessDetailId(rowId);
     setRoleAccessDetailDraft({ ...row });
     setRoleAccessDetailEditing(null);
+    setRoleAccessDetailErrors({});
+    setRoleAccessDetailPanelTab("general");
   }
 
   function saveRoleAccessDraft() {
@@ -17054,11 +17262,25 @@ export default function App() {
       return;
     }
 
+    const hasAssignedPermissions = Object.values(roleAccessDraft.permissions ?? {}).some(
+      (permission) => permission && permission !== "none"
+    );
+
+    if (!hasAssignedPermissions) {
+      showSnackbar("At least one module must have an access level assigned", "red");
+      return;
+    }
+
     const newRow = {
       ...roleAccessDraft,
       id: `rl-${Math.floor(Math.random() * 1000).toString().padStart(3, "0")}`,
-      members: "0 users",
-      updated: new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }),
+      members: "0 members",
+      membersList: [],
+      updated: new Date().toLocaleDateString("en-GB", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      }),
       status: "Active",
     };
 
@@ -17067,28 +17289,53 @@ export default function App() {
       "role-access": [newRow, ...prev["role-access"]],
     }));
 
+    // Clear pending navigation to prevent discard modal
+    pendingCreateNavigationRef.current = null;
+    resetRoleAccessDraft();
+    setRoleAccessDraftErrors({});
     showSnackbar("New role access created", "green");
-    handleSetPage("role-access");
+    handleSetPage("role-management", { skipCreateGuard: true });
   }
 
   function saveRoleAccessDetailEdit() {
     if (!roleAccessDetailDraft.name.trim()) {
+      setRoleAccessDetailErrors({ name: true });
+      return;
+    }
+
+    const hasAssignedPermissions = Object.values(roleAccessDetailDraft.permissions ?? {}).some(
+      (permission) => permission && permission !== "none"
+    );
+
+    if (!hasAssignedPermissions) {
+      showSnackbar("At least one module must have an access level assigned", "red");
       return;
     }
 
     setRecords((prev) => ({
       ...prev,
       "role-access": prev["role-access"].map((r) =>
-        r.id === roleAccessDetailId ? { ...roleAccessDetailDraft } : r
+        r.id === roleAccessDetailId
+          ? {
+            ...roleAccessDetailDraft,
+            updated: new Date().toLocaleDateString("en-GB", {
+              day: "numeric",
+              month: "short",
+              year: "numeric",
+            }),
+          }
+          : r
       ),
     }));
 
     setRoleAccessDetailEditing(null);
+    setRoleAccessDetailErrors({});
     showSnackbar("Role access updated", "green");
   }
 
   function cancelRoleAccessDetailEdit() {
     setRoleAccessDetailEditing(null);
+    setRoleAccessDetailErrors({});
     const originalRow = records["role-access"].find((r) => r.id === roleAccessDetailId);
     if (originalRow) {
       setRoleAccessDetailDraft({ ...originalRow });
@@ -17098,6 +17345,9 @@ export default function App() {
   function handleRoleAccessChange(field, value) {
     if (roleAccessDetailId) {
       setRoleAccessDetailDraft((prev) => ({ ...prev, [field]: value }));
+      if (field === "name" && String(value).trim()) {
+        setRoleAccessDetailErrors((prev) => ({ ...prev, name: false }));
+      }
     } else {
       setRoleAccessDraft((prev) => ({ ...prev, [field]: value }));
       if (field === "name" && value.trim()) {
@@ -24776,7 +25026,9 @@ export default function App() {
     const isGroupedDeviceCreateOpen =
       isGroupedDevicePage && currentPage === "grouped-device-create";
     const isRoleAccessCreateOpen =
-      isRoleAccessPage && currentPage === "role-access-create";
+      isRoleAccessPage &&
+      (currentPage === "role-management-create" ||
+        currentPage === "role-access-create");
     const isSplitDetailPage =
       isCategoryPage ||
       isUnitPage ||
@@ -25041,6 +25293,8 @@ export default function App() {
                                       openDeviceManagementDetailPanel(row.id);
                                     } else if (isGroupedDevicePage) {
                                       openGroupedDeviceDetailPanel(row);
+                                    } else if (isRoleAccessPage) {
+                                      openRoleAccessDetailPanel(row.id);
                                     }
                                   }
                                 }
@@ -25771,13 +26025,18 @@ export default function App() {
   }
 
   function renderRoleAccessCreateSidePanel() {
+    const rolePermissionsStructure = getRolePermissionsStructure(
+      Boolean(selectedSidebarBusinessUnit)
+    );
+
     return (
       <RoleManagementCreatePanel
         draft={roleAccessDraft}
+        errors={roleAccessDraftErrors}
         onClose={closeRoleAccessCreatePage}
         onChange={handleRoleAccessChange}
         onSave={saveRoleAccessDraft}
-        permissionsStructure={ROLE_PERMISSIONS_STRUCTURE}
+        permissionsStructure={rolePermissionsStructure}
         DetailSection={DetailSection}
         DetailField={DetailField}
       />
@@ -25785,22 +26044,34 @@ export default function App() {
   }
 
   function renderRoleAccessDetailSidePanel(row) {
+    const rolePermissionsStructure = getRolePermissionsStructure(
+      Boolean(selectedSidebarBusinessUnit)
+    );
+
     return (
       <RoleManagementDetailPanel
         row={row}
         draft={roleAccessDetailDraft}
+        errors={roleAccessDetailErrors}
         editing={roleAccessDetailEditing}
-        onClose={() => setRoleAccessDetailId(null)}
-        onEdit={setRoleAccessDetailEditing}
+        activeTab={roleAccessDetailPanelTab}
+        members={row.membersList || []}
+        onTabChange={(tab) => setRoleAccessDetailPanelTab(tab)}
+        onClose={resetRoleAccessDetailState}
+        onEdit={(value) => {
+          setRoleAccessDetailEditing(value);
+          setRoleAccessDetailErrors({});
+        }}
         onCancel={cancelRoleAccessDetailEdit}
         onSave={saveRoleAccessDetailEdit}
         onChange={handleRoleAccessChange}
         onDelete={() => requestDeleteRow("role-access", row.id, row.name)}
-        permissionsStructure={ROLE_PERMISSIONS_STRUCTURE}
+        permissionsStructure={rolePermissionsStructure}
         DetailSection={DetailSection}
         DetailField={DetailField}
         CatalogPanelInfoRow={CatalogPanelInfoRow}
         DetailPanelDeleteAction={DetailPanelDeleteAction}
+        StatusPillComponent={StatusPill}
       />
     );
   }
@@ -29913,6 +30184,14 @@ export default function App() {
           renderListPage={() => renderGenericListPage("device-management")}
         />
       );
+    if (
+      currentPage === "role-management" ||
+      currentPage === "role-management-create" ||
+      currentPage === "role-access" ||
+      currentPage === "role-access-create"
+    ) {
+      return renderGenericListPage("role-access");
+    }
     if (currentPage === "grouped-device" || currentPage === "grouped-device-create")
       return renderGenericListPage("grouped-device");
     if (currentPage === "pricing-rule") return renderPricingRulePage();
@@ -30000,13 +30279,15 @@ export default function App() {
         };
       case "device-management":
       case "device-management-create":
-        return { title: "Device Management" };
+        return { title: "Device List" };
       case "grouped-device":
       case "grouped-device-create":
         return { title: "Device Group" };
+      case "role-management":
+      case "role-management-create":
       case "role-access":
       case "role-access-create":
-        return { title: "Role Access" };
+        return { title: "Role Management" };
       default:
         return null;
     }

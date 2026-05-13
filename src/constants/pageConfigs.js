@@ -147,12 +147,13 @@ export const PAGE_CONFIGS = {
   },
   "role-access": {
     title: "Role Access",
-    actionLabel: "Add New Role Access",
+    summaryLabel: "Roles",
+    actionLabel: "New Role Access",
     searchPlaceholder: "Search role access",
     filters: [],
     searchFields: ["name", "members", "description"],
     columns: [
-      { key: "name", label: "Role Access Name", type: "link" },
+      { key: "name", label: "Role Name", type: "link" },
       { key: "members", label: "Member", type: "text" },
       { key: "description", label: "Description", type: "text" },
       { key: "actions", label: "", type: "delete" },
@@ -223,7 +224,7 @@ export const PAGE_CONFIGS = {
   "grouped-device": {
     title: "Device Group",
     actionLabel: "New Device Group",
-    searchPlaceholder: "Search Device Group",
+    searchPlaceholder: "Search device group",
     filters: [],
     searchFields: ["name", "deviceListDisplay", "catalogListDisplay"],
     columns: [

@@ -22,7 +22,8 @@ export function getStatusTone(status) {
     status === "Low" ||
     status === "Below Threshold" ||
     status === "Refund" ||
-    status === "Pending"
+    status === "Pending" ||
+    status === "Invited"
   ) {
     return "warning";
   }
@@ -33,7 +34,8 @@ export function getStatusTone(status) {
     status === "Empty" ||
     status === "Out of Stock" ||
     status === "Critical" ||
-    status === "Disconnected"
+    status === "Disconnected" ||
+    status === "Locked"
   ) {
     return "danger";
   }

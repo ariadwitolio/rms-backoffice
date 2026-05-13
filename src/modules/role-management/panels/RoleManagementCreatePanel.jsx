@@ -4,6 +4,7 @@ import { RolePermissionsList } from "../components/RolePermissionsList.jsx";
 
 export function RoleManagementCreatePanel({
   draft,
+  errors,
   onClose,
   onChange,
   onSave,
@@ -17,7 +18,7 @@ export function RoleManagementCreatePanel({
       <div className="catalog-detail-panel__header">
         <div className="catalog-detail-panel__titlebar">
           <p className="catalog-detail-panel__title type-title-2">
-            Add New Role
+            Add New Role Access
           </p>
           <div className="catalog-detail-panel__actions">
             <button
@@ -42,6 +43,7 @@ export function RoleManagementCreatePanel({
               label="Role Name"
               required
               value={draft.name}
+              error={errors?.name}
               placeholder="Enter Role Name"
               onChange={(val) => onChange("name", val)}
               autoFocus
