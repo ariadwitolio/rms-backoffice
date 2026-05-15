@@ -27606,6 +27606,7 @@ export default function App() {
         draft={roleAccessDraft}
         errors={roleAccessDraftErrors}
         activeTab={roleAccessCreatePanelTab}
+        isMainAccountSide={!selectedSidebarBusinessUnit}
         onTabChange={setRoleAccessCreatePanelTab}
         onNext={goToRoleAccessCreateRmsTab}
         onClose={closeRoleAccessCreatePage}
@@ -27630,6 +27631,7 @@ export default function App() {
         errors={roleAccessDetailErrors}
         editing={roleAccessDetailEditing}
         activeTab={roleAccessDetailPanelTab}
+        isMainAccountSide={!selectedSidebarBusinessUnit}
         members={row.membersList || []}
         onTabChange={(tab) => setRoleAccessDetailPanelTab(tab)}
         onClose={resetRoleAccessDetailState}
@@ -31985,25 +31987,15 @@ export default function App() {
               </p>
             </div>
             <div className="unit-assignment-modal__body">
-              <div className="modifier-catalog-modal__list">
+              <ul className="modifier-catalog-modal__list">
                 {groupedDeviceUnassignedCatalogList.map((name) => (
-                  <div key={name} className="modifier-catalog-modal__item">
+                  <li key={name} className="modifier-catalog-modal__item">
                     <p className="modifier-catalog-modal__item-label type-subtitle-2">
                       {name}
                     </p>
-                  </div>
+                  </li>
                 ))}
-              </div>
-            </div>
-            <div className="unit-assignment-modal__footer">
-              <div className="modifier-catalog-modal__footer-actions">
-                <LabButton
-                  label="Close"
-                  variant="secondary"
-                  size="medium"
-                  onClick={() => setIsUnroutedCatalogModalOpen(false)}
-                />
-              </div>
+              </ul>
             </div>
           </div>
         </div>

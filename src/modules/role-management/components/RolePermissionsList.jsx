@@ -369,6 +369,7 @@ function RolePermissionsGroup({
   sectionEnabled = true,
   onSectionToggle,
   error = "",
+  showSectionToggle = true,
 }) {
   const showSectionStatus = !isEditing && !sectionEnabled;
   const showSectionError = isEditing && sectionEnabled && Boolean(error);
@@ -409,7 +410,7 @@ function RolePermissionsGroup({
         >
           {group.group}
         </p>
-        {isEditing ? (
+        {isEditing && showSectionToggle ? (
           <div
             style={{
               display: "flex",
@@ -467,22 +468,29 @@ export function RolePermissionsList({
   onSectionToggle,
   sectionErrors = {},
   accessError = "",
+  nonToggleSectionIds = [],
+  forcedOpenSectionIds = [],
 }) {
   return (
     <div className="role-permissions-list">
-      {structure.map((group, gIdx) => (
-        <RolePermissionsGroup
-          key={group.id}
-          group={group}
-          permissions={permissions}
-          onChange={onChange}
-          isEditing={isEditing}
-          gIdx={gIdx}
-          sectionEnabled={sectionStates[group.id] !== false}
-          onSectionToggle={onSectionToggle}
-          error={sectionErrors[group.id]}
-        />
-      ))}
+      {structure.map((group, gIdx) => {
+        const isForcedOpen = forcedOpenSectionIds.includes(group.id);
+
+        return (
+          <RolePermissionsGroup
+            key={group.id}
+            group={group}
+            permissions={permissions}
+            onChange={onChange}
+            isEditing={isEditing}
+            gIdx={gIdx}
+            sectionEnabled={isForcedOpen || sectionStates[group.id] !== false}
+            onSectionToggle={onSectionToggle}
+            error={sectionErrors[group.id]}
+            showSectionToggle={!nonToggleSectionIds.includes(group.id)}
+          />
+        );
+      })}
       {accessError ? (
         <p
           className="catalog-detail-field__error type-body"

@@ -9973,6 +9973,20 @@ textarea::placeholder,
   margin-top: 16px;
 }
 
+.modifier-catalog-modal__list {
+  list-style: disc;
+  margin: 0;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.modifier-catalog-modal__item {
+  margin: 0;
+  padding: 2px 0;
+}
+
 .unit-assignment-modal__search .lab-icon {
   flex: none;
 }

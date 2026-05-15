@@ -8,6 +8,7 @@ export function RoleManagementDetailPanel({
   errors,
   editing,
   activeTab = "general",
+  isMainAccountSide = false,
   onTabChange,
   members = [],
   onClose,
@@ -33,7 +34,7 @@ export function RoleManagementDetailPanel({
   const roleTypeClass =
     roleType === "System" ? "status-pill--primary" : "status-pill--success";
   const memberCountLabel = `${members.length} Member${members.length === 1 ? "" : "s"}`;
-  const resolvedActiveTab = isEditing && activeTab === "member" ? "general" : activeTab;
+  const baseResolvedActiveTab = isEditing && activeTab === "member" ? "general" : activeTab;
   const accountPermissionGroups = permissionsStructure.filter(
     (group) => group.id === "account-module"
   );
@@ -49,6 +50,29 @@ export function RoleManagementDetailPanel({
         groupIds.includes(groupId)
       )
     );
+  const accountSectionBehavior = isMainAccountSide
+    ? {
+        forcedOpenSectionIds: ["account-module"],
+        nonToggleSectionIds: ["account-module"],
+      }
+    : {};
+  const accountSectionErrors = isMainAccountSide
+    ? {}
+    : getScopedSectionErrors(["account-module"]);
+  const resolvedActiveTab =
+    isMainAccountSide && baseResolvedActiveTab !== "general"
+      ? "general"
+      : baseResolvedActiveTab;
+  const showTabs = !isMainAccountSide;
+  const handleAccountPermissionChange = (modId, val) => {
+    onChange("permissions", { ...draft.permissions, [modId]: val });
+    if (isMainAccountSide && draft.permissionSections?.["account-module"] === false) {
+      onChange("permissionSections", {
+        ...draft.permissionSections,
+        "account-module": true,
+      });
+    }
+  };
   const roleTypePill = (
     <span className={`status-pill ${roleTypeClass}`}>
       <span className="type-body">{roleType}</span>
@@ -88,39 +112,41 @@ export function RoleManagementDetailPanel({
             </button>
           </div>
         </div>
-        <div className="catalog-detail-panel__tabbar">
-          <div className="catalog-detail-panel__tabs" role="tablist">
-            <button
-              type="button"
-              className={`catalog-detail-panel__tab${resolvedActiveTab === "general" ? " is-active" : ""}`}
-              onClick={() => onTabChange?.("general")}
-              role="tab"
-              aria-selected={resolvedActiveTab === "general"}
-            >
-              General
-            </button>
-            <button
-              type="button"
-              className={`catalog-detail-panel__tab${resolvedActiveTab === "rms-module" ? " is-active" : ""}`}
-              onClick={() => onTabChange?.("rms-module")}
-              role="tab"
-              aria-selected={resolvedActiveTab === "rms-module"}
-            >
-              RMS Permission
-            </button>
-            {!isEditing ? (
+        {showTabs ? (
+          <div className="catalog-detail-panel__tabbar">
+            <div className="catalog-detail-panel__tabs" role="tablist">
               <button
                 type="button"
-                className={`catalog-detail-panel__tab${resolvedActiveTab === "member" ? " is-active" : ""}`}
-                onClick={() => onTabChange?.("member")}
+                className={`catalog-detail-panel__tab${resolvedActiveTab === "general" ? " is-active" : ""}`}
+                onClick={() => onTabChange?.("general")}
                 role="tab"
-                aria-selected={resolvedActiveTab === "member"}
+                aria-selected={resolvedActiveTab === "general"}
               >
-                Member
+                General
               </button>
-            ) : null}
+              <button
+                type="button"
+                className={`catalog-detail-panel__tab${resolvedActiveTab === "rms-module" ? " is-active" : ""}`}
+                onClick={() => onTabChange?.("rms-module")}
+                role="tab"
+                aria-selected={resolvedActiveTab === "rms-module"}
+              >
+                RMS Permission
+              </button>
+              {!isEditing ? (
+                <button
+                  type="button"
+                  className={`catalog-detail-panel__tab${resolvedActiveTab === "member" ? " is-active" : ""}`}
+                  onClick={() => onTabChange?.("member")}
+                  role="tab"
+                  aria-selected={resolvedActiveTab === "member"}
+                >
+                  Member
+                </button>
+              ) : null}
+            </div>
           </div>
-        </div>
+        ) : null}
       </div>
       <div className="catalog-detail-panel__body">
         {resolvedActiveTab === "general" ? (
@@ -168,11 +194,9 @@ export function RoleManagementDetailPanel({
               <RolePermissionsList
                 permissions={draft.permissions}
                 sectionStates={draft.permissionSections}
-                sectionErrors={getScopedSectionErrors(["account-module"])}
+                sectionErrors={accountSectionErrors}
                 isEditing={isEditing}
-                onChange={(modId, val) =>
-                  onChange("permissions", { ...draft.permissions, [modId]: val })
-                }
+                onChange={handleAccountPermissionChange}
                 onSectionToggle={(sectionId, enabled) =>
                   onChange("permissionSections", {
                     ...draft.permissionSections,
@@ -180,6 +204,7 @@ export function RoleManagementDetailPanel({
                   })
                 }
                 structure={accountPermissionGroups}
+                {...accountSectionBehavior}
               />
             </DetailSection>
           </>

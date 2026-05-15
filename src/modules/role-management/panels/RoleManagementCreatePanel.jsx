@@ -6,6 +6,7 @@ export function RoleManagementCreatePanel({
   draft,
   errors,
   activeTab = "general",
+  isMainAccountSide = false,
   onTabChange,
   onNext,
   onClose,
@@ -25,12 +26,33 @@ export function RoleManagementCreatePanel({
   const rmsAppsGroups = permissionsStructure.filter(
     (group) => group.id === "rms-apps"
   );
+  const resolvedActiveTab =
+    isMainAccountSide && activeTab === "rms-module" ? "general" : activeTab;
+  const showTabs = !isMainAccountSide;
   const getScopedSectionErrors = (groupIds) =>
     Object.fromEntries(
       Object.entries(errors?.permissionSections ?? {}).filter(([groupId]) =>
         groupIds.includes(groupId)
       )
     );
+  const accountSectionBehavior = isMainAccountSide
+    ? {
+        forcedOpenSectionIds: ["account-module"],
+        nonToggleSectionIds: ["account-module"],
+      }
+    : {};
+  const accountSectionErrors = isMainAccountSide
+    ? {}
+    : getScopedSectionErrors(["account-module"]);
+  const handleAccountPermissionChange = (modId, val) => {
+    onChange("permissions", { ...draft.permissions, [modId]: val });
+    if (isMainAccountSide && draft.permissionSections?.["account-module"] === false) {
+      onChange("permissionSections", {
+        ...draft.permissionSections,
+        "account-module": true,
+      });
+    }
+  };
 
   return (
     <aside className="catalog-detail-side-panel catalog-detail-panel">
@@ -54,31 +76,33 @@ export function RoleManagementCreatePanel({
             </button>
           </div>
         </div>
-        <div className="catalog-detail-panel__tabbar">
-          <div className="catalog-detail-panel__tabs" role="tablist">
-            <button
-              type="button"
-              className={`catalog-detail-panel__tab${activeTab === "general" ? " is-active" : ""}`}
-              onClick={() => onTabChange?.("general")}
-              role="tab"
-              aria-selected={activeTab === "general"}
-            >
-              General
-            </button>
-            <button
-              type="button"
-              className={`catalog-detail-panel__tab${activeTab === "rms-module" ? " is-active" : ""}`}
-              onClick={() => onTabChange?.("rms-module")}
-              role="tab"
-              aria-selected={activeTab === "rms-module"}
-            >
-              RMS Permission
-            </button>
+        {showTabs ? (
+          <div className="catalog-detail-panel__tabbar">
+            <div className="catalog-detail-panel__tabs" role="tablist">
+              <button
+                type="button"
+                className={`catalog-detail-panel__tab${resolvedActiveTab === "general" ? " is-active" : ""}`}
+                onClick={() => onTabChange?.("general")}
+                role="tab"
+                aria-selected={resolvedActiveTab === "general"}
+              >
+                General
+              </button>
+              <button
+                type="button"
+                className={`catalog-detail-panel__tab${resolvedActiveTab === "rms-module" ? " is-active" : ""}`}
+                onClick={() => onTabChange?.("rms-module")}
+                role="tab"
+                aria-selected={resolvedActiveTab === "rms-module"}
+              >
+                RMS Permission
+              </button>
+            </div>
           </div>
-        </div>
+        ) : null}
       </div>
       <div className="catalog-detail-panel__body">
-        {activeTab === "general" ? (
+        {resolvedActiveTab === "general" ? (
           <>
             <DetailSection title="General Information">
               <div className="catalog-panel-info-list catalog-panel-info-list--single-column">
@@ -104,11 +128,9 @@ export function RoleManagementCreatePanel({
               <RolePermissionsList
                 permissions={draft.permissions}
                 sectionStates={draft.permissionSections}
-                sectionErrors={getScopedSectionErrors(["account-module"])}
+                sectionErrors={accountSectionErrors}
                 isEditing={true}
-                onChange={(modId, val) =>
-                  onChange("permissions", { ...draft.permissions, [modId]: val })
-                }
+                onChange={handleAccountPermissionChange}
                 onSectionToggle={(sectionId, enabled) =>
                   onChange("permissionSections", {
                     ...draft.permissionSections,
@@ -116,6 +138,7 @@ export function RoleManagementCreatePanel({
                   })
                 }
                 structure={accountPermissionGroups}
+                {...accountSectionBehavior}
               />
             </DetailSection>
           </>
@@ -162,7 +185,47 @@ export function RoleManagementCreatePanel({
         )}
       </div>
       <div className="catalog-detail-panel__footer" style={{ display: "flex", gap: "12px", width: "100%" }}>
-        {activeTab === "general" ? (
+        {showTabs ? (
+          resolvedActiveTab === "general" ? (
+            <>
+              <button
+                type="button"
+                className="lab-button lab-button--medium lab-button--danger-outline"
+                style={{ flex: 1 }}
+                onClick={onClose}
+              >
+                <span className="type-subtitle-2">Cancel</span>
+              </button>
+              <button
+                type="button"
+                className="lab-button lab-button--secondary lab-button--medium"
+                style={{ flex: 1 }}
+                onClick={onNext ?? (() => onTabChange?.("rms-module"))}
+              >
+                <span className="type-subtitle-2">Next</span>
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                type="button"
+                className="lab-button lab-button--medium lab-button--secondary"
+                style={{ flex: 1 }}
+                onClick={() => onTabChange?.("general")}
+              >
+                <span className="type-subtitle-2">Back</span>
+              </button>
+              <button
+                type="button"
+                className="lab-button lab-button--primary lab-button--medium"
+                style={{ flex: 1 }}
+                onClick={onSave}
+              >
+                <span className="type-subtitle-2">Create Role</span>
+              </button>
+            </>
+          )
+        ) : (
           <>
             <button
               type="button"
@@ -171,25 +234,6 @@ export function RoleManagementCreatePanel({
               onClick={onClose}
             >
               <span className="type-subtitle-2">Cancel</span>
-            </button>
-            <button
-              type="button"
-              className="lab-button lab-button--secondary lab-button--medium"
-              style={{ flex: 1 }}
-              onClick={onNext ?? (() => onTabChange?.("rms-module"))}
-            >
-              <span className="type-subtitle-2">Next</span>
-            </button>
-          </>
-        ) : (
-          <>
-            <button
-              type="button"
-              className="lab-button lab-button--medium lab-button--secondary"
-              style={{ flex: 1 }}
-              onClick={() => onTabChange?.("general")}
-            >
-              <span className="type-subtitle-2">Back</span>
             </button>
             <button
               type="button"
