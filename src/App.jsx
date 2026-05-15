@@ -925,7 +925,6 @@ const ENTITY_BACK_OFFICE_ROLE_PERMISSION_MODULES = [
   { id: "device", label: "Device" },
   { id: "grouped-device", label: "KDS Group" },
   { id: "table-management", label: "Table Management" },
-  { id: "device-management", label: "Device Management" },
 ];
 
 const ENTITY_APP_ROLE_PERMISSION_MODULES = [

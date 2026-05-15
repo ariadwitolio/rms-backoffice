@@ -419,7 +419,7 @@ function RolePermissionsGroup({
             }}
           >
             <p className="type-body text-secondary" style={{ margin: 0 }}>
-              {sectionEnabled ? "On" : "Off"}
+              {sectionEnabled ? "Access Granted" : "No Access"}
             </p>
             <Toggle
               checked={sectionEnabled}
