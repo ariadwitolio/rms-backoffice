@@ -185,7 +185,7 @@ export default function CatalogListPage({
                     </td>
                     <td className="lab-table__toggle">
                       <Toggle
-                        checked={row.availability}
+                        checked={row.availability !== false}
                         onChange={() => onToggleAvailability(row.id)}
                         ariaLabel={`Toggle availability for ${row.name}`}
                       />

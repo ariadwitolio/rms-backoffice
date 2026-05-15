@@ -19,7 +19,7 @@ export const MENU = [
     icon: "deviceManagement",
     children: [
       { id: "device-management", label: "Device List" },
-      { id: "grouped-device", label: "Device Group" },
+      { id: "grouped-device", label: "KDS Group" },
     ],
   },
   { id: "role-management", label: "Role Management", icon: "roleManagement" },

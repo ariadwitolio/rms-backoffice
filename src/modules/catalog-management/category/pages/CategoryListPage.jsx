@@ -72,7 +72,7 @@ export default function CategoryListPage({
                         <ChevronIcon 
                           name="filterChevron"
                           size={16}
-                          color="#1B1B1B"
+                          color="#A9A9A9"
                           direction={isExpanded ? "up" : "down"}
                         />
                       </button>

@@ -75,9 +75,9 @@ export function CatalogPanelInfoRow({
         <span className="catalog-panel-info-row__value-wrap">
           <span className="catalog-panel-info-row__value-row">
             {shouldWrapValueInBlock ? (
-              <span className="catalog-panel-info-row__value type-subtitle-2">
+              <div className="catalog-panel-info-row__value type-subtitle-2">
                 {resolvedValue}
-              </span>
+              </div>
             ) : (
               <p
                 className={`catalog-panel-info-row__value type-subtitle-2${ellipsis ? " catalog-detail-field__input--ellipsis" : ""}`}

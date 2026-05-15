@@ -80,6 +80,11 @@ export const PAGE_CONFIGS = {
         type: "text",
         contentClassName: "lab-table__ellipsis-copy",
       },
+      {
+        key: "availability",
+        label: "Availability",
+        type: "component",
+      },
       { key: "actions", label: "", type: "delete" },
     ],
   },
@@ -222,13 +227,13 @@ export const PAGE_CONFIGS = {
     ],
   },
   "grouped-device": {
-    title: "Device Group",
-    actionLabel: "New Device Group",
-    searchPlaceholder: "Search device group",
+    title: "KDS Group",
+    actionLabel: "New KDS Group",
+    searchPlaceholder: "Search KDS group",
     filters: [],
     searchFields: ["name", "deviceListDisplay", "catalogListDisplay"],
     columns: [
-      { key: "name", label: "Device Group Name", type: "link", sortable: true },
+      { key: "name", label: "KDS Group Name", type: "link", sortable: true },
       {
         key: "deviceListDisplay",
         label: "Device List",

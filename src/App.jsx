@@ -750,6 +750,37 @@ function createInitialCatalogDraft() {
   };
 }
 
+function getCatalogCategoryForType(type = "single", category = "") {
+  if (type === "package") {
+    return "Package";
+  }
+
+  return category || "Uncategorized";
+}
+
+function getCatalogModifierSummaryValue({
+  selectedLabels = [],
+  placeholder = "Select Modifier",
+} = {}) {
+  if (selectedLabels.length === 0) {
+    return placeholder;
+  }
+
+  if (selectedLabels.length === 1) {
+    return selectedLabels[0];
+  }
+
+  return `${selectedLabels.length} Modifiers Selected`;
+}
+
+function getCatalogModifierDetailValue(modifiers = []) {
+  const selectedModifiers = Array.isArray(modifiers)
+    ? modifiers.filter(Boolean)
+    : [];
+
+  return selectedModifiers.length ? selectedModifiers.join(", ") : "-";
+}
+
 
 function createEmptyModifierOption() {
   return {
@@ -757,6 +788,7 @@ function createEmptyModifierOption() {
     name: "",
     additionalPrice: "",
     overrideAdditionalPrice: "",
+    isAvailable: true,
   };
 }
 
@@ -765,6 +797,7 @@ function normalizeModifierOptions(options = []) {
     ...option,
     name: option?.name ?? "",
     additionalPrice: getNormalizedNominalDigits(option?.additionalPrice),
+    isAvailable: option?.isAvailable !== false,
   }));
 
   return nextOptions.length ? nextOptions : [createEmptyModifierOption()];
@@ -776,6 +809,7 @@ function createInitialModifierDraft() {
     minimumSelection: "",
     maximumSelection: "",
     allowOverridePrice: false,
+    availability: true,
     connectedCatalog: [],
     assignedUnits: [],
     options: [createEmptyModifierOption()],
@@ -789,6 +823,7 @@ function createModifierDetailDraftFromRecord(record) {
     minimumSelection: record?.minimumSelection ?? "0",
     maximumSelection: record?.maximumSelection ?? "0",
     allowOverridePrice: Boolean(record?.allowOverridePrice),
+    availability: record?.availability !== false,
     connectedCatalog: Array.isArray(record?.connectedCatalogItems)
       ? [...record.connectedCatalogItems]
       : [],
@@ -818,6 +853,52 @@ function createInitialGroupedDeviceDraft() {
   };
 }
 
+function getGroupedDeviceListSummary({
+  selectedValues = [],
+  selectedLabels = [],
+  placeholder = "Select Devices",
+  totalOptions = 0,
+} = {}) {
+  if (selectedValues.length === 1) {
+    return selectedLabels[0] ?? placeholder;
+  }
+
+  if (totalOptions > 1 && selectedValues.length === totalOptions) {
+    return "All Devices Selected";
+  }
+
+  if (selectedValues.length > 1) {
+    return `${selectedValues.length} Devices Selected`;
+  }
+
+  return placeholder;
+}
+
+function findDeviceManagementRecordByValue(deviceRows = [], value) {
+  return (
+    deviceRows.find((row) => row.id === value) ??
+    deviceRows.find((row) => row.deviceName === value) ??
+    null
+  );
+}
+
+function getGroupedDeviceDeviceRows(deviceRows = [], values = []) {
+  return (values ?? [])
+    .map((value) => findDeviceManagementRecordByValue(deviceRows, value))
+    .filter(Boolean);
+}
+
+function getGroupedDeviceCatalogNames(catalogRows = [], values = []) {
+  return (values ?? [])
+    .map((value) => {
+      const catalog = catalogRows.find(
+        (row) => row.id === value || row.name === value
+      );
+      return catalog?.name ?? (typeof value === "string" ? value : null);
+    })
+    .filter(Boolean);
+}
+
 const ACCOUNT_ROLE_PERMISSION_MODULES = [
   {
     id: "user-management",
@@ -828,12 +909,12 @@ const ACCOUNT_ROLE_PERMISSION_MODULES = [
       { id: "assignOtherEntities", label: "Assign to other entities" },
     ],
   },
+  { id: "role-management", label: "Role Management" },
   {
-    id: "role-management",
-    label: "Role Management",
+    id: "entity-management",
+    label: "Entity Management",
     additionalAccess: [{ id: "suspendEntity", label: "Suspend entity" }],
   },
-  { id: "entity-management", label: "Entity Management" },
 ];
 
 const ENTITY_BACK_OFFICE_ROLE_PERMISSION_MODULES = [
@@ -842,7 +923,7 @@ const ENTITY_BACK_OFFICE_ROLE_PERMISSION_MODULES = [
   { id: "unit", label: "Unit" },
   { id: "modifier", label: "Modifier" },
   { id: "device", label: "Device" },
-  { id: "grouped-device", label: "Device Group" },
+  { id: "grouped-device", label: "KDS Group" },
   { id: "table-management", label: "Table Management" },
   { id: "device-management", label: "Device Management" },
 ];
@@ -857,11 +938,35 @@ const ENTITY_APP_ROLE_PERMISSION_MODULES = [
   { id: "printer-settings", label: "Printer Settings" },
 ];
 
-const ALL_ROLE_PERMISSION_MODULES = [
-  ...ACCOUNT_ROLE_PERMISSION_MODULES,
-  ...ENTITY_BACK_OFFICE_ROLE_PERMISSION_MODULES,
-  ...ENTITY_APP_ROLE_PERMISSION_MODULES,
+const ROLE_PERMISSION_GROUPS = [
+  {
+    id: "account-module",
+    group: "Account Module",
+    modules: ACCOUNT_ROLE_PERMISSION_MODULES,
+  },
+  {
+    id: "rms-back-office",
+    group: "RMS Back Office",
+    modules: ENTITY_BACK_OFFICE_ROLE_PERMISSION_MODULES,
+  },
+  {
+    id: "rms-apps",
+    group: "RMS Apps",
+    modules: ENTITY_APP_ROLE_PERMISSION_MODULES,
+  },
 ];
+
+const ALL_ROLE_PERMISSION_MODULES = ROLE_PERMISSION_GROUPS.flatMap(
+  (group) => group.modules
+);
+
+function getRolePermissionLevel(permission) {
+  return typeof permission === "string" ? permission : permission?.level ?? "none";
+}
+
+function hasRolePermissionAccess(permission) {
+  return getRolePermissionLevel(permission) !== "none";
+}
 
 function createRolePermissions(overrides = {}) {
   return ALL_ROLE_PERMISSION_MODULES.reduce(
@@ -873,36 +978,98 @@ function createRolePermissions(overrides = {}) {
   );
 }
 
-function getRolePermissionsStructure(isEntitySide = false) {
-  const groups = [
-    {
-      group: "Account Module",
-      modules: ACCOUNT_ROLE_PERMISSION_MODULES,
-    },
-  ];
-
-  if (isEntitySide) {
-    groups.push(
-      {
-        group: "RMS Back Office",
-        modules: ENTITY_BACK_OFFICE_ROLE_PERMISSION_MODULES,
-      },
-      {
-        group: "RMS App",
-        modules: ENTITY_APP_ROLE_PERMISSION_MODULES,
-      }
+function createRolePermissionSections(
+  overrides = {},
+  permissions = createRolePermissions(),
+  { defaultEnabled = true } = {}
+) {
+  return ROLE_PERMISSION_GROUPS.reduce((sections, group) => {
+    const hasAssignedPermissions = group.modules.some((module) =>
+      hasRolePermissionAccess(permissions[module.id])
     );
-  }
+    const explicitValue = overrides?.[group.id];
 
-  return groups;
+    sections[group.id] =
+      typeof explicitValue === "boolean"
+        ? explicitValue
+        : hasAssignedPermissions || defaultEnabled;
+
+    return sections;
+  }, {});
+}
+
+function getRolePermissionsStructure(isEntitySide = false) {
+  return isEntitySide
+    ? ROLE_PERMISSION_GROUPS
+    : ROLE_PERMISSION_GROUPS.slice(0, 1);
 }
 
 function createInitialRoleAccessDraft() {
+  const permissions = createRolePermissions();
+
   return {
     name: "",
     description: "",
-    permissions: createRolePermissions(),
+    permissions,
+    permissionSections: createRolePermissionSections(
+      {},
+      permissions,
+      { defaultEnabled: true }
+    ),
   };
+}
+
+function createRoleAccessDraftFromRecord(record) {
+  const permissions = createRolePermissions(record?.permissions ?? {});
+
+  return {
+    ...record,
+    name: record?.name ?? "",
+    description: record?.description ?? "",
+    permissions,
+    permissionSections: createRolePermissionSections(
+      record?.permissionSections ?? {},
+      permissions,
+      { defaultEnabled: false }
+    ),
+  };
+}
+
+function getRoleAccessPermissionSectionErrors(
+  draft,
+  structure = ROLE_PERMISSION_GROUPS
+) {
+  const errors = {};
+  const permissions = draft?.permissions ?? {};
+  const permissionSections = draft?.permissionSections ?? {};
+
+  structure.forEach((group) => {
+    if (!permissionSections[group.id]) return;
+
+    const hasAssignedPermissions = group.modules.some((module) =>
+      hasRolePermissionAccess(permissions[module.id])
+    );
+
+    if (!hasAssignedPermissions) {
+      errors[group.id] = "At least one module in this section must have access";
+    }
+  });
+
+  return errors;
+}
+
+function hasAnyVisibleRoleAccessPermission(
+  draft,
+  structure = ROLE_PERMISSION_GROUPS
+) {
+  const permissions = draft?.permissions ?? {};
+  const permissionSections = draft?.permissionSections ?? {};
+
+  return structure.some(
+    (group) =>
+      permissionSections[group.id] &&
+      group.modules.some((module) => hasRolePermissionAccess(permissions[module.id]))
+  );
 }
 
 function createInitialDeviceManagementDraft() {
@@ -1249,6 +1416,33 @@ const DUPLICATE_MODIFIER_ERROR_MESSAGE = "Modifier name already exists";
 const DUPLICATE_PRICING_RULE_ERROR_MESSAGE =
   "Special pricing rule name already exists";
 const DUPLICATE_DEVICE_ERROR_MESSAGE = "Device name already exists";
+const DUPLICATE_KDS_GROUP_ERROR_MESSAGE = "KDS group name already exists";
+const DUPLICATE_ROLE_ACCESS_ERROR_MESSAGE = "Role access name already exists";
+
+function normalizeDuplicateNameValue(value = "") {
+  return String(value ?? "").trim().toLowerCase();
+}
+
+function hasDuplicateRecordName(
+  rows = [],
+  value = "",
+  {
+    excludeId = null,
+    getRowId = (row) => row?.id,
+    getRowValue = (row) => row?.name,
+  } = {}
+) {
+  const normalizedValue = normalizeDuplicateNameValue(value);
+  if (!normalizedValue) return false;
+
+  return rows.some((row) => {
+    if (excludeId !== null && getRowId(row) === excludeId) {
+      return false;
+    }
+
+    return normalizeDuplicateNameValue(getRowValue(row)) === normalizedValue;
+  });
+}
 
 function getCategoryHierarchyDepth(path = "") {
   if (!path) return 0;
@@ -1377,28 +1571,6 @@ function isDuplicateCatalogRecord(candidate, catalogRows = []) {
       normalizeCatalogIdentityValue(row.unit, "Pcs") === normalizedUnit &&
       normalizeCatalogIdentityValue(row.category, "Uncategorized") ===
       normalizedCategory
-  );
-}
-
-function normalizeDuplicateNameValue(value) {
-  return String(value ?? "").trim().toLowerCase();
-}
-
-function hasDuplicateRecordName(
-  candidateName,
-  rows = [],
-  { excludeId = null, field = "name" } = {}
-) {
-  const normalizedCandidateName = normalizeDuplicateNameValue(candidateName);
-
-  if (!normalizedCandidateName) {
-    return false;
-  }
-
-  return rows.some(
-    (row) =>
-      row.id !== excludeId &&
-      normalizeDuplicateNameValue(row?.[field]) === normalizedCandidateName
   );
 }
 
@@ -1585,6 +1757,18 @@ function buildModifierRows(modifiers = []) {
         ? connectedCatalogNames.join(", ")
         : row.connectedCatalog || "-",
       connectedCatalogSearch: connectedCatalogNames.join(" "),
+      availability: (
+        <div
+          className="modifier-table-availability-cell"
+          onClick={(event) => event.stopPropagation()}
+        >
+          <Toggle
+            checked={row.availability !== false}
+            onChange={() => handleModifierListAvailabilityToggle(row.id)}
+            ariaLabel={`Modifier availability for ${row.name}`}
+          />
+        </div>
+      ),
     };
   });
 }
@@ -1669,9 +1853,10 @@ function formatModifierDetailOptionPrice(value) {
   return digits ? `+ ${formatIdr(Number(digits))}` : rawValue;
 }
 
-function getModifierConnectedCatalogSummary(
+function getModifierCatalogSelectSummary(
   selectedCatalogs = [],
-  groups = []
+  groups = [],
+  placeholder = "Select Catalog"
 ) {
   const normalizedValues = Array.isArray(selectedCatalogs)
     ? selectedCatalogs.filter(Boolean)
@@ -1690,7 +1875,17 @@ function getModifierConnectedCatalogSummary(
     return `${normalizedValues.length} Catalogs Selected`;
   }
 
-  return "-";
+  return placeholder;
+}
+
+function getModifierConnectedCatalogSummary(
+  selectedCatalogs = []
+) {
+  const normalizedValues = Array.isArray(selectedCatalogs)
+    ? selectedCatalogs.filter(Boolean)
+    : [];
+
+  return normalizedValues.length ? normalizedValues.join(", ") : "-";
 }
 
 function getModifierDetailUnitAssignmentValue(option, unit) {
@@ -1877,14 +2072,17 @@ function createCatalogAssignedUnits(selectedIds, overrides = {}) {
 }
 
 function createCatalogSeedRecord(record) {
+  const type = record?.type ?? "single";
+
   return {
-    type: "single",
+    type,
     modifier: [],
     unit: "Pcs",
     price: String(record.basePrice ?? 0),
     allowOverridePrice: false,
     packageItems: [],
     ...record,
+    category: getCatalogCategoryForType(type, record?.category),
     photos: cloneCatalogPhotos(
       record?.photos ?? createCatalogPhotoSetForRecord(record, 3)
     ),
@@ -1903,7 +2101,7 @@ function createCatalogDetailDraftFromRecord(record) {
     name: record?.name ?? "",
     description: record?.description ?? "",
     unit: record?.unit ?? "Pcs",
-    category: record?.category ?? "Uncategorized",
+    category: getCatalogCategoryForType(type, record?.category),
     modifier: Array.isArray(record?.modifier) ? [...record.modifier] : [],
     sellingTime: record?.sellingTime ?? "",
     price: String(record?.price ?? record?.basePrice ?? 0),
@@ -2536,13 +2734,13 @@ function createInitialDataStore() {
               assignOtherEntities: true,
             },
           },
-          "role-management": {
-            level: "full",
+          "role-management": "full",
+          "entity-management": {
+            level: "edit",
             additionalAccess: {
               suspendEntity: true,
             },
           },
-          "entity-management": "edit",
         }),
       },
       {
@@ -5741,6 +5939,7 @@ function DetailSelectField({
   error = false,
   multiple = false,
   multipleDisplay = "chips",
+  multipleSummaryFormatter = null,
   ellipsis = false,
 }) {
   const errorMessage =
@@ -5795,7 +5994,7 @@ function DetailSelectField({
     };
   }, [isOpen]);
 
-  const displayValue = multiple
+  const defaultDisplayValue = multiple
     ? normalizedValue.length === 1
       ? getOptionLabel(normalizedValue[0])
       : normalizedValue.length > 1
@@ -5804,6 +6003,15 @@ function DetailSelectField({
     : normalizedValue
       ? getOptionLabel(normalizedValue)
       : placeholder;
+  const displayValue =
+    multiple && typeof multipleSummaryFormatter === "function"
+      ? multipleSummaryFormatter({
+        selectedValues: normalizedValue,
+        selectedLabels: normalizedValue.map(getOptionLabel),
+        placeholder,
+        defaultValue: defaultDisplayValue,
+      }) ?? defaultDisplayValue
+      : defaultDisplayValue;
 
   return (
     <div ref={rootRef} className="catalog-detail-field">
@@ -6062,13 +6270,11 @@ function ModifierCatalogSelectField({
   const totalItems = allItems.length;
   const allItemValues = allItems.map((item) => item.value);
   const isAllSelected = totalItems > 0 && normalizedValue.length === totalItems;
-  const displayValue = isAllSelected
-    ? "All Catalogs Selected"
-    : normalizedValue.length === 1
-      ? normalizedValue[0]
-      : normalizedValue.length > 1
-        ? `${normalizedValue.length} Catalogs Selected`
-        : placeholder;
+  const displayValue = getModifierCatalogSelectSummary(
+    normalizedValue,
+    groups,
+    placeholder
+  );
 
   useEffect(() => {
     if (!isOpen) return undefined;
@@ -6321,6 +6527,299 @@ function ModifierCatalogSelectField({
           {errorMessage}
         </p>
       ) : null}
+    </div>
+  );
+}
+
+function ModifierCatalogModalField({
+  label,
+  value,
+  groups,
+  onClick,
+  required = false,
+  placeholder = "Select Catalog",
+  error = false,
+  ellipsis = false,
+}) {
+  const errorMessage =
+    typeof error === "string"
+      ? error
+      : error
+        ? "Field cannot be empty"
+        : "";
+  const hasError = Boolean(errorMessage);
+  const displayValue = getModifierCatalogSelectSummary(value, groups, placeholder);
+
+  return (
+    <div className="catalog-detail-field">
+      <span className="catalog-detail-field__label type-body">
+        {required ? (
+          <span className="catalog-detail-field__required">*</span>
+        ) : null}
+        {label}
+      </span>
+      <span
+        className={`catalog-detail-field__shell${hasError ? " is-error" : ""}`}
+      >
+        <button
+          type="button"
+          className="catalog-detail-field__trigger"
+          onClick={onClick}
+        >
+          <p
+            className={`catalog-detail-field__value type-subtitle-1${Array.isArray(value) && value.length ? "" : " text-tertiary"}${ellipsis ? " catalog-detail-field__input--ellipsis" : ""}`}
+          >
+            {displayValue}
+          </p>
+          <span className="catalog-detail-field__chevron">
+            <ChevronIcon name="selectChevron" size={24} direction="down" />
+          </span>
+        </button>
+      </span>
+      {hasError ? (
+        <p className="catalog-detail-field__error type-body">
+          {errorMessage}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function ModifierCatalogSelectionModal({
+  open,
+  title = "Connect to Catalog",
+  descriptionCopy = "Select catalog(s) to connect to this modifier.",
+  value,
+  groups,
+  onChange,
+  onClose,
+  onConfirm,
+}) {
+  const [searchValue, setSearchValue] = useState("");
+  const normalizedValue = Array.isArray(value) ? value : [];
+  const normalizedSearch = searchValue.trim().toLowerCase();
+  const filteredGroups = normalizedSearch
+    ? groups
+        .map((group) => {
+          const matchesGroupLabel = group.label
+            .toLowerCase()
+            .includes(normalizedSearch);
+          const filteredItems = (group.items ?? []).filter((item) =>
+            item.label.toLowerCase().includes(normalizedSearch)
+          );
+          if (matchesGroupLabel) {
+            return group;
+          }
+          if (filteredItems.length) {
+            return { ...group, items: filteredItems };
+          }
+          return null;
+        })
+        .filter(Boolean)
+    : groups;
+  const allItems = filteredGroups.flatMap((group) => group.items ?? []);
+  const allItemValues = allItems.map((item) => item.value);
+  const isAllSelected =
+    allItemValues.length > 0 &&
+    allItemValues.every((item) => normalizedValue.includes(item));
+
+  useEffect(() => {
+    if (!open) return undefined;
+
+    function handleEscape(event) {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    }
+
+    window.addEventListener("keydown", handleEscape);
+    return () => window.removeEventListener("keydown", handleEscape);
+  }, [open, onClose]);
+
+  if (!open) return null;
+
+  function toggleItem(option) {
+    const isSelected = normalizedValue.includes(option);
+    onChange(
+      isSelected
+        ? normalizedValue.filter((item) => item !== option)
+        : [...normalizedValue, option]
+    );
+  }
+
+  function toggleAllItems() {
+    onChange(isAllSelected ? [] : allItemValues);
+  }
+
+  function toggleGroup(group) {
+    const groupValues = group.items.map((item) => item.value);
+    const allSelected = groupValues.every((item) =>
+      normalizedValue.includes(item)
+    );
+
+    if (allSelected) {
+      onChange(normalizedValue.filter((item) => !groupValues.includes(item)));
+      return;
+    }
+
+    onChange(Array.from(new Set([...normalizedValue, ...groupValues])));
+  }
+
+  return (
+    <div className="unit-assignment-modal-overlay" onMouseDown={onClose}>
+      <div
+        className="unit-assignment-modal modifier-catalog-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="modifier-catalog-modal-title"
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <div className="unit-assignment-modal__close-row">
+          <button
+            type="button"
+            className="unit-assignment-modal__close"
+            onClick={onClose}
+            aria-label="Close catalog selection"
+          >
+            <Icon name="modalClose" className="lab-icon lab-icon--20" alt="" />
+          </button>
+        </div>
+        <div className="unit-assignment-modal__header">
+          <p
+            id="modifier-catalog-modal-title"
+            className="unit-assignment-modal__title type-title-1"
+          >
+            {title}
+          </p>
+          <p className="unit-assignment-modal__copy type-body-bold">
+            {descriptionCopy}
+          </p>
+        </div>
+        <div className="unit-assignment-modal__search modifier-catalog-modal__search">
+          <Icon name="search" className="lab-icon lab-icon--20" alt="Search" />
+          <input
+            type="search"
+            value={searchValue}
+            placeholder="Search catalog"
+            onChange={(event) => setSearchValue(event.target.value)}
+          />
+        </div>
+        <div className="unit-assignment-modal__body">
+          <div className="modifier-catalog-modal__list">
+            {filteredGroups.length ? (
+              <>
+                <button
+                  type="button"
+                  className={`modifier-catalog-select__all${isAllSelected ? " is-selected" : ""
+                    }`}
+                  onClick={toggleAllItems}
+                >
+                  <span
+                    className={`catalog-detail-field__option-indicator${isAllSelected ? " is-selected" : ""
+                      }`}
+                    aria-hidden="true"
+                  />
+                  <p className="modifier-catalog-select__all-label type-title-3">
+                    All Catalog
+                  </p>
+                </button>
+                {filteredGroups.map((group) => {
+                  const groupValues = group.items.map((item) => item.value);
+                  const selectedCount = groupValues.filter((item) =>
+                    normalizedValue.includes(item)
+                  ).length;
+                  const indicatorClassName =
+                    selectedCount === groupValues.length
+                      ? " is-selected"
+                      : selectedCount > 0
+                        ? " is-partial"
+                        : "";
+
+                  return (
+                    <div
+                      key={group.id}
+                      className="modifier-catalog-select__group"
+                    >
+                      <button
+                        type="button"
+                        className="modifier-catalog-select__group-header"
+                        style={
+                          group.indentLevel
+                            ? {
+                              paddingLeft: `${16 + group.indentLevel * 20}px`,
+                            }
+                            : undefined
+                        }
+                        onClick={() => toggleGroup(group)}
+                      >
+                        <span
+                          className={`catalog-detail-field__option-indicator${indicatorClassName}`}
+                          aria-hidden="true"
+                        />
+                        <p className="modifier-catalog-select__group-title type-title-3">
+                          {group.label}
+                        </p>
+                      </button>
+                      {group.items.map((item) => {
+                        const isSelected = normalizedValue.includes(item.value);
+
+                        return (
+                          <button
+                            key={item.id}
+                            type="button"
+                            className={`modifier-catalog-select__item${isSelected ? " is-selected" : ""
+                              }`}
+                            style={{
+                              paddingLeft: `${16 + (item.indentLevel ?? group.indentLevel + 1) * 20}px`,
+                            }}
+                            onClick={() => toggleItem(item.value)}
+                          >
+                            <span
+                              className={`catalog-detail-field__option-indicator${isSelected ? " is-selected" : ""
+                                }`}
+                              aria-hidden="true"
+                            />
+                            <p className="modifier-catalog-select__item-label type-subtitle-2">
+                              {item.label}
+                            </p>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  );
+                })}
+              </>
+            ) : (
+              <p className="modifier-catalog-select__empty type-subtitle-2">
+                No catalog available
+              </p>
+            )}
+          </div>
+        </div>
+        <div className="unit-assignment-modal__footer">
+          <div
+            className="modifier-catalog-modal__footer-actions"
+            style={{ display: "flex", gap: "12px", width: "100%" }}
+          >
+            <button
+              type="button"
+              className="lab-button lab-button--medium lab-button--secondary"
+              style={{ flex: 1 }}
+              onClick={onClose}
+            >
+              <span className="type-subtitle-2">Cancel</span>
+            </button>
+            <button
+              type="button"
+              className="lab-button lab-button--primary lab-button--medium"
+              style={{ flex: 1 }}
+              onClick={onConfirm}
+            >
+              <span className="type-subtitle-2">Apply</span>
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -12039,14 +12538,21 @@ export default function App() {
     []
   );
   const [unitAssignmentTarget, setUnitAssignmentTarget] = useState("create");
+  const [modifierCatalogModalTarget, setModifierCatalogModalTarget] =
+    useState(null);
+  const [modifierCatalogModalValue, setModifierCatalogModalValue] = useState([]);
+  const [isModifierCatalogModalOpen, setIsModifierCatalogModalOpen] = useState(false);
+  const [isUnroutedCatalogModalOpen, setIsUnroutedCatalogModalOpen] = useState(false);
   const [categoryDetailId, setCategoryDetailId] = useState(null);
   const [categoryDetailDraft, setCategoryDetailDraft] = useState(null);
   const [categoryDetailEditing, setCategoryDetailEditing] = useState(null);
   const [categoryDetailSnapshot, setCategoryDetailSnapshot] = useState(null);
+  const [categoryDetailErrors, setCategoryDetailErrors] = useState({});
   const [unitDetailId, setUnitDetailId] = useState(null);
   const [unitDetailDraft, setUnitDetailDraft] = useState(null);
   const [unitDetailEditing, setUnitDetailEditing] = useState(null);
   const [unitDetailSnapshot, setUnitDetailSnapshot] = useState(null);
+  const [unitDetailErrors, setUnitDetailErrors] = useState({});
   const [sellingTimeDetailId, setSellingTimeDetailId] = useState(null);
   const [sellingTimeDetailDraft, setSellingTimeDetailDraft] = useState(null);
   const [sellingTimeDetailEditing, setSellingTimeDetailEditing] =
@@ -12076,6 +12582,9 @@ export default function App() {
   const [modifierDetailDraft, setModifierDetailDraft] = useState(null);
   const [modifierDetailEditing, setModifierDetailEditing] = useState(null);
   const [modifierDetailSnapshot, setModifierDetailSnapshot] = useState(null);
+  const [modifierDetailErrors, setModifierDetailErrors] = useState({});
+  const [pricingRuleDetailErrors, setPricingRuleDetailErrors] = useState({});
+  const [deviceManagementDetailErrors, setDeviceManagementDetailErrors] = useState({});
   const [catalogDetailDraft, setCatalogDetailDraft] = useState(null);
   const [catalogDetailPanelTab, setCatalogDetailPanelTab] = useState("general");
   const [catalogDetailEditing, setCatalogDetailEditing] = useState(null);
@@ -12984,7 +13493,11 @@ export default function App() {
   const catalogUnitOptions = (records.unit || []).map((row) => row.name);
   const modifierCatalogGroups = buildModifierCatalogGroups(
     categoryRows,
-    records.catalog
+    (records.catalog || []).filter((row) => row.type !== "package")
+  );
+  const groupedDeviceCatalogGroups = buildModifierCatalogGroups(
+    categoryRows,
+    (records.catalog || []).filter((row) => row.type !== "package")
   );
   const catalogModifierOptions = Array.from(
     new Set((records.modifier || []).map((row) => row.name))
@@ -13021,6 +13534,57 @@ export default function App() {
     null;
 
   const categoryParentOptions = buildCategoryParentOptions(categoryRows);
+
+  function getDuplicateCategoryNameError(name, excludeId = null) {
+    return hasDuplicateRecordName(records.category || [], name, { excludeId })
+      ? DUPLICATE_CATEGORY_ERROR_MESSAGE
+      : null;
+  }
+
+  function getDuplicateUnitNameError(name, excludeId = null) {
+    return hasDuplicateRecordName(records.unit || [], name, { excludeId })
+      ? DUPLICATE_UNIT_ERROR_MESSAGE
+      : null;
+  }
+
+  function getDuplicateModifierNameError(name, excludeId = null) {
+    return hasDuplicateRecordName(records.modifier || [], name, { excludeId })
+      ? DUPLICATE_MODIFIER_ERROR_MESSAGE
+      : null;
+  }
+
+  function getDuplicatePricingRuleNameError(name, excludeId = null) {
+    return hasDuplicateRecordName(records["pricing-rule"] || [], name, {
+      excludeId,
+    })
+      ? DUPLICATE_PRICING_RULE_ERROR_MESSAGE
+      : null;
+  }
+
+  function getDuplicateDeviceNameError(name, excludeId = null) {
+    return hasDuplicateRecordName(records["device-management"] || [], name, {
+      excludeId,
+      getRowValue: (row) => row?.deviceName,
+    })
+      ? DUPLICATE_DEVICE_ERROR_MESSAGE
+      : null;
+  }
+
+  function getDuplicateKdsGroupNameError(name, excludeId = null) {
+    return hasDuplicateRecordName(records["grouped-device"] || [], name, {
+      excludeId,
+    })
+      ? DUPLICATE_KDS_GROUP_ERROR_MESSAGE
+      : null;
+  }
+
+  function getDuplicateRoleAccessNameError(name, excludeId = null) {
+    return hasDuplicateRecordName(records["role-access"] || [], name, {
+      excludeId,
+    })
+      ? DUPLICATE_ROLE_ACCESS_ERROR_MESSAGE
+      : null;
+  }
 
   function getCategoryDetailContext(categoryRow, detailDraft) {
     if (!categoryRow || !detailDraft) return null;
@@ -13472,10 +14036,18 @@ export default function App() {
             ? unitRows
             : pageId === "selling-time"
               ? sellingTimeRows
-              : pageId === "grouped-device"
+            : pageId === "grouped-device"
                 ? (records["grouped-device"] ?? []).map((row) => {
-                  const devices = (row.deviceList || []).map(id => records["device-management"]?.find(d => d.id === id)?.deviceName).filter(Boolean).join(", ");
-                  const catalogs = (row.catalogList || []).map(id => records["catalog"]?.find(c => c.id === id)?.name).filter(Boolean).join(", ");
+                  const devices = getGroupedDeviceDeviceRows(
+                    records["device-management"] || [],
+                    row.deviceList || []
+                  )
+                    .map((device) => device.deviceName)
+                    .join(", ");
+                  const catalogs = getGroupedDeviceCatalogNames(
+                    records["catalog"] || [],
+                    row.catalogList || []
+                  ).join(", ");
                   return {
                     ...row,
                     deviceListDisplay: devices || "-",
@@ -13846,13 +14418,17 @@ export default function App() {
   }
 
   function hasRoleAccessCreateChanges(draft) {
+    const defaultSectionState = createInitialRoleAccessDraft().permissionSections;
+
     return Boolean(
       draft &&
       (
         draft.name.trim() !== "" ||
         draft.description.trim() !== "" ||
+        JSON.stringify(draft.permissionSections ?? {}) !==
+          JSON.stringify(defaultSectionState) ||
         Object.values(draft.permissions ?? {}).some(
-          (permission) => permission && permission !== "none"
+          (permission) => hasRolePermissionAccess(permission)
         )
       )
     );
@@ -14464,17 +15040,79 @@ export default function App() {
 
   function handleToggleCatalogAvailability(rowId) {
     const row = (records.catalog || []).find((item) => item.id === rowId);
+    const currentAvailability = row?.availability !== false;
+    const nextAvailability = !currentAvailability;
 
     setRecords((previous) => ({
       ...previous,
       catalog: previous.catalog.map((item) =>
-        item.id === rowId ? { ...item, availability: !item.availability } : item
+        item.id === rowId
+          ? { ...item, availability: nextAvailability }
+          : item
       ),
     }));
 
+    if (catalogDetailDraftRef.current?.id === rowId) {
+      setCatalogDetailDraft((previous) => {
+        if (!previous || previous.id !== rowId) return previous;
+        const nextDraft = { ...previous, availability: nextAvailability };
+        catalogDetailDraftRef.current = nextDraft;
+        return nextDraft;
+      });
+    }
+
+    if (catalogDetailSnapshotRef.current?.id === rowId) {
+      const nextSnapshot = {
+        ...catalogDetailSnapshotRef.current,
+        availability: nextAvailability,
+      };
+      setCatalogDetailSnapshot(nextSnapshot);
+      catalogDetailSnapshotRef.current = nextSnapshot;
+    }
+
     if (row) {
       showSnackbar(
-        `${row.name} is now ${row.availability ? "inactive" : "active"}`,
+        `${row.name} is now ${nextAvailability ? "active" : "inactive"}`,
+        "green"
+      );
+    }
+  }
+
+  function handleModifierListAvailabilityToggle(rowId) {
+    const row = (records.modifier || []).find((item) => item.id === rowId);
+    const currentAvailability = row?.availability !== false;
+    const nextAvailability = !currentAvailability;
+
+    setRecords((previous) => ({
+      ...previous,
+      modifier: previous.modifier.map((item) =>
+        item.id === rowId
+          ? { ...item, availability: nextAvailability }
+          : item
+      ),
+    }));
+
+    if (modifierDetailDraftRef.current?.id === rowId) {
+      setModifierDetailDraft((previous) => {
+        if (!previous || previous.id !== rowId) return previous;
+        const nextDraft = { ...previous, availability: nextAvailability };
+        modifierDetailDraftRef.current = nextDraft;
+        return nextDraft;
+      });
+    }
+
+    if (modifierDetailSnapshotRef.current?.id === rowId) {
+      const nextSnapshot = {
+        ...modifierDetailSnapshotRef.current,
+        availability: nextAvailability,
+      };
+      setModifierDetailSnapshot(nextSnapshot);
+      modifierDetailSnapshotRef.current = nextSnapshot;
+    }
+
+    if (row) {
+      showSnackbar(
+        `${row.name} is now ${nextAvailability ? "active" : "inactive"}`,
         "green"
       );
     }
@@ -15062,7 +15700,10 @@ export default function App() {
       name: detailRecord.name.trim(),
       description: String(detailRecord.description ?? "").trim(),
       unit: detailRecord.unit || "Pcs",
-      category: detailRecord.category || "Uncategorized",
+      category: getCatalogCategoryForType(
+        detailRecord.type,
+        detailRecord.category
+      ),
       basePrice,
       price: String(enteredPrice > 0 ? enteredPrice : basePrice),
       priceRule: detailRecord.allowOverridePrice
@@ -15204,6 +15845,7 @@ export default function App() {
     setCategoryDetailId(null);
     setCategoryDetailDraft(null);
     setCategoryDetailEditing(null);
+    setCategoryDetailErrors({});
     setCategoryDetailSnapshot(null);
     categoryDetailDraftRef.current = null;
     categoryDetailEditingRef.current = null;
@@ -15248,6 +15890,7 @@ export default function App() {
     setUnitDetailId(null);
     setUnitDetailDraft(null);
     setUnitDetailEditing(null);
+    setUnitDetailErrors({});
     setUnitDetailSnapshot(null);
     unitDetailDraftRef.current = null;
     unitDetailEditingRef.current = null;
@@ -15422,7 +16065,27 @@ export default function App() {
       detailEditing
     );
     if (validationMessage) {
+      const nextErrors = {};
+      if (!detailDraft.name.trim()) {
+        nextErrors.name = true;
+      }
+      if (!String(detailDraft.startDate ?? "").trim()) {
+        nextErrors.startDate = true;
+      }
+      if (!String(detailDraft.endDate ?? "").trim()) {
+        nextErrors.endDate = true;
+      }
+      setPricingRuleDetailErrors(nextErrors);
       showSnackbar(validationMessage, "red");
+      return { ok: false, nextDraft: detailDraft };
+    }
+
+    const duplicateNameError = getDuplicatePricingRuleNameError(
+      detailDraft.name,
+      detailDraft.id
+    );
+    if (duplicateNameError) {
+      setPricingRuleDetailErrors({ name: duplicateNameError });
       return { ok: false, nextDraft: detailDraft };
     }
 
@@ -15431,6 +16094,7 @@ export default function App() {
       showSuccess ? message : null
     );
     setPricingRuleDetailEditing(null);
+    setPricingRuleDetailErrors({});
     setPricingRuleDetailSnapshot(null);
     pricingRuleDetailEditingRef.current = null;
     pricingRuleDetailSnapshotRef.current = null;
@@ -15460,6 +16124,7 @@ export default function App() {
 
     const snapshot = clonePricingRuleDetailDraftState(nextDraft);
     setPricingRuleDetailSnapshot(snapshot);
+    setPricingRuleDetailErrors({});
     setPricingRuleDetailEditing(nextEditing);
     pricingRuleDetailSnapshotRef.current = snapshot;
     pricingRuleDetailEditingRef.current = nextEditing;
@@ -15490,6 +16155,7 @@ export default function App() {
       pricingRuleDetailDraftRef.current = pricingRuleDetailSnapshotRef.current;
     }
     setPricingRuleDetailEditing(null);
+    setPricingRuleDetailErrors({});
     setPricingRuleDetailSnapshot(null);
     pricingRuleDetailEditingRef.current = null;
     pricingRuleDetailSnapshotRef.current = null;
@@ -15521,6 +16187,7 @@ export default function App() {
       pricingRuleDetailDraftRef.current = nextDraft;
       return nextDraft;
     });
+    clearPricingRuleDetailError(key);
   }
 
   function handlePricingRuleDetailMaximumChange(sectionKey, itemId, value) {
@@ -15869,6 +16536,7 @@ export default function App() {
       minimumSelection: detailDraft.minimumSelection || "0",
       maximumSelection: detailDraft.maximumSelection || "0",
       allowOverridePrice: Boolean(detailDraft.allowOverridePrice),
+      availability: detailDraft.availability !== false,
       assignedUnits: cloneAssignedUnits(detailDraft.assignedUnits ?? []),
       options: namedOptions,
     };
@@ -15908,6 +16576,7 @@ export default function App() {
     setModifierDetailPanelTab("general");
     setModifierDetailDraft(null);
     setModifierDetailEditing(null);
+    setModifierDetailErrors({});
     setModifierDetailSnapshot(null);
     modifierDetailDraftRef.current = null;
     modifierDetailEditingRef.current = null;
@@ -15949,6 +16618,7 @@ export default function App() {
     setModifierDetailPanelTab("general");
     setModifierDetailDraft(nextDraft);
     setModifierDetailEditing(null);
+    setModifierDetailErrors({});
     setModifierDetailSnapshot(null);
     modifierDetailDraftRef.current = nextDraft;
     modifierDetailEditingRef.current = null;
@@ -15995,7 +16665,25 @@ export default function App() {
       detailEditing
     );
     if (validationMessage) {
-      showSnackbar(validationMessage, "red");
+      if (
+        detailEditing.kind === "all" ||
+        (detailEditing.kind === "field" && detailEditing.field === "name")
+      ) {
+        setModifierDetailErrors({ name: true });
+      } else if (detailEditing.kind === "option-row") {
+        setModifierDetailErrors({ optionNames: [detailEditing.optionId] });
+      } else {
+        showSnackbar(validationMessage, "red");
+      }
+      return { ok: false, nextDraft: detailDraft };
+    }
+
+    const duplicateNameError = getDuplicateModifierNameError(
+      detailDraft.name,
+      detailDraft.id
+    );
+    if (duplicateNameError) {
+      setModifierDetailErrors({ name: duplicateNameError });
       return { ok: false, nextDraft: detailDraft };
     }
 
@@ -16004,6 +16692,7 @@ export default function App() {
       showSuccess ? message : null
     );
     setModifierDetailEditing(null);
+    setModifierDetailErrors({});
     setModifierDetailSnapshot(null);
     modifierDetailEditingRef.current = null;
     modifierDetailSnapshotRef.current = null;
@@ -16037,6 +16726,7 @@ export default function App() {
 
     const snapshot = cloneModifierDetailDraftState(nextDraft);
     setModifierDetailSnapshot(snapshot);
+    setModifierDetailErrors({});
     setModifierDetailEditing(nextEditing);
     modifierDetailSnapshotRef.current = snapshot;
     modifierDetailEditingRef.current = nextEditing;
@@ -16067,6 +16757,7 @@ export default function App() {
       modifierDetailDraftRef.current = modifierDetailSnapshotRef.current;
     }
     setModifierDetailEditing(null);
+    setModifierDetailErrors({});
     setModifierDetailSnapshot(null);
     modifierDetailEditingRef.current = null;
     modifierDetailSnapshotRef.current = null;
@@ -16092,38 +16783,89 @@ export default function App() {
             : []
           : key === "minimumSelection" || key === "maximumSelection"
             ? String(value ?? "").replace(/[^\d]/g, "")
-            : value;
+            : key === "availability"
+              ? Boolean(value)
+              : value;
 
     setModifierDetailDraft((previous) => {
-      const nextDraft = previous
-        ? { ...previous, [key]: normalizedValue }
-        : previous;
+      if (!previous) return previous;
+      const nextDraft = { ...previous, [key]: normalizedValue };
+
+      if (key === "availability" && normalizedValue === false) {
+        nextDraft.options = previous.options.map((option) => ({
+          ...option,
+          isAvailable: false,
+        }));
+      }
+
       modifierDetailDraftRef.current = nextDraft;
       return nextDraft;
     });
+    if (key === "name") {
+      clearModifierDetailError("name");
+    }
+  }
+
+  function handleToggleModifierDetailAvailability() {
+    if (isLockedSelectedBusinessUnit) return;
+    const currentDraft = modifierDetailDraftRef.current;
+    if (!currentDraft) return;
+
+    const nextAvailability = currentDraft.availability === false;
+    const nextDraft = {
+      ...currentDraft,
+      availability: nextAvailability,
+      options: nextAvailability
+        ? currentDraft.options
+        : currentDraft.options.map((option) => ({
+            ...option,
+            isAvailable: false,
+          })),
+    };
+
+    if (modifierDetailEditingRef.current?.kind === "all") {
+      setModifierDetailDraft(nextDraft);
+      modifierDetailDraftRef.current = nextDraft;
+      return;
+    }
+
+    persistModifierDetailDraft(nextDraft, "Modifier updated");
   }
 
   function handleModifierDetailOptionChange(optionId, key, value) {
     if (isLockedSelectedBusinessUnit) return;
+    const currentDraft = modifierDetailDraftRef.current;
+    if (!currentDraft) return;
+
     const normalizedValue =
       key === "additionalPrice"
         ? getNormalizedNominalDigits(value)
-        : String(value ?? "");
+        : key === "isAvailable"
+          ? Boolean(value)
+          : String(value ?? "");
 
-    setModifierDetailDraft((previous) => {
-      if (!previous) return previous;
+    const nextOptions = currentDraft.options.map((option) =>
+      option.id === optionId
+        ? { ...option, [key]: normalizedValue }
+        : option
+    );
+    const hasAnyAvailable = nextOptions.some(
+      (option) => option.isAvailable !== false
+    );
 
-      const nextDraft = {
-        ...previous,
-        options: previous.options.map((option) =>
-          option.id === optionId
-            ? { ...option, [key]: normalizedValue }
-            : option
-        ),
-      };
+    const nextDraft = {
+      ...currentDraft,
+      options: nextOptions,
+      availability: key === "isAvailable" ? hasAnyAvailable : currentDraft.availability,
+    };
+
+    if (modifierDetailEditingRef.current?.kind === "all") {
+      setModifierDetailDraft(nextDraft);
       modifierDetailDraftRef.current = nextDraft;
-      return nextDraft;
-    });
+      return;
+    }
+
+    persistModifierDetailDraft(nextDraft, "Modifier updated");
   }
 
   function handleModifierDetailAssignedUnitChange(unitId, key, value) {
@@ -16232,6 +16974,7 @@ export default function App() {
     setCategoryDetailId(rowId);
     setCategoryDetailDraft(nextDraft);
     setCategoryDetailEditing(null);
+    setCategoryDetailErrors({});
     setCategoryDetailSnapshot(null);
     categoryDetailDraftRef.current = nextDraft;
     categoryDetailEditingRef.current = null;
@@ -16273,6 +17016,7 @@ export default function App() {
     setUnitDetailId(rowId);
     setUnitDetailDraft(nextDraft);
     setUnitDetailEditing(null);
+    setUnitDetailErrors({});
     setUnitDetailSnapshot(null);
     unitDetailDraftRef.current = nextDraft;
     unitDetailEditingRef.current = null;
@@ -16298,7 +17042,16 @@ export default function App() {
       detailEditing
     );
     if (validationMessage) {
-      showSnackbar(validationMessage, "red");
+      setCategoryDetailErrors({ name: true });
+      return { ok: false, nextDraft: detailDraft };
+    }
+
+    const duplicateNameError = getDuplicateCategoryNameError(
+      detailDraft.name,
+      detailDraft.id
+    );
+    if (duplicateNameError) {
+      setCategoryDetailErrors({ name: duplicateNameError });
       return { ok: false, nextDraft: detailDraft };
     }
 
@@ -16322,6 +17075,7 @@ export default function App() {
       showSuccess ? message : null
     );
     setCategoryDetailEditing(null);
+    setCategoryDetailErrors({});
     setCategoryDetailSnapshot(null);
     categoryDetailEditingRef.current = null;
     categoryDetailSnapshotRef.current = null;
@@ -16349,6 +17103,7 @@ export default function App() {
 
     const snapshot = cloneCategoryDetailDraftState(nextDraft);
     setCategoryDetailSnapshot(snapshot);
+    setCategoryDetailErrors({});
     setCategoryDetailEditing(nextEditing);
     categoryDetailSnapshotRef.current = snapshot;
     categoryDetailEditingRef.current = nextEditing;
@@ -16379,6 +17134,7 @@ export default function App() {
       categoryDetailDraftRef.current = categoryDetailSnapshotRef.current;
     }
     setCategoryDetailEditing(null);
+    setCategoryDetailErrors({});
     setCategoryDetailSnapshot(null);
     categoryDetailEditingRef.current = null;
     categoryDetailSnapshotRef.current = null;
@@ -16399,6 +17155,9 @@ export default function App() {
       categoryDetailDraftRef.current = nextDraft;
       return nextDraft;
     });
+    if (key === "name") {
+      clearCategoryDetailError("name");
+    }
   }
 
   function handleCategoryDetailSingleSelectSave(field, value, message) {
@@ -16430,7 +17189,16 @@ export default function App() {
       detailEditing
     );
     if (validationMessage) {
-      showSnackbar(validationMessage, "red");
+      setUnitDetailErrors({ name: true });
+      return { ok: false, nextDraft: detailDraft };
+    }
+
+    const duplicateNameError = getDuplicateUnitNameError(
+      detailDraft.name,
+      detailDraft.id
+    );
+    if (duplicateNameError) {
+      setUnitDetailErrors({ name: duplicateNameError });
       return { ok: false, nextDraft: detailDraft };
     }
 
@@ -16439,6 +17207,7 @@ export default function App() {
       showSuccess ? message : null
     );
     setUnitDetailEditing(null);
+    setUnitDetailErrors({});
     setUnitDetailSnapshot(null);
     unitDetailEditingRef.current = null;
     unitDetailSnapshotRef.current = null;
@@ -16463,6 +17232,7 @@ export default function App() {
 
     const snapshot = cloneUnitDetailDraftState(nextDraft);
     setUnitDetailSnapshot(snapshot);
+    setUnitDetailErrors({});
     setUnitDetailEditing(nextEditing);
     unitDetailSnapshotRef.current = snapshot;
     unitDetailEditingRef.current = nextEditing;
@@ -16493,6 +17263,7 @@ export default function App() {
       unitDetailDraftRef.current = unitDetailSnapshotRef.current;
     }
     setUnitDetailEditing(null);
+    setUnitDetailErrors({});
     setUnitDetailSnapshot(null);
     unitDetailEditingRef.current = null;
     unitDetailSnapshotRef.current = null;
@@ -16521,6 +17292,9 @@ export default function App() {
       unitDetailDraftRef.current = nextDraft;
       return nextDraft;
     });
+    if (key === "name") {
+      clearUnitDetailError("name");
+    }
   }
 
   function handleUnitDetailSingleSelectSave(field, value, message) {
@@ -17181,6 +17955,70 @@ export default function App() {
     setUnitDraftErrors({});
   }
 
+  function clearCategoryDetailError(...keys) {
+    setCategoryDetailErrors((previous) => {
+      const next = { ...previous };
+      let hasChanges = false;
+
+      keys.forEach((key) => {
+        if (next[key]) {
+          delete next[key];
+          hasChanges = true;
+        }
+      });
+
+      return hasChanges ? next : previous;
+    });
+  }
+
+  function clearUnitDetailError(...keys) {
+    setUnitDetailErrors((previous) => {
+      const next = { ...previous };
+      let hasChanges = false;
+
+      keys.forEach((key) => {
+        if (next[key]) {
+          delete next[key];
+          hasChanges = true;
+        }
+      });
+
+      return hasChanges ? next : previous;
+    });
+  }
+
+  function clearModifierDetailError(...keys) {
+    setModifierDetailErrors((previous) => {
+      const next = { ...previous };
+      let hasChanges = false;
+
+      keys.forEach((key) => {
+        if (next[key]) {
+          delete next[key];
+          hasChanges = true;
+        }
+      });
+
+      return hasChanges ? next : previous;
+    });
+  }
+
+  function clearPricingRuleDetailError(...keys) {
+    setPricingRuleDetailErrors((previous) => {
+      const next = { ...previous };
+      let hasChanges = false;
+
+      keys.forEach((key) => {
+        if (next[key]) {
+          delete next[key];
+          hasChanges = true;
+        }
+      });
+
+      return hasChanges ? next : previous;
+    });
+  }
+
   function clearDeviceManagementDraftError(...keys) {
     setDeviceManagementDraftErrors((previous) => {
       const next = { ...previous };
@@ -17205,6 +18043,38 @@ export default function App() {
   function resetGroupedDeviceDraft() {
     setGroupedDeviceDraft(createInitialGroupedDeviceDraft());
     setGroupedDeviceDraftErrors({});
+  }
+
+  function clearGroupedDeviceDraftError(...keys) {
+    setGroupedDeviceDraftErrors((previous) => {
+      const next = { ...previous };
+      let hasChanges = false;
+
+      keys.forEach((key) => {
+        if (next[key]) {
+          delete next[key];
+          hasChanges = true;
+        }
+      });
+
+      return hasChanges ? next : previous;
+    });
+  }
+
+  function clearGroupedDeviceDetailDraftError(...keys) {
+    setGroupedDeviceDetailDraftErrors((previous) => {
+      const next = { ...previous };
+      let hasChanges = false;
+
+      keys.forEach((key) => {
+        if (next[key]) {
+          delete next[key];
+          hasChanges = true;
+        }
+      });
+
+      return hasChanges ? next : previous;
+    });
   }
 
   function openCategoryCreatePage() {
@@ -17250,29 +18120,52 @@ export default function App() {
     if (!row) return;
 
     setRoleAccessDetailId(rowId);
-    setRoleAccessDetailDraft({ ...row });
+    setRoleAccessDetailDraft(createRoleAccessDraftFromRecord(row));
     setRoleAccessDetailEditing(null);
     setRoleAccessDetailErrors({});
     setRoleAccessDetailPanelTab("general");
   }
 
   function saveRoleAccessDraft() {
+    const nextErrors = {};
+
     if (!roleAccessDraft.name.trim()) {
-      setRoleAccessDraftErrors({ name: true });
-      return;
+      nextErrors.name = true;
     }
 
-    const hasAssignedPermissions = Object.values(roleAccessDraft.permissions ?? {}).some(
-      (permission) => permission && permission !== "none"
+    const duplicateNameError = getDuplicateRoleAccessNameError(
+      roleAccessDraft.name
+    );
+    if (duplicateNameError) {
+      nextErrors.name = duplicateNameError;
+    }
+
+    const permissionsStructure = getRolePermissionsStructure(
+      Boolean(selectedSidebarBusinessUnit)
+    );
+    const permissionSectionErrors = getRoleAccessPermissionSectionErrors(
+      roleAccessDraft,
+      permissionsStructure
     );
 
-    if (!hasAssignedPermissions) {
-      showSnackbar("At least one module must have an access level assigned", "red");
+    if (Object.keys(permissionSectionErrors).length) {
+      nextErrors.permissionSections = permissionSectionErrors;
+    }
+
+    if (!hasAnyVisibleRoleAccessPermission(roleAccessDraft, permissionsStructure)) {
+      nextErrors.permissions =
+        "At least one module must have an access level assigned";
+    }
+
+    if (Object.keys(nextErrors).length) {
+      setRoleAccessDraftErrors(nextErrors);
       return;
     }
 
+    const normalizedDraft = createRoleAccessDraftFromRecord(roleAccessDraft);
+
     const newRow = {
-      ...roleAccessDraft,
+      ...normalizedDraft,
       id: `rl-${Math.floor(Math.random() * 1000).toString().padStart(3, "0")}`,
       members: "0 members",
       membersList: [],
@@ -17298,26 +18191,54 @@ export default function App() {
   }
 
   function saveRoleAccessDetailEdit() {
+    const nextErrors = {};
+
     if (!roleAccessDetailDraft.name.trim()) {
-      setRoleAccessDetailErrors({ name: true });
-      return;
+      nextErrors.name = true;
     }
 
-    const hasAssignedPermissions = Object.values(roleAccessDetailDraft.permissions ?? {}).some(
-      (permission) => permission && permission !== "none"
+    const duplicateNameError = getDuplicateRoleAccessNameError(
+      roleAccessDetailDraft.name,
+      roleAccessDetailId
+    );
+    if (duplicateNameError) {
+      nextErrors.name = duplicateNameError;
+    }
+
+    const permissionsStructure = getRolePermissionsStructure(
+      Boolean(selectedSidebarBusinessUnit)
+    );
+    const permissionSectionErrors = getRoleAccessPermissionSectionErrors(
+      roleAccessDetailDraft,
+      permissionsStructure
     );
 
-    if (!hasAssignedPermissions) {
-      showSnackbar("At least one module must have an access level assigned", "red");
+    if (Object.keys(permissionSectionErrors).length) {
+      nextErrors.permissionSections = permissionSectionErrors;
+    }
+
+    if (
+      !hasAnyVisibleRoleAccessPermission(roleAccessDetailDraft, permissionsStructure)
+    ) {
+      nextErrors.permissions =
+        "At least one module must have an access level assigned";
+    }
+
+    if (Object.keys(nextErrors).length) {
+      setRoleAccessDetailErrors(nextErrors);
       return;
     }
+
+    const normalizedDraft = createRoleAccessDraftFromRecord(
+      roleAccessDetailDraft
+    );
 
     setRecords((prev) => ({
       ...prev,
       "role-access": prev["role-access"].map((r) =>
         r.id === roleAccessDetailId
           ? {
-            ...roleAccessDetailDraft,
+            ...normalizedDraft,
             updated: new Date().toLocaleDateString("en-GB", {
               day: "numeric",
               month: "short",
@@ -17338,7 +18259,7 @@ export default function App() {
     setRoleAccessDetailErrors({});
     const originalRow = records["role-access"].find((r) => r.id === roleAccessDetailId);
     if (originalRow) {
-      setRoleAccessDetailDraft({ ...originalRow });
+      setRoleAccessDetailDraft(createRoleAccessDraftFromRecord(originalRow));
     }
   }
 
@@ -17347,11 +18268,25 @@ export default function App() {
       setRoleAccessDetailDraft((prev) => ({ ...prev, [field]: value }));
       if (field === "name" && String(value).trim()) {
         setRoleAccessDetailErrors((prev) => ({ ...prev, name: false }));
+      } else if (field === "permissions" || field === "permissionSections") {
+        setRoleAccessDetailErrors((prev) => {
+          const next = { ...prev };
+          delete next.permissions;
+          delete next.permissionSections;
+          return next;
+        });
       }
     } else {
       setRoleAccessDraft((prev) => ({ ...prev, [field]: value }));
       if (field === "name" && value.trim()) {
         setRoleAccessDraftErrors((prev) => ({ ...prev, name: false }));
+      } else if (field === "permissions" || field === "permissionSections") {
+        setRoleAccessDraftErrors((prev) => {
+          const next = { ...prev };
+          delete next.permissions;
+          delete next.permissionSections;
+          return next;
+        });
       }
     }
   }
@@ -17618,6 +18553,7 @@ export default function App() {
     setPricingRuleDetailPanelTab("general");
     setPricingRuleDetailDraft(null);
     setPricingRuleDetailEditing(null);
+    setPricingRuleDetailErrors({});
     setPricingRuleDetailSnapshot(null);
     pricingRuleDetailDraftRef.current = null;
     pricingRuleDetailEditingRef.current = null;
@@ -17663,6 +18599,7 @@ export default function App() {
     setPricingRuleDetailPanelTab("general");
     setPricingRuleDetailDraft(nextDraft);
     setPricingRuleDetailEditing(null);
+    setPricingRuleDetailErrors({});
     setPricingRuleDetailSnapshot(null);
     pricingRuleDetailDraftRef.current = nextDraft;
     pricingRuleDetailEditingRef.current = null;
@@ -17823,9 +18760,26 @@ export default function App() {
             : []
           : key === "minimumSelection" || key === "maximumSelection"
             ? String(value ?? "").replace(/[^\d]/g, "")
-            : value;
+            : key === "availability"
+              ? Boolean(value)
+              : value;
 
-    setModifierDraft((previous) => ({ ...previous, [key]: normalizedValue }));
+    setModifierDraft((previous) => {
+      const nextDraft = {
+        ...previous,
+        [key]: normalizedValue,
+      };
+
+      if (key === "availability" && normalizedValue === false) {
+        nextDraft.options = previous.options.map((option) => ({
+          ...option,
+          isAvailable: false,
+        }));
+      }
+
+      return nextDraft;
+    });
+
     clearModifierDraftError(key);
   }
 
@@ -17833,14 +18787,24 @@ export default function App() {
     const normalizedValue =
       key === "additionalPrice"
         ? getNormalizedNominalDigits(value)
-        : String(value ?? "");
+        : key === "isAvailable"
+          ? Boolean(value)
+          : String(value ?? "");
 
-    setModifierDraft((previous) => ({
-      ...previous,
-      options: previous.options.map((option) =>
+    setModifierDraft((previous) => {
+      const nextOptions = previous.options.map((option) =>
         option.id === optionId ? { ...option, [key]: normalizedValue } : option
-      ),
-    }));
+      );
+
+      return {
+        ...previous,
+        options: nextOptions,
+        availability:
+          key === "isAvailable" && normalizedValue === true
+            ? true
+            : previous.availability,
+      };
+    });
 
     if (key === "name" && String(normalizedValue).trim()) {
       setModifierDraftErrors((previous) => {
@@ -17950,10 +18914,14 @@ export default function App() {
 
   function handleModifierDetailOptionDragStart(optionId) {
     modifierDraggedOptionIdRef.current = optionId;
+    setModifierDragOverOptionId(optionId);
   }
 
   function handleModifierDetailOptionDragOver(targetOptionId) {
-    setModifierDragOverOptionId(targetOptionId);
+    if (!modifierDraggedOptionIdRef.current) return;
+    if (modifierDragOverOptionId !== targetOptionId) {
+      setModifierDragOverOptionId(targetOptionId);
+    }
   }
 
   function handleModifierDetailOptionDrop(targetOptionId) {
@@ -17969,6 +18937,8 @@ export default function App() {
     setModifierDragOverOptionId(null);
 
     setModifierDetailDraft((previous) => {
+      if (!previous) return previous;
+
       const options = [...previous.options];
       const draggedIndex = options.findIndex((opt) => opt.id === draggedOptionId);
       const targetIndex = options.findIndex((opt) => opt.id === targetOptionId);
@@ -17978,8 +18948,15 @@ export default function App() {
       const [draggedOption] = options.splice(draggedIndex, 1);
       options.splice(targetIndex, 0, draggedOption);
 
-      return { ...previous, options };
+      const nextDraft = { ...previous, options };
+      modifierDetailDraftRef.current = nextDraft;
+      return nextDraft;
     });
+  }
+
+  function handleModifierDetailOptionDragEnd() {
+    modifierDraggedOptionIdRef.current = null;
+    setModifierDragOverOptionId(null);
   }
 
   function handleSaveCategoryDraft() {
@@ -17988,6 +18965,11 @@ export default function App() {
 
     if (!trimmedName) {
       nextErrors.name = true;
+    }
+
+    const duplicateNameError = getDuplicateCategoryNameError(trimmedName);
+    if (duplicateNameError) {
+      nextErrors.name = duplicateNameError;
     }
 
     if (Object.keys(nextErrors).length) {
@@ -18033,6 +19015,11 @@ export default function App() {
 
     if (!trimmedName) {
       nextErrors.name = true;
+    }
+
+    const duplicateNameError = getDuplicateUnitNameError(trimmedName);
+    if (duplicateNameError) {
+      nextErrors.name = duplicateNameError;
     }
 
     if (Object.keys(nextErrors).length) {
@@ -18138,6 +19125,11 @@ export default function App() {
       nextErrors.endDate = true;
     }
 
+    const duplicateNameError = getDuplicatePricingRuleNameError(trimmedName);
+    if (duplicateNameError) {
+      nextErrors.name = duplicateNameError;
+    }
+
     if (Object.keys(nextErrors).length) {
       setSpecialPricingRuleDraftErrors(nextErrors);
       return;
@@ -18210,6 +19202,13 @@ export default function App() {
       nextErrors.name = true;
     }
 
+    const duplicateNameError = getDuplicatePricingRuleNameError(
+      specialPricingRuleDraft.name
+    );
+    if (duplicateNameError) {
+      nextErrors.name = duplicateNameError;
+    }
+
     if (!specialPricingRuleDraft.startDate.trim()) {
       nextErrors.startDate = true;
     }
@@ -18252,6 +19251,11 @@ export default function App() {
       nextErrors.name = true;
     }
 
+    const duplicateNameError = getDuplicateModifierNameError(trimmedName);
+    if (duplicateNameError) {
+      nextErrors.name = duplicateNameError;
+    }
+
     if (emptyOptionIds.length) {
       nextErrors.optionNames = emptyOptionIds;
     }
@@ -18274,6 +19278,7 @@ export default function App() {
       minimumSelection: modifierDraft.minimumSelection || "0",
       maximumSelection: modifierDraft.maximumSelection || "0",
       allowOverridePrice: Boolean(modifierDraft.allowOverridePrice),
+      availability: modifierDraft.availability !== false,
       assignedUnits: cloneAssignedUnits(modifierDraft.assignedUnits),
       options: namedOptions.map((option) => ({
         ...option,
@@ -18294,8 +19299,17 @@ export default function App() {
   function getModifierCreateStepErrors(stepIndex) {
     const nextErrors = {};
 
-    if (stepIndex === 0 && !modifierDraft.name.trim()) {
-      nextErrors.name = true;
+    if (stepIndex === 0) {
+      if (!modifierDraft.name.trim()) {
+        nextErrors.name = true;
+      }
+
+      const duplicateNameError = getDuplicateModifierNameError(
+        modifierDraft.name
+      );
+      if (duplicateNameError) {
+        nextErrors.name = duplicateNameError;
+      }
     }
 
     if (stepIndex === 1) {
@@ -18353,6 +19367,7 @@ export default function App() {
     setCatalogDraft((previous) => ({
       ...previous,
       type: nextType,
+      unit: nextType === "single" ? previous.unit : "",
       modifier: nextType === "single" ? previous.modifier : [],
       packageItems:
         nextType === "package"
@@ -18555,6 +19570,40 @@ export default function App() {
     setSelectedUnitAssignmentIds([]);
     setUnitAssignmentSearch("");
     setUnitAssignmentTarget("create");
+  }
+
+  function openModifierCatalogModal(target, initialValue = []) {
+    setModifierCatalogModalTarget(target);
+    setModifierCatalogModalValue(initialValue);
+    setIsModifierCatalogModalOpen(true);
+  }
+
+  function closeModifierCatalogModal() {
+    setIsModifierCatalogModalOpen(false);
+    setModifierCatalogModalTarget(null);
+    setModifierCatalogModalValue([]);
+  }
+
+  function confirmModifierCatalogModal() {
+    if (!modifierCatalogModalTarget) return;
+
+    if (modifierCatalogModalTarget === "modifier-create") {
+      handleModifierDraftChange("connectedCatalog", modifierCatalogModalValue);
+    } else if (modifierCatalogModalTarget === "modifier-detail") {
+      handleModifierDetailChange("connectedCatalog", modifierCatalogModalValue);
+    } else if (modifierCatalogModalTarget === "grouped-device-create") {
+      setGroupedDeviceDraft((prev) => ({
+        ...prev,
+        catalogList: modifierCatalogModalValue,
+      }));
+    } else if (modifierCatalogModalTarget === "grouped-device-detail") {
+      setGroupedDeviceDetailDraft((prev) => ({
+        ...prev,
+        catalogList: modifierCatalogModalValue,
+      }));
+    }
+
+    closeModifierCatalogModal();
   }
 
   function handleToggleUnitAssignment(unitId) {
@@ -18848,31 +19897,38 @@ export default function App() {
                       />
                     </div>
                   </div>
-                  <div
-                    className="modifier-create-separator"
-                    aria-hidden="true"
-                  />
-                  <ModifierCatalogSelectField
-                    label="Connect to Catalog"
-                    value={modifierDraft.connectedCatalog}
-                    groups={modifierCatalogGroups}
-                    onChange={(value) =>
-                      handleModifierDraftChange("connectedCatalog", value)
+                </div>
+              </section>
+              <section className="catalog-create-availability-card">
+                <div className="catalog-availability-row">
+                  <div className="catalog-availability-row__copy">
+                    <p className="type-title-3">Modifier Availability</p>
+                    <p className="type-body text-secondary">
+                      Turn on to make this modifier available
+                    </p>
+                  </div>
+                  <Toggle
+                    checked={modifierDraft.availability}
+                    onChange={() =>
+                      handleModifierDraftChange(
+                        "availability",
+                        !modifierDraft.availability
+                      )
                     }
-                    placeholder="Select Catalog"
+                    ariaLabel="Modifier availability"
                   />
                 </div>
               </section>
             </div>
 
             <div className="catalog-create-column catalog-create-column--right">
-              <section className="modifier-option-table">
+              <section className="modifier-option-table modifier-option-table--editable">
                 <div className="modifier-option-table__row modifier-option-table__row--header">
                   <div className="modifier-option-table__header-cell modifier-option-table__header-cell--handle" />
                   <div className="modifier-option-table__header-cell">
                     <p className="type-title-3">Option Name</p>
                   </div>
-                  <div className="modifier-option-table__header-cell">
+                  <div className="modifier-option-table__header-cell modifier-option-table__header-cell--price">
                     <p className="type-title-3">Additional Price (Optional)</p>
                   </div>
                   <div className="modifier-option-table__header-cell modifier-option-table__header-cell--action" />
@@ -18972,6 +20028,29 @@ export default function App() {
                     Add Option
                   </span>
                 </button>
+              </section>
+
+              <section className="modifier-create-card">
+                <div className="modifier-create-card__header">
+                  <div
+                    className="modifier-create-card__accent"
+                    aria-hidden="true"
+                  />
+                  <p className="modifier-create-card__title type-title-2">
+                    Connect to Catalog
+                  </p>
+                </div>
+                <div className="modifier-create-card__body">
+                  <ModifierCatalogSelectField
+                    label="Connect to Catalog"
+                    value={modifierDraft.connectedCatalog}
+                    groups={modifierCatalogGroups}
+                    onChange={(value) =>
+                      handleModifierDraftChange("connectedCatalog", value)
+                    }
+                    placeholder="Select Catalog"
+                  />
+                </div>
               </section>
 
               <section className="modifier-unit-assignment">
@@ -19683,13 +20762,25 @@ export default function App() {
                 className="catalog-create-form-card catalog-create-form-card--general"
                 bodyClassName="catalog-general-layout"
               >
-                <div className="catalog-general-row">
+                <div
+                  className={`catalog-general-row${catalogDraft.type === "package" ? " catalog-general-row--single-column" : ""}`}
+                >
                   <CatalogTypeField
                     value={catalogDraft.type}
                     onChange={handleCatalogTypeChange}
                   />
-                  <div className="catalog-general-spacer" aria-hidden="true" />
-                  <div className="catalog-general-spacer" aria-hidden="true" />
+                  {catalogDraft.type === "single" ? (
+                    <>
+                      <div
+                        className="catalog-general-spacer"
+                        aria-hidden="true"
+                      />
+                      <div
+                        className="catalog-general-spacer"
+                        aria-hidden="true"
+                      />
+                    </>
+                  ) : null}
                 </div>
                 <div className="catalog-general-row">
                   <DetailField
@@ -19724,6 +20815,7 @@ export default function App() {
                       placeholder="Select Modifier"
                       multiple
                       multipleDisplay="summary"
+                      multipleSummaryFormatter={getCatalogModifierSummaryValue}
                     />
                   ) : (
                     <div
@@ -20213,6 +21305,26 @@ export default function App() {
 
         <div className="catalog-detail-panel__body">
           <div className="catalog-create-side-panel__content">
+            <section className="catalog-create-form-card catalog-detail-section">
+              <div className="catalog-availability-row">
+                <div className="catalog-availability-row__copy">
+                  <p className="type-title-3">Modifier Availability</p>
+                  <p className="type-body text-secondary">
+                    Turn on to make this modifier available
+                  </p>
+                </div>
+                <Toggle
+                  checked={modifierDraft.availability}
+                  onChange={() =>
+                    handleModifierDraftChange(
+                      "availability",
+                      !modifierDraft.availability
+                    )
+                  }
+                  ariaLabel="Modifier availability"
+                />
+              </div>
+            </section>
             <DetailSection title="General Information">
               <div className="catalog-panel-info-list">
                 <div className="catalog-panel-info-list--single-column">
@@ -20260,32 +21372,16 @@ export default function App() {
               </div>
             </DetailSection>
 
-            <DetailSection title="Connect to Catalog">
-              <div className="catalog-panel-info-list catalog-panel-info-list--single-column">
-                <ModifierCatalogSelectField
-                  label="Catalog"
-                  value={modifierDraft.connectedCatalog}
-                  groups={modifierCatalogGroups}
-                  onChange={(value) =>
-                    handleModifierDraftChange("connectedCatalog", value)
-                  }
-                  placeholder="Select Catalog"
-                  ellipsis
-                />
-
-              </div>
-            </DetailSection>
-
 
 
             <DetailSection title="Modifier Options">
-              <section className="modifier-option-table">
+              <section className="modifier-option-table modifier-option-table--editable">
                 <div className="modifier-option-table__row modifier-option-table__row--header">
                   <div className="modifier-option-table__header-cell modifier-option-table__header-cell--handle" />
                   <div className="modifier-option-table__header-cell">
                     <p className="type-title-3">Option Name</p>
                   </div>
-                  <div className="modifier-option-table__header-cell">
+                  <div className="modifier-option-table__header-cell modifier-option-table__header-cell--price">
                     <p className="type-title-3">
                       Additional Price (Optional)
                     </p>
@@ -20386,6 +21482,19 @@ export default function App() {
                   </span>
                 </button>
               </section>
+            </DetailSection>
+            
+            <DetailSection title="Connected Catalog">
+              <div className="catalog-panel-info-list catalog-panel-info-list--single-column">
+                <ModifierCatalogModalField
+                  label="Catalog List"
+                  value={modifierDraft.connectedCatalog}
+                  groups={modifierCatalogGroups}
+                  onClick={() => openModifierCatalogModal("modifier-create", modifierDraft.connectedCatalog)}
+                  placeholder="Select Catalog"
+                  ellipsis
+                />
+              </div>
             </DetailSection>
 
             {showEntityAssignmentStep ? (
@@ -21048,43 +22157,57 @@ export default function App() {
                   className="catalog-create-form-card"
                 >
                   <div className="catalog-panel-info-list">
-                    <CatalogTypeField
-                      value={catalogDraft.type}
-                      onChange={handleCatalogTypeChange}
-                    />
-                    <DetailField
-                      label="Catalog Name"
-                      required
-                      value={catalogDraft.name}
-                      placeholder="Enter Catalog Name"
-                      onChange={(value) =>
-                        handleCatalogDraftChange("name", value)
-                      }
-                      error={catalogDraftErrors.name}
-                    />
-                    <DetailSelectField
-                      label="Unit"
-                      value={catalogDraft.unit}
-                      options={catalogUnitOptions}
-                      onChange={(value) =>
-                        handleCatalogDraftChange("unit", value)
-                      }
-                      placeholder="Select Unit"
-                    />
-                    <DetailSelectField
-                      label="Category"
-                      required
-                      value={catalogDraft.category}
-                      options={catalogCategoryOptions}
-                      onChange={(value) =>
-                        handleCatalogDraftChange("category", value)
-                      }
-                      placeholder="Select Category"
-                      error={catalogDraftErrors.category}
-                      treeOptions
-                    />
-                    {catalogDraft.type === "single" ? (
+                    {catalogDraft.type === "package" ? (
                       <div className="catalog-panel-info-list--single-column">
+                        <CatalogTypeField
+                          value={catalogDraft.type}
+                          onChange={handleCatalogTypeChange}
+                        />
+                      </div>
+                    ) : (
+                      <CatalogTypeField
+                        value={catalogDraft.type}
+                        onChange={handleCatalogTypeChange}
+                      />
+                    )}
+                    {catalogDraft.type === "single" ? (
+                      <DetailSelectField
+                        label="Unit"
+                        value={catalogDraft.unit}
+                        options={catalogUnitOptions}
+                        onChange={(value) =>
+                          handleCatalogDraftChange("unit", value)
+                        }
+                        placeholder="Select Unit"
+                      />
+                    ) : null}
+                    <div className="catalog-panel-info-list--single-column">
+                      <DetailField
+                        label="Catalog Name"
+                        required
+                        value={catalogDraft.name}
+                        placeholder="Enter Catalog Name"
+                        onChange={(value) =>
+                          handleCatalogDraftChange("name", value)
+                        }
+                        error={catalogDraftErrors.name}
+                      />
+                    </div>
+                    {catalogDraft.type === "single" ? (
+                      <DetailSelectField
+                        label="Category"
+                        required
+                        value={catalogDraft.category}
+                        options={catalogCategoryOptions}
+                        onChange={(value) =>
+                          handleCatalogDraftChange("category", value)
+                        }
+                        placeholder="Select Category"
+                        error={catalogDraftErrors.category}
+                        treeOptions
+                      />
+                    ) : null}
+                    {catalogDraft.type === "single" ? (
                         <DetailSelectField
                           label="Modifier"
                           value={catalogDraft.modifier}
@@ -21095,8 +22218,8 @@ export default function App() {
                           placeholder="Select Modifier"
                           multiple
                           multipleDisplay="summary"
+                          multipleSummaryFormatter={getCatalogModifierSummaryValue}
                         />
-                      </div>
                     ) : null}
                     <div className="catalog-panel-info-list--single-column">
                       <DetailTextAreaField
@@ -21685,9 +22808,9 @@ export default function App() {
               </p>
             </div>
             <Toggle
-              checked={catalogDetailDraft.availability}
+              checked={catalogDetailDraft.availability !== false}
               onChange={
-                isEditing && !isLockedSelectedBusinessUnit
+                !isLockedSelectedBusinessUnit
                   ? handleToggleCatalogDetailAvailability
                   : undefined
               }
@@ -21706,47 +22829,67 @@ export default function App() {
           >
             {isEditing ? (
               <>
-                <CatalogTypeField
-                  value={catalogDetailDraft.type}
-                  onChange={(value) => {
-                    const nextDraft = getNextCatalogDetailTypeDraft(
-                      catalogDetailDraft,
-                      value
-                    );
-                    setCatalogDetailDraft(nextDraft);
-                    catalogDetailDraftRef.current = nextDraft;
-                  }}
-                />
-                <DetailField
-                  label="Catalog Name"
-                  required
-                  value={catalogDetailDraft.name}
-                  placeholder="Enter Catalog Name"
-                  onChange={(value) => handleCatalogDetailChange("name", value)}
-                  error={catalogDetailDraftErrors.name}
-                />
-                <DetailSelectField
-                  label="Unit"
-                  value={catalogDetailDraft.unit}
-                  options={catalogUnitOptions}
-                  onChange={(value) => handleCatalogDetailChange("unit", value)}
-                  placeholder="Select Unit"
-                />
-                <DetailSelectField
-                  label="Category"
-                  required
-                  value={catalogDetailDraft.category}
-                  options={catalogCategoryOptions}
-                  onChange={(value) =>
-                    handleCatalogDetailChange("category", value)
-                  }
-                  error={catalogDetailDraftErrors.category}
-                  placeholder="Select Category"
-                  treeOptions
-                />
-
-                {catalogDetailDraft.type === "single" ? (
+                {catalogDetailDraft.type === "package" ? (
                   <div className="catalog-panel-info-list--single-column">
+                    <CatalogTypeField
+                      value={catalogDetailDraft.type}
+                      onChange={(value) => {
+                        const nextDraft = getNextCatalogDetailTypeDraft(
+                          catalogDetailDraft,
+                          value
+                        );
+                        setCatalogDetailDraft(nextDraft);
+                        catalogDetailDraftRef.current = nextDraft;
+                      }}
+                    />
+                  </div>
+                ) : (
+                  <>
+                    <CatalogTypeField
+                      value={catalogDetailDraft.type}
+                      onChange={(value) => {
+                        const nextDraft = getNextCatalogDetailTypeDraft(
+                          catalogDetailDraft,
+                          value
+                        );
+                        setCatalogDetailDraft(nextDraft);
+                        catalogDetailDraftRef.current = nextDraft;
+                      }}
+                    />
+                    <DetailSelectField
+                      label="Unit"
+                      value={catalogDetailDraft.unit}
+                      options={catalogUnitOptions}
+                      onChange={(value) => handleCatalogDetailChange("unit", value)}
+                      placeholder="Select Unit"
+                    />
+                  </>
+                )}
+                <div className="catalog-panel-info-list--single-column">
+                  <DetailField
+                    label="Catalog Name"
+                    required
+                    value={catalogDetailDraft.name}
+                    placeholder="Enter Catalog Name"
+                    onChange={(value) => handleCatalogDetailChange("name", value)}
+                    error={catalogDetailDraftErrors.name}
+                  />
+                </div>
+                {catalogDetailDraft.type === "single" ? (
+                  <DetailSelectField
+                    label="Category"
+                    required
+                    value={catalogDetailDraft.category}
+                    options={catalogCategoryOptions}
+                    onChange={(value) =>
+                      handleCatalogDetailChange("category", value)
+                    }
+                    error={catalogDetailDraftErrors.category}
+                    placeholder="Select Category"
+                    treeOptions
+                  />
+                ) : null}
+                {catalogDetailDraft.type === "single" ? (
                     <DetailSelectField
                       label="Modifier"
                       value={catalogDetailDraft.modifier}
@@ -21757,8 +22900,8 @@ export default function App() {
                       placeholder="Select Modifier"
                       multiple
                       multipleDisplay="summary"
+                      multipleSummaryFormatter={getCatalogModifierSummaryValue}
                     />
-                  </div>
                 ) : null}
                 <div className="catalog-panel-info-list--single-column">
                   <DetailTextAreaField
@@ -21773,35 +22916,49 @@ export default function App() {
               </>
             ) : (
               <>
-                <CatalogPanelInfoRow
-                  label="Catalog Type"
-                  value={
-                    catalogDetailDraft.type === "package"
-                      ? "Package"
-                      : "Single Product"
-                  }
-                />
-                <CatalogPanelInfoRow
-                  label="Catalog Name"
-                  value={catalogDetailDraft.name}
-                />
-                <CatalogPanelInfoRow
-                  label="Unit"
-                  value={catalogDetailDraft.unit || "Pcs"}
-                />
-                <CatalogPanelInfoRow
-                  label="Category"
-                  value={catalogDetailDraft.category}
-                />
-
+                {catalogDetailDraft.type === "package" ? (
+                  <div className="catalog-panel-info-list--single-column">
+                    <CatalogPanelInfoRow
+                      label="Catalog Type"
+                      value={
+                        catalogDetailDraft.type === "package"
+                          ? "Package"
+                          : "Single Product"
+                      }
+                    />
+                  </div>
+                ) : (
+                  <>
+                    <CatalogPanelInfoRow
+                      label="Catalog Type"
+                      value={
+                        catalogDetailDraft.type === "package"
+                          ? "Package"
+                          : "Single Product"
+                      }
+                    />
+                    <CatalogPanelInfoRow
+                      label="Unit"
+                      value={catalogDetailDraft.unit || "Pcs"}
+                    />
+                  </>
+                )}
+                <div className="catalog-panel-info-list--single-column">
+                  <CatalogPanelInfoRow
+                    label="Catalog Name"
+                    value={catalogDetailDraft.name}
+                  />
+                </div>
+                {catalogDetailDraft.type === "single" ? (
+                  <CatalogPanelInfoRow
+                    label="Category"
+                    value={catalogDetailDraft.category}
+                  />
+                ) : null}
                 {catalogDetailDraft.type === "single" ? (
                   <CatalogPanelInfoRow
                     label="Modifier"
-                    value={
-                      catalogDetailDraft.modifier.length
-                        ? `${catalogDetailDraft.modifier.length} Modifiers Selected`
-                        : "-"
-                    }
+                    value={getCatalogModifierDetailValue(catalogDetailDraft.modifier)}
                   />
                 ) : null}
                 <div className="catalog-panel-info-list--single-column">
@@ -22849,6 +24006,7 @@ export default function App() {
                               placeholder="Select Modifier"
                               multiple
                               multipleDisplay="summary"
+                              multipleSummaryFormatter={getCatalogModifierSummaryValue}
                             />
                           </div>
                           <InlineEditActions
@@ -22862,11 +24020,7 @@ export default function App() {
                     ) : (
                       <DetailReadField
                         label="Modifier"
-                        value={
-                          catalogDetailDraft.modifier.length
-                            ? `${catalogDetailDraft.modifier.length} Modifiers Connected`
-                            : "-"
-                        }
+                        value={getCatalogModifierDetailValue(catalogDetailDraft.modifier)}
                         onEdit={() =>
                           beginCatalogDetailEdit({
                             kind: "field",
@@ -23467,6 +24621,7 @@ export default function App() {
                     value={categoryDetailDraft.name}
                     placeholder="Enter Category Name"
                     onChange={(value) => handleCategoryDetailChange("name", value)}
+                    error={categoryDetailErrors.name}
                     autoFocus
                     ellipsis
                   />
@@ -23636,6 +24791,7 @@ export default function App() {
                     value={unitDetailDraft.name}
                     placeholder="Enter Unit Name"
                     onChange={(value) => handleUnitDetailChange("name", value)}
+                    error={unitDetailErrors.name}
                     autoFocus
                   />
                   <DetailSelectField
@@ -24117,8 +25273,7 @@ export default function App() {
       ? modifierDetailDraft.connectedCatalog.filter(Boolean)
       : [];
     const connectedCatalogValue = getModifierConnectedCatalogSummary(
-      connectedCatalogNames,
-      modifierCatalogGroups
+      connectedCatalogNames
     );
     const assignedUnits = modifierDetailDraft.assignedUnits ?? [];
     const assignmentRows = buildCatalogAssignedUnitRows(assignedUnits);
@@ -24194,6 +25349,28 @@ export default function App() {
         <div className="catalog-detail-panel__body">
           {activeModifierDetailTab === "general" ? (
             <>
+              <section className="catalog-create-form-card catalog-detail-section">
+                <div className="catalog-availability-row">
+                  <div className="catalog-availability-row__copy">
+                    <p className="catalog-panel-availability__title type-title-3">
+                      Modifier Availability
+                    </p>
+                    <p className="type-body text-secondary">
+                      Turn on to make this modifier available
+                    </p>
+                  </div>
+                  <Toggle
+                    checked={modifierDetailDraft.availability !== false}
+                    onChange={
+                      !isLockedSelectedBusinessUnit
+                        ? handleToggleModifierDetailAvailability
+                        : undefined
+                    }
+                    disabled={isLockedSelectedBusinessUnit}
+                    ariaLabel="Modifier availability"
+                  />
+                </div>
+              </section>
               <DetailSection title="General Information">
                 <div
                   className="catalog-panel-info-list"
@@ -24210,6 +25387,7 @@ export default function App() {
                           onChange={(value) =>
                             handleModifierDetailChange("name", value)
                           }
+                          error={modifierDetailErrors.name}
                           ellipsis
                         />
                       </div>
@@ -24252,8 +25430,6 @@ export default function App() {
                           </p>
                         </div>
                       </div>
-                      {/* Removed Allow Override Price toggle */}
-
                     </>
                   ) : (
                     <>
@@ -24277,238 +25453,194 @@ export default function App() {
                           ellipsis
                         />
                       </div>
-
-
                     </>
                   )}
                 </div>
               </DetailSection>
-              <DetailSection title="Connect to Catalog">
-
-                <div
-                  className="catalog-panel-info-list catalog-panel-info-list--single-column"
-                  data-modifier-detail-editor={isEditing ? "true" : undefined}
-                >
-                  {isEditing ? (
-                    <ModifierCatalogSelectField
-                      label="Catalog"
-                      value={modifierDetailDraft.connectedCatalog}
-                      groups={modifierCatalogGroups}
-                      onChange={(value) =>
-                        handleModifierDetailChange("connectedCatalog", value)
-                      }
-                      placeholder="Select Catalog"
-                      ellipsis
-                    />
-
-                  ) : (
-                    <CatalogPanelInfoRow
-                      label="Catalog"
-                      value={connectedCatalogValue}
-                      ellipsis
-
-                      helper={
-                        connectedCatalogNames.length
-                          ? connectedCatalogNames.join(", ")
-                          : null
-                      }
-                    />
-                  )}
-                </div>
-              </DetailSection>
-              <section className="modifier-detail-panel__section">
+              <DetailSection title="Modifier Options">
                 {visibleModifierOptions.length ? (
-                  <div
-                    className="modifier-detail-options-table-wrap table-scroll"
-                    data-scroll-left="false"
-                    data-scroll-right="false"
-                    onScroll={handleCatalogDetailPanelTableScroll}
+                  <section
+                    className={`modifier-option-table ${
+                      isEditing
+                        ? "modifier-option-table--editable modifier-option-table--with-availability"
+                        : "modifier-option-table--readonly"
+                    }`}
                   >
-                    <table className="modifier-detail-options-table">
-                      <thead>
-                        <tr>
-                          <th className="modifier-detail-options-table__handle-cell" />
-                          <th className="modifier-detail-options-table__name">
-                            <p className="type-title-3">Option Name</p>
-                          </th>
-                          <th className="modifier-detail-options-table__price">
-                            <p className="type-title-3">
-                              Additional Price (Optional)
-                            </p>
-                          </th>
-
-                          <th className="modifier-detail-options-table__action" />
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {visibleModifierOptions.map((option, index) => {
-                          if (isEditing) {
-                            return (
-                              <tr
-                                key={option.id}
-                                data-modifier-detail-editor="true"
-                                className={
-                                  modifierDragOverOptionId === option.id
-                                    ? "is-drag-over"
-                                    : ""
+                    <div className="modifier-option-table__row modifier-option-table__row--header">
+                      {isEditing ? (
+                        <div className="modifier-option-table__header-cell modifier-option-table__header-cell--handle" />
+                      ) : null}
+                      <div className="modifier-option-table__header-cell">
+                        <p className="type-title-3">Option Name</p>
+                      </div>
+                      <div className="modifier-option-table__header-cell modifier-option-table__header-cell--price">
+                        <p className="type-title-3">Additional Price</p>
+                      </div>
+                      <div className="modifier-option-table__header-cell modifier-option-table__header-cell--availability">
+                        <p className="type-title-3">Availability</p>
+                      </div>
+                      {isEditing ? (
+                        <div className="modifier-option-table__header-cell modifier-option-table__header-cell--action" />
+                      ) : null}
+                    </div>
+                    {visibleModifierOptions.map((option, index) => {
+                      if (isEditing) {
+                        return (
+                          <div
+                            key={option.id}
+                            data-modifier-detail-editor="true"
+                            className={`modifier-option-table__row${modifierDragOverOptionId === option.id ? " is-drag-over" : ""}`}
+                            onDragOver={(event) => {
+                              event.preventDefault();
+                              event.dataTransfer.dropEffect = "move";
+                              handleModifierDetailOptionDragOver(option.id);
+                            }}
+                            onDrop={(event) => {
+                              event.preventDefault();
+                              handleModifierDetailOptionDrop(option.id);
+                            }}
+                          >
+                            <div className="modifier-option-table__cell modifier-option-table__cell--handle">
+                              <ModifierReorderHandle
+                                ariaLabel={`Reorder option ${index + 1}`}
+                                onDragStart={(event) =>
+                                  handleModifierDetailOptionDragStart(option.id, event)
                                 }
-                                onDragOver={(event) => {
-                                  event.preventDefault();
-                                  handleModifierDetailOptionDragOver(option.id);
-                                }}
-                                onDrop={(event) => {
-                                  event.preventDefault();
-                                  handleModifierDetailOptionDrop(option.id);
-                                }}
-                              >
-                                <td className="modifier-detail-options-table__handle-cell">
-                                  <ModifierReorderHandle
-                                    ariaLabel={`Reorder option ${index + 1}`}
-                                    onDragStart={() =>
-                                      handleModifierDetailOptionDragStart(
-                                        option.id
-                                      )
-                                    }
-                                    onDragEnd={handleModifierOptionDragEnd}
-                                  />
-                                </td>
-                                <td className="modifier-detail-options-table__name">
-                                  <div className="modifier-option-table__field-stack">
-                                    <label className="modifier-option-table__field-shell">
-                                      <input
-                                        className={`type-subtitle-2${option.name ? "" : " text-tertiary"
-                                          }`}
-                                        type="text"
-                                        value={option.name}
-                                        placeholder={`Option Name ${index + 1}`}
-                                        onChange={(event) =>
-                                          handleModifierDetailOptionChange(
-                                            option.id,
-                                            "name",
-                                            event.target.value
-                                          )
-                                        }
-                                      />
-                                    </label>
-                                  </div>
-                                </td>
-                                <td className="modifier-detail-options-table__price">
-                                  <ModifierOptionPriceField
-                                    value={option.additionalPrice}
-                                    onChange={(value) =>
-                                      handleModifierDetailOptionChange(
-                                        option.id,
-                                        "additionalPrice",
-                                        value
-                                      )
-                                    }
-                                  />
-                                </td>
-
-                                <td className="modifier-detail-options-table__action">
-                                  <div className="modifier-detail-options-table__action-group">
-                                    <TableActionButton
-                                      tooltip="Remove"
-                                      onClick={() =>
-                                        handleRemoveModifierDetailOption(
-                                          option.id
-                                        )
-                                      }
-                                      ariaLabel={`Remove option ${index + 1}`}
-                                    >
-                                      <Icon
-                                        name="delete"
-                                        className="lab-icon lab-icon--16"
-                                        alt="Delete"
-                                      />
-                                    </TableActionButton>
-                                  </div>
-                                </td>
-                              </tr>
-                            );
-                          }
-
-                          return (
-                            <tr key={option.id}>
-                              <td className="modifier-detail-options-table__handle-cell">
-                                <span
-                                  className="modifier-detail-options-table__handle"
-                                  aria-hidden="true"
+                                onDragEnd={handleModifierDetailOptionDragEnd}
+                              />
+                            </div>
+                            <div className="modifier-option-table__cell modifier-option-table__cell--name">
+                              <div className="modifier-option-table__field-stack">
+                                {(() => {
+                                  const optionNameError = modifierDetailErrors.optionNames?.includes(option.id);
+                                  return (
+                                    <>
+                                      <label
+                                        className={`modifier-option-table__field-shell${optionNameError ? " is-error" : ""}`}
+                                      >
+                                        <input
+                                          className={`type-subtitle-2${option.name ? "" : " text-tertiary"}`}
+                                          type="text"
+                                          value={option.name}
+                                          placeholder={`Option Name ${index + 1}`}
+                                          onChange={(event) =>
+                                            handleModifierDetailOptionChange(
+                                              option.id,
+                                              "name",
+                                              event.target.value
+                                            )
+                                          }
+                                        />
+                                      </label>
+                                      {optionNameError ? (
+                                        <p className="modifier-option-table__field-error type-body">
+                                          Field cannot be empty
+                                        </p>
+                                      ) : null}
+                                    </>
+                                  );
+                                })()}
+                              </div>
+                            </div>
+                            <div className="modifier-option-table__cell modifier-option-table__cell--price">
+                              <ModifierOptionPriceField
+                                value={option.additionalPrice}
+                                onChange={(value) =>
+                                  handleModifierDetailOptionChange(
+                                    option.id,
+                                    "additionalPrice",
+                                    value
+                                  )
+                                }
+                              />
+                            </div>
+                            <div className="modifier-option-table__cell modifier-option-table__cell--availability" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              <Toggle
+                                checked={option.isAvailable !== false}
+                                onChange={() =>
+                                  handleModifierDetailOptionChange(
+                                    option.id,
+                                    "isAvailable",
+                                    option.isAvailable === false ? true : false
+                                  )
+                                }
+                                ariaLabel={`Availability for ${option.name || 'Option'}`}
+                              />
+                            </div>
+                            <div className="modifier-option-table__cell modifier-option-table__cell--action">
+                              <div className="modifier-detail-options-table__action-group">
+                                <TableActionButton
+                                  tooltip="Remove"
+                                  onClick={() => handleRemoveModifierDetailOption(option.id)}
+                                  ariaLabel={`Remove option ${index + 1}`}
                                 >
                                   <Icon
-                                    name="modifierReorder"
-                                    className="lab-icon lab-icon--20"
-                                    color="var(--neutral-on-surface-tertiary)"
+                                    name="delete"
+                                    className="lab-icon lab-icon--16"
+                                    alt="Delete"
                                   />
-                                </span>
-                              </td>
-                              <td className="modifier-detail-options-table__name">
-                                <p className="type-subtitle-2">
-                                  {option.name || "-"}
-                                </p>
-                              </td>
-                              <td className="modifier-detail-options-table__price">
-                                <p className="type-subtitle-2">
-                                  {formatModifierDetailOptionPrice(
-                                    option.additionalPrice
-                                  )}
-                                </p>
-                              </td>
+                                </TableActionButton>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      }
 
-                              <td className="modifier-detail-options-table__action">
-                                <div className="modifier-detail-options-table__action-group" />
-                              </td>
-                            </tr>
-                          );
-                        })}
-                        {isEditing ? (
-                          <tr className="modifier-detail-options-table__add-row">
-                            <td className="modifier-detail-options-table__handle-cell" />
-                            <td
-                              colSpan={3}
-
-                              className="modifier-detail-options-table__add-cell"
-                            >
-                              <button
-                                type="button"
-                                className="modifier-detail-options-table__add"
-                                data-modifier-detail-trigger="true"
-                                disabled={isLockedSelectedBusinessUnit}
-                                onClick={handleAddModifierDetailOption}
-                              >
-                                <Icon
-                                  name="modifierOptionAdd"
-                                  className="lab-icon"
-                                  alt=""
-                                />
-                                <p className="modifier-detail-options-table__add-label type-title-3">
-                                  Add Option
-                                </p>
-                              </button>
-                            </td>
-                          </tr>
-                        ) : null}
-                      </tbody>
-                    </table>
-                  </div>
+                      return (
+                        <div key={option.id} className="modifier-option-table__row">
+                          <div className="modifier-option-table__cell modifier-option-table__cell--name">
+                            <p className="type-subtitle-2">{option.name || "-"}</p>
+                          </div>
+                          <div className="modifier-option-table__cell modifier-option-table__cell--price">
+                            <p className="type-subtitle-2">
+                              {formatModifierDetailOptionPrice(option.additionalPrice)}
+                            </p>
+                          </div>
+                          <div className="modifier-option-table__cell modifier-option-table__cell--availability" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <Toggle
+                              checked={option.isAvailable !== false}
+                              onChange={() =>
+                                handleModifierDetailOptionChange(
+                                  option.id,
+                                  "isAvailable",
+                                  option.isAvailable === false ? true : false
+                                )
+                              }
+                              ariaLabel={`Availability for ${option.name || 'Option'}`}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {isEditing ? (
+                      <button
+                        type="button"
+                        className="modifier-option-table__add"
+                        data-modifier-detail-trigger="true"
+                        disabled={isLockedSelectedBusinessUnit}
+                        onClick={handleAddModifierDetailOption}
+                      >
+                        <Icon name="modifierOptionAdd" className="lab-icon" alt="" />
+                        <span className="modifier-option-table__add-label type-title-3">
+                          Add Option
+                        </span>
+                      </button>
+                    ) : null}
+                  </section>
                 ) : (
                   <div className="modifier-detail-options-empty">
                     {isEditing ? (
                       <button
                         type="button"
-                        className="modifier-detail-options-table__add"
+                        className="modifier-option-table__add"
                         data-modifier-detail-trigger="true"
                         disabled={isLockedSelectedBusinessUnit}
                         onClick={handleAddModifierDetailOption}
                       >
-                        <Icon
-                          name="modifierOptionAdd"
-                          className="lab-icon"
-                          alt=""
-                        />
-                        <p className="modifier-detail-options-table__add-label type-title-3">
+                        <Icon name="modifierOptionAdd" className="lab-icon" alt="" />
+                        <span className="modifier-option-table__add-label type-title-3">
                           Add Option
-                        </p>
+                        </span>
                       </button>
                     ) : (
                       <p className="type-body text-secondary">
@@ -24517,7 +25649,29 @@ export default function App() {
                     )}
                   </div>
                 )}
-              </section>
+              </DetailSection>
+
+              <DetailSection title="Connected Catalog">
+                {isEditing ? (
+                  <div className="catalog-panel-info-list catalog-panel-info-list--single-column">
+                    <ModifierCatalogModalField
+                      label="Catalog List"
+                      value={modifierDetailDraft.connectedCatalog}
+                      groups={modifierCatalogGroups}
+                      onClick={() => openModifierCatalogModal("modifier-detail", modifierDetailDraft.connectedCatalog)}
+                      placeholder="Select Catalog"
+                      ellipsis
+                    />
+                  </div>
+                ) : (
+                  <div className="catalog-panel-info-list catalog-panel-info-list--single-column">
+                    <CatalogPanelInfoRow
+                      label="Catalog List"
+                      value={connectedCatalogValue}
+                    />
+                  </div>
+                )}
+              </DetailSection>
             </>
           ) : (
             <DetailSection
@@ -24795,6 +25949,7 @@ export default function App() {
                       onChange={(value) =>
                         handlePricingRuleDetailChange("name", value)
                       }
+                      error={pricingRuleDetailErrors.name}
                     />
                     <PricingRuleDateField
                       label="Start Date"
@@ -25015,6 +26170,20 @@ export default function App() {
     const isSellingTimePage = pageId === "selling-time";
     const isDeviceManagementPage = pageId === "device-management";
     const isGroupedDevicePage = pageId === "grouped-device";
+    const groupedDeviceGroups = records["grouped-device"] || [];
+    const groupedDeviceCatalogValues = new Set(
+      groupedDeviceGroups.flatMap((group) => group.catalogList || [])
+    );
+    const groupedDeviceUnassignedCatalogList = (records.catalog || [])
+      .filter(
+        (catalog) =>
+          !groupedDeviceCatalogValues.has(catalog.id) &&
+          !groupedDeviceCatalogValues.has(catalog.name)
+      )
+      .map((catalog) => catalog.name)
+      .sort((a, b) => String(a).localeCompare(String(b)));
+    const groupedDeviceUnassignedCatalogCount = groupedDeviceUnassignedCatalogList.length;
+    const hasGroupedDeviceGroups = groupedDeviceGroups.length > 0;
     const isRoleAccessPage = pageId === "role-access";
     const isCategoryCreateOpen = isCategoryPage && currentPage === "category-create";
     const isUnitCreateOpen = isUnitPage && currentPage === "unit-create";
@@ -25155,6 +26324,43 @@ export default function App() {
                 actionLabel={config.actionLabel}
                 onAction={handlePageAction}
               />
+              {isGroupedDevicePage ? (
+                <div className="grouped-device-info-banner">
+                  {!hasGroupedDeviceGroups ? (
+                    <div className="lab-infobox lab-infobox--blue">
+                      <div className="lab-infobox__copy">
+                        <p className="type-body-bold">
+                          No KDS group configured yet
+                        </p>
+                        <p className="type-body">
+                          All catalog items will be sent to all Tablet (KDS)
+                          devices until you create a KDS group.
+                        </p>
+                      </div>
+                    </div>
+                  ) : groupedDeviceUnassignedCatalogCount > 0 ? (
+                    <div className="lab-infobox lab-infobox--orange">
+                      <div className="lab-infobox__copy grouped-device-unrouted-banner__copy">
+                        <p className="type-body grouped-device-unrouted-banner__message">
+                          <span className="type-body-bold">
+                            {groupedDeviceUnassignedCatalogCount} unrouted catalog
+                          </span>{" "}
+                          <span>
+                            Unrouted catalog may not be sent to the kitchen.
+                          </span>
+                        </p>
+                        <button
+                          type="button"
+                          className="lab-button grouped-device-unrouted-banner__button"
+                          onClick={() => setIsUnroutedCatalogModalOpen(true)}
+                        >
+                          View Detail
+                        </button>
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
               <div
                 className="table-scroll"
                 data-scroll-top="false"
@@ -25458,6 +26664,18 @@ export default function App() {
                                 );
                               }
 
+                              if (column.type === "component") {
+                                return (
+                                  <td
+                                    key={column.key}
+                                    className={cellClassName}
+                                    style={cellStyle}
+                                  >
+                                    {cellValue}
+                                  </td>
+                                );
+                              }
+
                               if (column.type === "link") {
                                 const cellValueToRender = cellValue;
 
@@ -25585,6 +26803,7 @@ export default function App() {
 
   function executeCancelDeviceManagementDetailEdit() {
     setDeviceManagementDetailEditing(null);
+    setDeviceManagementDetailErrors({});
     const currentRow = (records["device-management"] || []).find(d => d.id === deviceManagementDetailId);
     if (currentRow) {
       setDeviceManagementDraft((prev) => ({ ...prev, deviceName: currentRow.deviceName }));
@@ -25594,10 +26813,17 @@ export default function App() {
   function saveDeviceManagementDetailEdit(showSnackbarMessage = true) {
     const trimmed = deviceManagementDetailDraftRef.current?.deviceName?.trim() || "";
     if (!trimmed) {
-      cancelDeviceManagementDetailEdit();
+      setDeviceManagementDetailErrors({ deviceName: true });
       return false;
     }
 
+    const duplicateNameError = getDuplicateDeviceNameError(trimmed, deviceManagementDetailId);
+    if (duplicateNameError) {
+      setDeviceManagementDetailErrors({ deviceName: duplicateNameError });
+      return false;
+    }
+
+    setDeviceManagementDetailErrors({});
     setRecords((prev) => ({
       ...prev,
       "device-management": (prev["device-management"] || []).map((d) =>
@@ -25638,6 +26864,8 @@ export default function App() {
     const errors = {};
     const trimmedName = deviceManagementDraft.deviceName.trim();
     if (!trimmedName) errors.deviceName = true;
+    const duplicateNameError = getDuplicateDeviceNameError(trimmedName);
+    if (duplicateNameError) errors.deviceName = duplicateNameError;
     if (!deviceManagementDraft.deviceType) errors.deviceType = true;
     if (Object.keys(errors).length) {
       setDeviceManagementDraftErrors(errors);
@@ -25687,11 +26915,9 @@ export default function App() {
     const trimmedName = (groupedDeviceDraft.name || "").trim();
     if (!trimmedName) errors.name = true;
 
-    const isDuplicate = (records["grouped-device"] || []).some(
-      (g) => g.name.toLowerCase() === trimmedName.toLowerCase()
-    );
-    if (isDuplicate) {
-      errors.name = "Device group name already exists";
+    const duplicateNameError = getDuplicateKdsGroupNameError(trimmedName);
+    if (duplicateNameError) {
+      errors.name = duplicateNameError;
     }
 
     if (!groupedDeviceDraft.deviceList || groupedDeviceDraft.deviceList.length === 0) {
@@ -25723,10 +26949,12 @@ export default function App() {
   }
 
   function renderGroupedDeviceCreateSidePanel() {
-    const deviceSelectionOptions = (records["device-management"] || []).map((d) => ({
-      value: d.id,
-      label: d.deviceName,
-    }));
+    const deviceSelectionOptions = (records["device-management"] || [])
+      .filter((d) => d.deviceType === "Tablet (KDS)")
+      .map((d) => ({
+        value: d.id,
+        label: d.deviceName,
+      }));
     const catalogSelectionOptions = (records["catalog"] || []).map((c) => ({
       value: c.id,
       label: c.name,
@@ -25737,14 +26965,14 @@ export default function App() {
         <div className="catalog-detail-panel__header">
           <div className="catalog-detail-panel__titlebar">
             <p className="catalog-detail-panel__title type-title-2">
-              Add New Device Group
+              Add New KDS Group
             </p>
             <div className="catalog-detail-panel__actions">
               <button
                 type="button"
                 className="catalog-detail-panel__close"
                 onClick={closeGroupedDeviceCreatePage}
-                aria-label="Close add Device Group panel"
+                aria-label="Close add KDS Group panel"
               >
                 <Icon
                   name="panelClose"
@@ -25758,49 +26986,57 @@ export default function App() {
         <div className="catalog-detail-panel__body">
           <div className="catalog-create-side-panel__content catalog-create-side-panel__content--compact">
             <DetailSection title="General Information">
-              <div className="catalog-panel-info-list">
-                <div className="modifier-create-row" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
-                  <DetailField
-                    label="Device Group Name"
-                    required
-                    value={groupedDeviceDraft.name}
-                    placeholder="e.g. Kitchen Group"
-                    onChange={(value) =>
-                      setGroupedDeviceDraft((prev) => ({ ...prev, name: value }))
-                    }
-                    error={groupedDeviceDraftErrors.name}
-                  />
-                  <DetailSelectField
-                    label="Device List"
-                    required
-                    error={groupedDeviceDraftErrors.deviceList}
-                    value={groupedDeviceDraft.deviceList}
-                    options={deviceSelectionOptions}
-                    onChange={(value) =>
-                      setGroupedDeviceDraft((prev) => ({ ...prev, deviceList: value }))
-                    }
-                    placeholder="Select Devices"
-                    multiple
-                    multipleDisplay="summary"
-                  />
-                </div>
-                <div className="catalog-panel-info-list--single-column">
-                  <ModifierCatalogSelectField
-                    label="Catalog List"
-                    required
-                    error={groupedDeviceDraftErrors.catalogList}
-                    value={groupedDeviceDraft.catalogList}
-                    groups={modifierCatalogGroups}
-                    onChange={(value) =>
-                      setGroupedDeviceDraft((prev) => ({
-                        ...prev,
-                        catalogList: value,
-                      }))
-                    }
-                    placeholder="Select Catalogs"
-                    multiple
-                  />
-                </div>
+              <div className="catalog-panel-info-list catalog-panel-info-list--single-column">
+                <DetailField
+                  label="KDS Group Name"
+                  required
+                  value={groupedDeviceDraft.name}
+                  placeholder="e.g. Kitchen Group"
+                  onChange={(value) =>
+                    setGroupedDeviceDraft((prev) => ({ ...prev, name: value }))
+                  }
+                  error={groupedDeviceDraftErrors.name}
+                />
+                <DetailSelectField
+                  label="Device List"
+                  required
+                  error={groupedDeviceDraftErrors.deviceList}
+                  value={groupedDeviceDraft.deviceList}
+                  options={deviceSelectionOptions}
+                  onChange={(value) =>
+                    setGroupedDeviceDraft((prev) => ({ ...prev, deviceList: value }))
+                  }
+                  placeholder="Select Devices"
+                  multiple
+                  multipleDisplay="summary"
+                  multipleSummaryFormatter={({
+                    selectedValues,
+                    selectedLabels,
+                    placeholder,
+                  }) =>
+                    getGroupedDeviceListSummary({
+                      selectedValues,
+                      selectedLabels,
+                      placeholder,
+                      totalOptions: deviceSelectionOptions.length,
+                    })
+                  }
+                />
+                <ModifierCatalogModalField
+                  label="Catalog List"
+                  required
+                  error={groupedDeviceDraftErrors.catalogList}
+                  value={groupedDeviceDraft.catalogList}
+                  groups={groupedDeviceCatalogGroups}
+                  onClick={() =>
+                    openModifierCatalogModal(
+                      "grouped-device-create",
+                      groupedDeviceDraft.catalogList
+                    )
+                  }
+                  placeholder="Select KDS Catalogs"
+                  ellipsis
+                />
               </div>
             </DetailSection>
           </div>
@@ -25822,27 +27058,34 @@ export default function App() {
     if (!row || !groupedDeviceDetailDraft) return null;
     const isEditing = Boolean(groupedDeviceDetailEditing);
     const displayName = isEditing ? groupedDeviceDetailDraft.name : row.name;
+    const deviceRows = records["device-management"] || [];
+    const catalogRows = records["catalog"] || [];
 
-    const deviceSelectionOptions = (records["device-management"] || []).map((d) => ({
-      value: d.id,
-      label: d.deviceName,
-    }));
-    const catalogSelectionOptions = (records["catalog"] || []).map((c) => ({
-      value: c.id,
-      label: c.name,
-    }));
+    const deviceSelectionOptions = deviceRows
+      .filter((d) => d.deviceType === "Tablet (KDS)")
+      .map((d) => ({
+        value: d.id,
+        label: d.deviceName,
+      }));
 
     const targetDeviceList = isEditing ? groupedDeviceDetailDraft.deviceList : row.deviceList;
     const targetCatalogList = isEditing ? groupedDeviceDetailDraft.catalogList : row.catalogList;
 
-    const deviceNames = (targetDeviceList || [])
-      .map(
-        (id) => (records["device-management"] || []).find((d) => d.id === id)?.deviceName
-      )
-      .filter(Boolean);
-    const catalogNames = (targetCatalogList || [])
-      .map((id) => (records["catalog"] || []).find((c) => c.id === id)?.name)
-      .filter(Boolean);
+    const deviceListRows = getGroupedDeviceDeviceRows(
+      deviceRows,
+      targetDeviceList || []
+    );
+    const deviceNames = deviceListRows.map((device) => device.deviceName);
+    const groupedDeviceDeviceRows = deviceListRows.map((device) => ({
+      tabletName: device.deviceName,
+      printers: Array.isArray(device.connectedDevices)
+        ? device.connectedDevices.filter(Boolean)
+        : [],
+    }));
+    const catalogNames = getGroupedDeviceCatalogNames(
+      catalogRows,
+      targetCatalogList || []
+    );
 
     return (
       <aside className="catalog-detail-side-panel catalog-detail-panel">
@@ -25882,67 +27125,107 @@ export default function App() {
         <div className="catalog-detail-panel__body">
           <div className="catalog-create-side-panel__content catalog-create-side-panel__content--compact">
             <DetailSection title="General Information">
-              <div className="catalog-panel-info-list">
+              <div className="catalog-panel-info-list catalog-panel-info-list--single-column">
                 {isEditing ? (
                   <>
-                    <div className="modifier-create-row" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
-                      <DetailField
-                        label="Device Group Name"
-                        required
-                        error={groupedDeviceDetailDraftErrors.name}
-                        value={groupedDeviceDetailDraft.name}
-                        onChange={(val) => setGroupedDeviceDetailDraft(prev => ({ ...prev, name: val }))}
-                      />
-                      <DetailSelectField
-                        label="Device List"
-                        required
-                        error={groupedDeviceDetailDraftErrors.deviceList}
-                        value={groupedDeviceDetailDraft.deviceList}
-                        options={deviceSelectionOptions}
-                        onChange={(value) =>
-                          setGroupedDeviceDetailDraft((prev) => ({ ...prev, deviceList: value }))
-                        }
-                        placeholder="Select Devices"
-                        multiple
-                        multipleDisplay="summary"
-                      />
-                    </div>
-                    <div className="catalog-panel-info-list--single-column">
-                      <ModifierCatalogSelectField
-                        label="Catalog List"
-                        required
-                        error={groupedDeviceDetailDraftErrors.catalogList}
-                        value={groupedDeviceDetailDraft.catalogList}
-                        groups={modifierCatalogGroups}
-                        onChange={(value) =>
-                          setGroupedDeviceDetailDraft((prev) => ({
-                            ...prev,
-                            catalogList: value,
-                          }))
-                        }
-                        placeholder="Select Catalogs"
-                        multiple
-                      />
-                    </div>
+                    <DetailField
+                      label="KDS Group Name"
+                      required
+                      error={groupedDeviceDetailDraftErrors.name}
+                      value={groupedDeviceDetailDraft.name}
+                      onChange={(val) =>
+                        setGroupedDeviceDetailDraft((prev) => ({
+                          ...prev,
+                          name: val,
+                        }))
+                      }
+                    />
+                    <DetailSelectField
+                      label="Device List"
+                      required
+                      error={groupedDeviceDetailDraftErrors.deviceList}
+                      value={groupedDeviceDetailDraft.deviceList}
+                      options={deviceSelectionOptions}
+                      onChange={(value) =>
+                        setGroupedDeviceDetailDraft((prev) => ({
+                          ...prev,
+                          deviceList: value,
+                        }))
+                      }
+                      placeholder="Select Devices"
+                      multiple
+                      multipleDisplay="summary"
+                      multipleSummaryFormatter={({
+                        selectedValues,
+                        selectedLabels,
+                        placeholder,
+                      }) =>
+                        getGroupedDeviceListSummary({
+                          selectedValues,
+                          selectedLabels,
+                          placeholder,
+                          totalOptions: deviceSelectionOptions.length,
+                        })
+                      }
+                    />
+                    <ModifierCatalogModalField
+                      label="Catalog List"
+                      required
+                      error={groupedDeviceDetailDraftErrors.catalogList}
+                      value={groupedDeviceDetailDraft.catalogList}
+                      groups={groupedDeviceCatalogGroups}
+                      onClick={() =>
+                        openModifierCatalogModal(
+                          "grouped-device-detail",
+                          groupedDeviceDetailDraft.catalogList
+                        )
+                      }
+                      placeholder="Select KDS Catalogs"
+                      ellipsis
+                    />
                   </>
                 ) : (
                   <>
-                    <div className="modifier-create-row" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
-                      <CatalogPanelInfoRow
-                        label="Device Group Name"
-                        value={displayName}
-                      />
-                      <CatalogPanelInfoRow
-                        label="Device List"
-                        value={deviceNames.length ? deviceNames.join(", ") : "-"}
-                      />
-                    </div>
-                    <div className="catalog-panel-info-list--single-column">
-                      <CatalogPanelInfoRow
-                        label="Catalog List"
-                        value={catalogNames.length ? catalogNames.join(", ") : "-"}
-                      />
-                    </div>
+                    <CatalogPanelInfoRow
+                      label="KDS Group Name"
+                      value={displayName}
+                    />
+                    <CatalogPanelInfoRow
+                      label="Device List"
+                      value={
+                        deviceNames.length ? (
+                          <ul className="grouped-device-detail-list">
+                            {groupedDeviceDeviceRows.map((device) => (
+                              <li
+                                key={device.tabletName}
+                                className="grouped-device-detail-list__item"
+                              >
+                                <span>{device.tabletName}</span>
+                                {device.printers.length ? (
+                                  <ul className="grouped-device-detail-list grouped-device-detail-list--nested">
+                                    {device.printers.map((printer) => (
+                                      <li key={printer}>{printer}</li>
+                                    ))}
+                                  </ul>
+                                ) : null}
+                              </li>
+                            ))}
+                          </ul>
+                        ) : "-"
+                      }
+                    />
+                    <CatalogPanelInfoRow
+                      label="Catalog List"
+                      value={
+                        catalogNames.length ? (
+                          <ul className="grouped-device-detail-list">
+                            {catalogNames.map((name) => (
+                              <li key={name}>{name}</li>
+                            ))}
+                          </ul>
+                        ) : "-"
+                      }
+                    />
                   </>
                 )}
               </div>
@@ -25970,7 +27253,7 @@ export default function App() {
           </div>
         ) : (
           <DetailPanelDeleteAction
-            ariaLabel="Delete Device Group"
+            ariaLabel="Delete KDS Group"
             onDelete={() => requestDeleteRow("grouped-device", row.id, row.name)}
           />
         )}
@@ -25983,11 +27266,12 @@ export default function App() {
     const trimmedName = (groupedDeviceDetailDraft.name || "").trim();
     if (!trimmedName) errors.name = true;
 
-    const isDuplicate = (records["grouped-device"] || []).some(
-      (g) => g.id !== groupedDeviceDetailId && g.name.toLowerCase() === trimmedName.toLowerCase()
+    const duplicateNameError = getDuplicateKdsGroupNameError(
+      trimmedName,
+      groupedDeviceDetailId
     );
-    if (isDuplicate) {
-      errors.name = "Device group name already exists";
+    if (duplicateNameError) {
+      errors.name = duplicateNameError;
     }
 
     if (!groupedDeviceDetailDraft.deviceList || groupedDeviceDetailDraft.deviceList.length === 0) {
@@ -26013,7 +27297,7 @@ export default function App() {
     }));
     setGroupedDeviceDetailEditing(null);
     setGroupedDeviceDetailDraftErrors({});
-    showSnackbar("Device group updated", "green");
+    showSnackbar("KDS group updated", "green");
   }
 
   function cancelGroupedDeviceDetailEdit() {
@@ -26292,6 +27576,7 @@ export default function App() {
                         onChange={(value) =>
                           setDeviceManagementDraft((prev) => ({ ...prev, deviceName: value }))
                         }
+                        error={deviceManagementDetailErrors.deviceName}
                       />
                       {isPrinterDevice && (
                         <DetailField label="Device Connected" value={deviceConnectedValue.split(",")[0].trim()} disabled />
@@ -30282,7 +31567,7 @@ export default function App() {
         return { title: "Device List" };
       case "grouped-device":
       case "grouped-device-create":
-        return { title: "Device Group" };
+        return { title: "KDS Group" };
       case "role-management":
       case "role-management-create":
       case "role-access":
@@ -30352,6 +31637,82 @@ export default function App() {
         onClose={closeUnitAssignmentModal}
         onConfirm={handleConfirmUnitAssignment}
       />
+      <ModifierCatalogSelectionModal
+        open={isModifierCatalogModalOpen}
+        title={
+          modifierCatalogModalTarget?.startsWith("grouped-device")
+            ? "Select Catalogs for KDS Group"
+            : "Connect to Catalog"
+        }
+        descriptionCopy={
+          modifierCatalogModalTarget?.startsWith("grouped-device")
+            ? "Choose catalog items to route through this KDS group"
+            : "Select catalog(s) to connect to this modifier"
+        }
+        value={modifierCatalogModalValue}
+        groups={
+          modifierCatalogModalTarget?.startsWith("grouped-device")
+            ? groupedDeviceCatalogGroups
+            : modifierCatalogGroups
+        }
+        onChange={setModifierCatalogModalValue}
+        onClose={closeModifierCatalogModal}
+        onConfirm={confirmModifierCatalogModal}
+      />
+      {isUnroutedCatalogModalOpen && (
+        <div className="unit-assignment-modal-overlay" onMouseDown={() => setIsUnroutedCatalogModalOpen(false)}>
+          <div
+            className="unit-assignment-modal modifier-catalog-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="unrouted-catalog-modal-title"
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            <div className="unit-assignment-modal__close-row">
+              <button
+                type="button"
+                className="unit-assignment-modal__close"
+                onClick={() => setIsUnroutedCatalogModalOpen(false)}
+                aria-label="Close modal"
+              >
+                <Icon name="modalClose" className="lab-icon lab-icon--20" alt="" />
+              </button>
+            </div>
+            <div className="unit-assignment-modal__header">
+              <p
+                id="unrouted-catalog-modal-title"
+                className="unit-assignment-modal__title type-title-1"
+              >
+                Unrouted Catalogs
+              </p>
+              <p className="unit-assignment-modal__copy type-body-bold">
+                These catalogs are not assigned to any KDS group
+              </p>
+            </div>
+            <div className="unit-assignment-modal__body">
+              <div className="modifier-catalog-modal__list">
+                {groupedDeviceUnassignedCatalogList.map((name) => (
+                  <div key={name} className="modifier-catalog-modal__item">
+                    <p className="modifier-catalog-modal__item-label type-subtitle-2">
+                      {name}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="unit-assignment-modal__footer">
+              <div className="modifier-catalog-modal__footer-actions">
+                <LabButton
+                  label="Close"
+                  variant="secondary"
+                  size="medium"
+                  onClick={() => setIsUnroutedCatalogModalOpen(false)}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       <DiscardChangesModal
         open={discardCreateModalOpen}
         itemLabel={getActiveCreatePanelConfig()?.label ?? ""}

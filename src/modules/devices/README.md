@@ -25,7 +25,7 @@
 - `panels/DeviceEditPanel.jsx` remains App.jsx-owned as the edit-state branch inside the current device detail-panel workflow.
 - `panels/GroupedDeviceAddPanel.jsx` remains App.jsx-owned via `renderGroupedDeviceCreateSidePanel()`.
 - `panels/GroupedDeviceDetailPanel.jsx` remains App.jsx-owned via `renderGroupedDeviceDetailSidePanel()`.
-- `panels/GroupedDeviceEditPanel.jsx` remains App.jsx-owned as the edit-state branch inside the current Device Group detail-panel workflow.
+- `panels/GroupedDeviceEditPanel.jsx` remains App.jsx-owned as the edit-state branch inside the current KDS Group detail-panel workflow.
 
 ## Why Implementation Still Lives In App.jsx
 

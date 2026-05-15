@@ -124,9 +124,18 @@ export function RoleManagementDetailPanel({
             <DetailSection title="Access Permissions">
               <RolePermissionsList
                 permissions={draft.permissions}
+                sectionStates={draft.permissionSections}
+                sectionErrors={errors?.permissionSections}
+                accessError={errors?.permissions}
                 isEditing={isEditing}
                 onChange={(modId, val) =>
                   onChange("permissions", { ...draft.permissions, [modId]: val })
+                }
+                onSectionToggle={(sectionId, enabled) =>
+                  onChange("permissionSections", {
+                    ...draft.permissionSections,
+                    [sectionId]: enabled,
+                  })
                 }
                 structure={permissionsStructure}
               />

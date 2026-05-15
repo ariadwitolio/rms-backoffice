@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { ChevronIcon, Icon } from "../../../components/icons/Icon.jsx";
-import { LabCheckbox } from "../../../components/ui/Primitives.jsx";
+import { LabCheckbox, Toggle } from "../../../components/ui/Primitives.jsx";
 
 const ROLE_ACCESS_LEVELS = [
   { id: "none", label: "No Access" },
@@ -167,6 +167,10 @@ function RolePermissionAdditionalAccess({
   const enabledAccess = module.additionalAccess.filter(
     (access) => Boolean(permission.additionalAccess?.[access.id])
   );
+
+  if (!isEditing && !enabledAccess.length) {
+    return null;
+  }
 
   return (
     <div
@@ -356,10 +360,23 @@ export function RolePermissionRow({
   );
 }
 
-function RolePermissionsGroup({ group, permissions, onChange, isEditing, gIdx }) {
+function RolePermissionsGroup({
+  group,
+  permissions,
+  onChange,
+  isEditing,
+  gIdx,
+  sectionEnabled = true,
+  onSectionToggle,
+  error = "",
+}) {
+  const showSectionStatus = !isEditing && !sectionEnabled;
+  const showSectionError = isEditing && sectionEnabled && Boolean(error);
+  const shouldShowBody = sectionEnabled;
+
   return (
     <section
-      key={group.group}
+      key={group.id}
       style={{
         marginTop: gIdx === 0 ? "0" : "12px",
         border: "1px solid var(--neutral-line-outline)",
@@ -372,8 +389,12 @@ function RolePermissionsGroup({ group, permissions, onChange, isEditing, gIdx })
           padding: "12px 16px",
           display: "flex",
           alignItems: "center",
+          justifyContent: "space-between",
           gap: "12px",
-          borderBottom: "1px solid var(--neutral-line-outline)",
+          borderBottom:
+            shouldShowBody || showSectionError
+              ? "1px solid var(--neutral-line-outline)"
+              : "none",
         }}
       >
         <p
@@ -388,19 +409,51 @@ function RolePermissionsGroup({ group, permissions, onChange, isEditing, gIdx })
         >
           {group.group}
         </p>
+        {isEditing ? (
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "10px",
+              flexShrink: 0,
+            }}
+          >
+            <p className="type-body text-secondary" style={{ margin: 0 }}>
+              {sectionEnabled ? "On" : "Off"}
+            </p>
+            <Toggle
+              checked={sectionEnabled}
+              onChange={() => onSectionToggle?.(group.id, !sectionEnabled)}
+              ariaLabel={`${group.group} access`}
+            />
+          </div>
+        ) : showSectionStatus ? (
+          <span className="status-pill status-pill--small status-pill--muted">
+            <span className="type-body">No Access</span>
+          </span>
+        ) : null}
       </div>
-      <div style={{ padding: "0 16px", animation: "fadeIn 0.2s ease-out" }}>
-        {group.modules.map((module, moduleIdx) => (
-          <RolePermissionRow
-            key={module.id}
-            module={module}
-            permission={permissions[module.id]}
-            onChange={(nextPermission) => onChange(module.id, nextPermission)}
-            isEditing={isEditing}
-            isLast={moduleIdx === group.modules.length - 1}
-          />
-        ))}
-      </div>
+      {showSectionError ? (
+        <div style={{ padding: "12px 16px 0" }}>
+          <p className="catalog-detail-field__error type-body" style={{ margin: 0 }}>
+            {error}
+          </p>
+        </div>
+      ) : null}
+      {shouldShowBody ? (
+        <div style={{ padding: "0 16px", animation: "fadeIn 0.2s ease-out" }}>
+          {group.modules.map((module, moduleIdx) => (
+            <RolePermissionRow
+              key={module.id}
+              module={module}
+              permission={permissions[module.id]}
+              onChange={(nextPermission) => onChange(module.id, nextPermission)}
+              isEditing={isEditing}
+              isLast={moduleIdx === group.modules.length - 1}
+            />
+          ))}
+        </div>
+      ) : null}
     </section>
   );
 }
@@ -410,19 +463,34 @@ export function RolePermissionsList({
   onChange,
   isEditing,
   structure,
+  sectionStates = {},
+  onSectionToggle,
+  sectionErrors = {},
+  accessError = "",
 }) {
   return (
     <div className="role-permissions-list">
       {structure.map((group, gIdx) => (
         <RolePermissionsGroup
-          key={group.group}
+          key={group.id}
           group={group}
           permissions={permissions}
           onChange={onChange}
           isEditing={isEditing}
           gIdx={gIdx}
+          sectionEnabled={sectionStates[group.id] !== false}
+          onSectionToggle={onSectionToggle}
+          error={sectionErrors[group.id]}
         />
       ))}
+      {accessError ? (
+        <p
+          className="catalog-detail-field__error type-body"
+          style={{ margin: "12px 0 0" }}
+        >
+          {accessError}
+        </p>
+      ) : null}
     </div>
   );
 }
