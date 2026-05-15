@@ -136,7 +136,7 @@ export default function CatalogListPage({
                     </span>
                   </button>
                 </th>
-                <th>
+                <th className="lab-table__toggle lab-table__cell--center">
                   <p className="type-title-3">Availability</p>
                 </th>
                 <th className="lab-table__action" />
@@ -184,7 +184,7 @@ export default function CatalogListPage({
                       </p>
                     </td>
                     <td
-                      className="lab-table__toggle"
+                      className="lab-table__toggle lab-table__cell--center"
                       onClick={(event) => event.stopPropagation()}
                     >
                       <Toggle

@@ -2062,30 +2062,60 @@ img {
   margin-bottom: 16px;
 }
 
+.grouped-device-empty-banner__copy {
+  width: 100%;
+}
+
+.grouped-device-empty-banner__message {
+  font-size: 15px;
+  line-height: 22px;
+}
+
+.grouped-device-empty-banner__title {
+  font-weight: 600;
+}
+
 .grouped-device-unrouted-banner__copy {
+  align-items: center;
+  column-gap: 8px;
   flex-wrap: wrap;
-  justify-content: space-between;
+  justify-content: flex-start;
+  row-gap: 8px;
   width: 100%;
 }
 
 .grouped-device-unrouted-banner__message {
-  flex: 1;
+  align-items: baseline;
+  display: flex;
+  flex: 0 1 auto;
+  flex-wrap: wrap;
+  font-size: 15px;
+  gap: 4px;
+  line-height: 22px;
   margin: 0;
   min-width: 0;
-  white-space: nowrap;
+  white-space: normal;
+}
+
+.grouped-device-unrouted-banner__count {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 24px;
 }
 
 .grouped-device-unrouted-banner__button {
   background: transparent;
   color: var(--feature-brand-primary);
+  font-size: 14px;
   margin-top: 0;
   padding: 0;
+  text-decoration: none;
 }
 
 .grouped-device-unrouted-banner__button:hover:not(:disabled) {
   background: transparent;
   color: var(--feature-brand-primary);
-  text-decoration: underline;
+  text-decoration: none;
   transform: none;
 }
 
@@ -7052,10 +7082,33 @@ img {
 
 .modifier-table-availability-cell {
   align-items: center;
+  cursor: pointer;
   display: inline-flex;
   justify-content: center;
   min-height: 40px;
   width: 100%;
+}
+
+.list-page-table-card[data-page-id="modifier"] .lab-table__cell--center > .modifier-table-availability-cell {
+  min-height: 24px;
+}
+
+.catalog-detail-panel .modifier-option-table__row {
+  min-height: 36px;
+}
+
+.catalog-detail-panel .modifier-option-table__row--header {
+  min-height: 40px;
+}
+
+.catalog-detail-panel .modifier-option-table__cell {
+  padding-bottom: 4px;
+  padding-top: 4px;
+}
+
+.catalog-detail-panel .modifier-option-table__row--header .modifier-option-table__header-cell {
+  padding-bottom: 12px;
+  padding-top: 12px;
 }
 
 .modifier-option-table__field-shell {

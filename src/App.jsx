@@ -888,6 +888,19 @@ function getGroupedDeviceDeviceRows(deviceRows = [], values = []) {
     .filter(Boolean);
 }
 
+function getNormalizedGroupedDeviceTabletRows(deviceRows = [], values = []) {
+  const seen = new Set();
+
+  return getGroupedDeviceDeviceRows(deviceRows, values)
+    .filter((row) => row.deviceType === "Tablet (KDS)")
+    .filter((row) => {
+      const key = row.id ?? row.deviceName;
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+}
+
 function getGroupedDeviceCatalogNames(catalogRows = [], values = []) {
   return (values ?? [])
     .map((value) => {
@@ -897,6 +910,124 @@ function getGroupedDeviceCatalogNames(catalogRows = [], values = []) {
       return catalog?.name ?? (typeof value === "string" ? value : null);
     })
     .filter(Boolean);
+}
+
+function getNormalizedGroupedDeviceCatalogIds(catalogRows = [], values = []) {
+  const seen = new Set();
+
+  return (values ?? [])
+    .map(
+      (value) =>
+        catalogRows.find((row) => row.id === value || row.name === value)?.id ??
+        null
+    )
+    .filter((catalogId) => {
+      if (!catalogId || seen.has(catalogId)) return false;
+      seen.add(catalogId);
+      return true;
+    });
+}
+
+function buildGroupedDeviceSelectionOptions(
+  deviceRows = [],
+  groupedDeviceGroups = [],
+  { currentGroupId = null, currentValues = [] } = {}
+) {
+  const currentIds = new Set(
+    getNormalizedGroupedDeviceTabletRows(deviceRows, currentValues).map(
+      (row) => row.id
+    )
+  );
+  const assignedIds = new Set();
+
+  groupedDeviceGroups.forEach((group) => {
+    if (group.id === currentGroupId) return;
+
+    getNormalizedGroupedDeviceTabletRows(
+      deviceRows,
+      group.deviceList || []
+    ).forEach((row) => {
+      assignedIds.add(row.id);
+    });
+  });
+
+  return deviceRows
+    .filter(
+      (row) =>
+        row.deviceType === "Tablet (KDS)" &&
+        (!assignedIds.has(row.id) || currentIds.has(row.id))
+    )
+    .map((row) => ({
+      value: row.id,
+      label: row.deviceName,
+    }));
+}
+
+function buildGroupedDeviceCatalogSelectionGroups(
+  baseGroups = [],
+  catalogRows = [],
+  groupedDeviceGroups = [],
+  { currentGroupId = null, currentValues = [] } = {}
+) {
+  const currentIds = new Set(
+    getNormalizedGroupedDeviceCatalogIds(catalogRows, currentValues)
+  );
+  const assignedIds = new Set();
+
+  groupedDeviceGroups.forEach((group) => {
+    if (group.id === currentGroupId) return;
+
+    getNormalizedGroupedDeviceCatalogIds(
+      catalogRows,
+      group.catalogList || []
+    ).forEach((catalogId) => {
+      assignedIds.add(catalogId);
+    });
+  });
+
+  return baseGroups
+    .map((group) => {
+      const items = (group.items || [])
+        .filter(
+          (item) => currentIds.has(item.id) || !assignedIds.has(item.id)
+        )
+        .map((item) => ({
+          ...item,
+          value: item.id,
+        }));
+
+      return items.length ? { ...group, items } : null;
+    })
+    .filter(Boolean);
+}
+
+function buildGroupedDeviceDetailRows(deviceRows = [], values = []) {
+  const tabletRows = getNormalizedGroupedDeviceTabletRows(deviceRows, values);
+  const selectedPrinterRows = getGroupedDeviceDeviceRows(deviceRows, values).filter(
+    (row) => row.deviceType === "Printer"
+  );
+
+  return tabletRows.map((tablet) => {
+    const printerNames = new Set(
+      Array.isArray(tablet.connectedDevices)
+        ? tablet.connectedDevices.filter(Boolean)
+        : []
+    );
+
+    selectedPrinterRows.forEach((printer) => {
+      if (
+        Array.isArray(printer.connectedDevices) &&
+        printer.connectedDevices.includes(tablet.deviceName)
+      ) {
+        printerNames.add(printer.deviceName);
+      }
+    });
+
+    return {
+      tabletName: tablet.deviceName,
+      printers: Array.from(printerNames),
+    };
+  });
 }
 
 const ACCOUNT_ROLE_PERMISSION_MODULES = [
@@ -930,11 +1061,11 @@ const ENTITY_BACK_OFFICE_ROLE_PERMISSION_MODULES = [
 const ENTITY_APP_ROLE_PERMISSION_MODULES = [
   {
     id: "cashier",
-    label: "Cashier/Waitress",
+    label: "Point of Sales",
     additionalAccess: [
-      { id: "approveVoid", label: "Approve VOID Request" },
       { id: "openShift", label: "Open Shift" },
       { id: "closeShift", label: "Close Shift" },
+      { id: "approveVoid", label: "Approve VOID Request" },
     ],
   },
   { id: "kitchen-display-system", label: "Kitchen Display System" },
@@ -1001,10 +1132,8 @@ function createRolePermissionSections(
   }, {});
 }
 
-function getRolePermissionsStructure(isEntitySide = false) {
-  return isEntitySide
-    ? ROLE_PERMISSION_GROUPS
-    : ROLE_PERMISSION_GROUPS.slice(0, 1);
+function getRolePermissionsStructure() {
+  return ROLE_PERMISSION_GROUPS;
 }
 
 function createInitialRoleAccessDraft() {
@@ -1769,14 +1898,15 @@ function buildModifierRows(modifiers = [], modifierDetailDraft = null) {
       availability: (
         <div
           className="modifier-table-availability-cell"
-          onClick={(event) => event.stopPropagation()}
+          onClick={(event) => {
+            event.stopPropagation();
+            handleModifierListAvailabilityToggle(row.id);
+          }}
           onMouseDown={(event) => event.stopPropagation()}
           onPointerDown={(event) => event.stopPropagation()}
         >
           <Toggle
             checked={availabilityValue !== false}
-            onChange={() => handleModifierListAvailabilityToggle(row.id)}
-            onClick={(event) => event.stopPropagation()}
             ariaLabel={`Modifier availability for ${row.name}`}
           />
         </div>
@@ -1880,7 +2010,13 @@ function getModifierCatalogSelectSummary(
   }
 
   if (normalizedValues.length === 1) {
-    return normalizedValues[0];
+    const selectedItem = groups
+      .flatMap((group) => group.items ?? [])
+      .find(
+        (item) =>
+          item.value === normalizedValues[0] || item.id === normalizedValues[0]
+      );
+    return selectedItem?.label ?? normalizedValues[0];
   }
 
   if (normalizedValues.length > 1) {
@@ -12588,6 +12724,7 @@ export default function App() {
   const [roleAccessDetailSnapshot, setRoleAccessDetailSnapshot] = useState(null);
   const [roleAccessDetailErrors, setRoleAccessDetailErrors] = useState({});
   const [roleAccessDetailPanelTab, setRoleAccessDetailPanelTab] = useState("general");
+  const [roleAccessCreatePanelTab, setRoleAccessCreatePanelTab] = useState("general");
   const [roleAccessDraft, setRoleAccessDraft] = useState(createInitialRoleAccessDraft);
   const [roleAccessDraftErrors, setRoleAccessDraftErrors] = useState({});
   const [deviceManagementDetailId, setDeviceManagementDetailId] = useState(null);
@@ -13513,10 +13650,26 @@ export default function App() {
     categoryRows,
     (records.catalog || []).filter((row) => row.type !== "package")
   );
-  const groupedDeviceCatalogGroups = buildModifierCatalogGroups(
+  const baseGroupedDeviceCatalogGroups = buildModifierCatalogGroups(
     categoryRows,
     (records.catalog || []).filter((row) => row.type !== "package")
   );
+  const groupedDeviceGroups = records["grouped-device"] || [];
+  const groupedDeviceCatalogValues = new Set(
+    groupedDeviceGroups.flatMap((group) =>
+      getNormalizedGroupedDeviceCatalogIds(
+        records.catalog || [],
+        group.catalogList || []
+      )
+    )
+  );
+  const groupedDeviceUnassignedCatalogList = (records.catalog || [])
+    .filter((catalog) => !groupedDeviceCatalogValues.has(catalog.id))
+    .map((catalog) => catalog.name)
+    .sort((a, b) => String(a).localeCompare(String(b)));
+  const groupedDeviceUnassignedCatalogCount =
+    groupedDeviceUnassignedCatalogList.length;
+  const hasGroupedDeviceGroups = groupedDeviceGroups.length > 0;
   const catalogModifierOptions = Array.from(
     new Set((records.modifier || []).map((row) => row.name))
   );
@@ -13544,8 +13697,27 @@ export default function App() {
       (row) => row.id === deviceManagementDetailId
     ) ?? null;
   const selectedGroupedDeviceDetailRow =
-    (records["grouped-device"] || []).find((row) => row.id === groupedDeviceDetailId) ??
-    null;
+    groupedDeviceGroups.find((row) => row.id === groupedDeviceDetailId) ?? null;
+  const groupedDeviceCreateCatalogGroups =
+    buildGroupedDeviceCatalogSelectionGroups(
+      baseGroupedDeviceCatalogGroups,
+      records.catalog || [],
+      groupedDeviceGroups,
+      { currentValues: groupedDeviceDraft.catalogList }
+    );
+  const groupedDeviceDetailCatalogGroups =
+    buildGroupedDeviceCatalogSelectionGroups(
+      baseGroupedDeviceCatalogGroups,
+      records.catalog || [],
+      groupedDeviceGroups,
+      {
+        currentGroupId: groupedDeviceDetailId,
+        currentValues:
+          groupedDeviceDetailDraft?.catalogList ??
+          selectedGroupedDeviceDetailRow?.catalogList ??
+          [],
+      }
+    );
 
   const selectedRoleAccessDetailRow =
     (records["role-access"] || []).find((row) => row.id === roleAccessDetailId) ??
@@ -13602,6 +13774,42 @@ export default function App() {
     })
       ? DUPLICATE_ROLE_ACCESS_ERROR_MESSAGE
       : null;
+  }
+
+  function getRoleAccessNameErrors(name, excludeId = null) {
+    const nextErrors = {};
+
+    if (!String(name ?? "").trim()) {
+      nextErrors.name = true;
+    }
+
+    const duplicateNameError = getDuplicateRoleAccessNameError(name, excludeId);
+    if (duplicateNameError) {
+      nextErrors.name = duplicateNameError;
+    }
+
+    return nextErrors;
+  }
+
+  function getRoleAccessErrorTab(nextErrors = {}) {
+    if (nextErrors.name) {
+      return "general";
+    }
+
+    const permissionSectionIds = Object.keys(nextErrors.permissionSections ?? {});
+    if (permissionSectionIds.includes("account-module")) {
+      return "general";
+    }
+
+    if (
+      nextErrors.permissions ||
+      permissionSectionIds.includes("rms-back-office") ||
+      permissionSectionIds.includes("rms-apps")
+    ) {
+      return "rms-module";
+    }
+
+    return "general";
   }
 
   function getCategoryDetailContext(categoryRow, detailDraft) {
@@ -15105,7 +15313,17 @@ export default function App() {
       ...previous,
       modifier: previous.modifier.map((item) =>
         item.id === rowId
-          ? { ...item, availability: nextAvailability }
+          ? {
+              ...item,
+              availability: nextAvailability,
+              options:
+                !nextAvailability && Array.isArray(item.options)
+                  ? item.options.map((option) => ({
+                      ...option,
+                      isAvailable: false,
+                    }))
+                  : item.options,
+            }
           : item
       ),
     }));
@@ -15113,7 +15331,17 @@ export default function App() {
     if (modifierDetailDraftRef.current?.id === rowId) {
       setModifierDetailDraft((previous) => {
         if (!previous || previous.id !== rowId) return previous;
-        const nextDraft = { ...previous, availability: nextAvailability };
+        const nextDraft = {
+          ...previous,
+          availability: nextAvailability,
+          options:
+            !nextAvailability && Array.isArray(previous.options)
+              ? previous.options.map((option) => ({
+                  ...option,
+                  isAvailable: false,
+                }))
+              : previous.options,
+        };
         modifierDetailDraftRef.current = nextDraft;
         return nextDraft;
       });
@@ -15123,6 +15351,14 @@ export default function App() {
       const nextSnapshot = {
         ...modifierDetailSnapshotRef.current,
         availability: nextAvailability,
+        options:
+          !nextAvailability &&
+          Array.isArray(modifierDetailSnapshotRef.current.options)
+            ? modifierDetailSnapshotRef.current.options.map((option) => ({
+                ...option,
+                isAvailable: false,
+              }))
+            : modifierDetailSnapshotRef.current.options,
       };
       setModifierDetailSnapshot(nextSnapshot);
       modifierDetailSnapshotRef.current = nextSnapshot;
@@ -18122,6 +18358,7 @@ export default function App() {
   function resetRoleAccessDraft() {
     setRoleAccessDraft(createInitialRoleAccessDraft());
     setRoleAccessDraftErrors({});
+    setRoleAccessCreatePanelTab("general");
   }
 
   function resetRoleAccessDetailState() {
@@ -18144,19 +18381,47 @@ export default function App() {
     setRoleAccessDetailPanelTab("general");
   }
 
-  function saveRoleAccessDraft() {
-    const nextErrors = {};
+  function goToRoleAccessCreateRmsTab() {
+    const nextErrors = getRoleAccessNameErrors(roleAccessDraft.name);
 
-    if (!roleAccessDraft.name.trim()) {
-      nextErrors.name = true;
+    if (Object.keys(nextErrors).length) {
+      setRoleAccessDraftErrors((previous) => ({ ...previous, ...nextErrors }));
+      setRoleAccessCreatePanelTab("general");
+      return;
     }
 
-    const duplicateNameError = getDuplicateRoleAccessNameError(
-      roleAccessDraft.name
+    setRoleAccessDraftErrors((previous) => {
+      if (!previous.name) return previous;
+      const next = { ...previous };
+      delete next.name;
+      return next;
+    });
+    setRoleAccessCreatePanelTab("rms-module");
+  }
+
+  function goToRoleAccessDetailRmsTab() {
+    const nextErrors = getRoleAccessNameErrors(
+      roleAccessDetailDraft?.name,
+      roleAccessDetailId
     );
-    if (duplicateNameError) {
-      nextErrors.name = duplicateNameError;
+
+    if (Object.keys(nextErrors).length) {
+      setRoleAccessDetailErrors((previous) => ({ ...previous, ...nextErrors }));
+      setRoleAccessDetailPanelTab("general");
+      return;
     }
+
+    setRoleAccessDetailErrors((previous) => {
+      if (!previous.name) return previous;
+      const next = { ...previous };
+      delete next.name;
+      return next;
+    });
+    setRoleAccessDetailPanelTab("rms-module");
+  }
+
+  function saveRoleAccessDraft() {
+    const nextErrors = getRoleAccessNameErrors(roleAccessDraft.name);
 
     const permissionsStructure = getRolePermissionsStructure(
       Boolean(selectedSidebarBusinessUnit)
@@ -18177,6 +18442,10 @@ export default function App() {
 
     if (Object.keys(nextErrors).length) {
       setRoleAccessDraftErrors(nextErrors);
+      setRoleAccessCreatePanelTab(getRoleAccessErrorTab(nextErrors));
+      if (nextErrors.permissions) {
+        showSnackbar(nextErrors.permissions, "red");
+      }
       return;
     }
 
@@ -18209,19 +18478,10 @@ export default function App() {
   }
 
   function saveRoleAccessDetailEdit() {
-    const nextErrors = {};
-
-    if (!roleAccessDetailDraft.name.trim()) {
-      nextErrors.name = true;
-    }
-
-    const duplicateNameError = getDuplicateRoleAccessNameError(
+    const nextErrors = getRoleAccessNameErrors(
       roleAccessDetailDraft.name,
       roleAccessDetailId
     );
-    if (duplicateNameError) {
-      nextErrors.name = duplicateNameError;
-    }
 
     const permissionsStructure = getRolePermissionsStructure(
       Boolean(selectedSidebarBusinessUnit)
@@ -18244,6 +18504,10 @@ export default function App() {
 
     if (Object.keys(nextErrors).length) {
       setRoleAccessDetailErrors(nextErrors);
+      setRoleAccessDetailPanelTab(getRoleAccessErrorTab(nextErrors));
+      if (nextErrors.permissions) {
+        showSnackbar(nextErrors.permissions, "red");
+      }
       return;
     }
 
@@ -18275,6 +18539,7 @@ export default function App() {
   function cancelRoleAccessDetailEdit() {
     setRoleAccessDetailEditing(null);
     setRoleAccessDetailErrors({});
+    setRoleAccessDetailPanelTab("general");
     const originalRow = records["role-access"].find((r) => r.id === roleAccessDetailId);
     if (originalRow) {
       setRoleAccessDetailDraft(createRoleAccessDraftFromRecord(originalRow));
@@ -19947,7 +20212,7 @@ export default function App() {
                     <p className="type-title-3">Option Name</p>
                   </div>
                   <div className="modifier-option-table__header-cell modifier-option-table__header-cell--price">
-                    <p className="type-title-3">Additional Price (Optional)</p>
+                    <p className="type-title-3">Additional Price</p>
                   </div>
                   <div className="modifier-option-table__header-cell modifier-option-table__header-cell--action" />
                 </div>
@@ -26181,20 +26446,6 @@ export default function App() {
     const isSellingTimePage = pageId === "selling-time";
     const isDeviceManagementPage = pageId === "device-management";
     const isGroupedDevicePage = pageId === "grouped-device";
-    const groupedDeviceGroups = records["grouped-device"] || [];
-    const groupedDeviceCatalogValues = new Set(
-      groupedDeviceGroups.flatMap((group) => group.catalogList || [])
-    );
-    const groupedDeviceUnassignedCatalogList = (records.catalog || [])
-      .filter(
-        (catalog) =>
-          !groupedDeviceCatalogValues.has(catalog.id) &&
-          !groupedDeviceCatalogValues.has(catalog.name)
-      )
-      .map((catalog) => catalog.name)
-      .sort((a, b) => String(a).localeCompare(String(b)));
-    const groupedDeviceUnassignedCatalogCount = groupedDeviceUnassignedCatalogList.length;
-    const hasGroupedDeviceGroups = groupedDeviceGroups.length > 0;
     const isRoleAccessPage = pageId === "role-access";
     const isCategoryCreateOpen = isCategoryPage && currentPage === "category-create";
     const isUnitCreateOpen = isUnitPage && currentPage === "unit-create";
@@ -26339,13 +26590,15 @@ export default function App() {
                 <div className="grouped-device-info-banner">
                   {!hasGroupedDeviceGroups ? (
                     <div className="lab-infobox lab-infobox--blue">
-                      <div className="lab-infobox__copy">
-                        <p className="type-body-bold">
-                          No KDS group configured yet
-                        </p>
-                        <p className="type-body">
-                          All catalog items will be sent to all Tablet (KDS)
-                          devices until you create a KDS group.
+                      <div className="lab-infobox__copy grouped-device-empty-banner__copy">
+                        <p className="type-body grouped-device-empty-banner__message">
+                          <span className="grouped-device-empty-banner__title">
+                            No KDS group configured yet.
+                          </span>{" "}
+                          <span>
+                            All catalog items will be sent to all Tablet (KDS)
+                            devices until you create a KDS group.
+                          </span>
                         </p>
                       </div>
                     </div>
@@ -26353,11 +26606,11 @@ export default function App() {
                     <div className="lab-infobox lab-infobox--orange">
                       <div className="lab-infobox__copy grouped-device-unrouted-banner__copy">
                         <p className="type-body grouped-device-unrouted-banner__message">
-                          <span className="type-body-bold">
+                          <span className="grouped-device-unrouted-banner__count">
                             {groupedDeviceUnassignedCatalogCount} unrouted catalog
-                          </span>{" "}
+                          </span>
                           <span>
-                            Unrouted catalog may not be sent to the kitchen.
+                            cannot be sent to the kitchen.
                           </span>
                         </p>
                         <button
@@ -26927,6 +27180,14 @@ export default function App() {
   function handleSaveGroupedDeviceDraft() {
     const errors = {};
     const trimmedName = (groupedDeviceDraft.name || "").trim();
+    const normalizedDeviceList = getNormalizedGroupedDeviceTabletRows(
+      records["device-management"] || [],
+      groupedDeviceDraft.deviceList
+    ).map((device) => device.id);
+    const normalizedCatalogList = getNormalizedGroupedDeviceCatalogIds(
+      records.catalog || [],
+      groupedDeviceDraft.catalogList
+    );
     if (!trimmedName) errors.name = true;
 
     const duplicateNameError = getDuplicateKdsGroupNameError(trimmedName);
@@ -26934,10 +27195,10 @@ export default function App() {
       errors.name = duplicateNameError;
     }
 
-    if (!groupedDeviceDraft.deviceList || groupedDeviceDraft.deviceList.length === 0) {
+    if (!normalizedDeviceList.length) {
       errors.deviceList = true;
     }
-    if (!groupedDeviceDraft.catalogList || groupedDeviceDraft.catalogList.length === 0) {
+    if (!normalizedCatalogList.length) {
       errors.catalogList = true;
     }
 
@@ -26951,8 +27212,8 @@ export default function App() {
     const newGroup = {
       id: `gd-${Date.now()}`,
       name: trimmedName,
-      deviceList: groupedDeviceDraft.deviceList,
-      catalogList: groupedDeviceDraft.catalogList,
+      deviceList: normalizedDeviceList,
+      catalogList: normalizedCatalogList,
     };
     setRecords((prev) => ({
       ...prev,
@@ -26963,16 +27224,17 @@ export default function App() {
   }
 
   function renderGroupedDeviceCreateSidePanel() {
-    const deviceSelectionOptions = (records["device-management"] || [])
-      .filter((d) => d.deviceType === "Tablet (KDS)")
-      .map((d) => ({
-        value: d.id,
-        label: d.deviceName,
-      }));
-    const catalogSelectionOptions = (records["catalog"] || []).map((c) => ({
-      value: c.id,
-      label: c.name,
-    }));
+    const deviceRows = records["device-management"] || [];
+    const groupedDeviceGroups = records["grouped-device"] || [];
+    const normalizedDeviceList = getNormalizedGroupedDeviceTabletRows(
+      deviceRows,
+      groupedDeviceDraft.deviceList
+    ).map((device) => device.id);
+    const deviceSelectionOptions = buildGroupedDeviceSelectionOptions(
+      deviceRows,
+      groupedDeviceGroups,
+      { currentValues: groupedDeviceDraft.deviceList }
+    );
 
     return (
       <aside className="catalog-detail-side-panel catalog-detail-panel catalog-create-side-panel">
@@ -27015,7 +27277,7 @@ export default function App() {
                   label="Device List"
                   required
                   error={groupedDeviceDraftErrors.deviceList}
-                  value={groupedDeviceDraft.deviceList}
+                  value={normalizedDeviceList}
                   options={deviceSelectionOptions}
                   onChange={(value) =>
                     setGroupedDeviceDraft((prev) => ({ ...prev, deviceList: value }))
@@ -27041,7 +27303,7 @@ export default function App() {
                   required
                   error={groupedDeviceDraftErrors.catalogList}
                   value={groupedDeviceDraft.catalogList}
-                  groups={groupedDeviceCatalogGroups}
+                  groups={groupedDeviceCreateCatalogGroups}
                   onClick={() =>
                     openModifierCatalogModal(
                       "grouped-device-create",
@@ -27075,27 +27337,24 @@ export default function App() {
     const deviceRows = records["device-management"] || [];
     const catalogRows = records["catalog"] || [];
 
-    const deviceSelectionOptions = deviceRows
-      .filter((d) => d.deviceType === "Tablet (KDS)")
-      .map((d) => ({
-        value: d.id,
-        label: d.deviceName,
-      }));
-
     const targetDeviceList = isEditing ? groupedDeviceDetailDraft.deviceList : row.deviceList;
     const targetCatalogList = isEditing ? groupedDeviceDetailDraft.catalogList : row.catalogList;
-
-    const deviceListRows = getGroupedDeviceDeviceRows(
+    const normalizedDeviceList = getNormalizedGroupedDeviceTabletRows(
+      deviceRows,
+      targetDeviceList || []
+    ).map((device) => device.id);
+    const deviceSelectionOptions = buildGroupedDeviceSelectionOptions(
+      deviceRows,
+      records["grouped-device"] || [],
+      {
+        currentGroupId: row.id,
+        currentValues: targetDeviceList || [],
+      }
+    );
+    const groupedDeviceDeviceRows = buildGroupedDeviceDetailRows(
       deviceRows,
       targetDeviceList || []
     );
-    const deviceNames = deviceListRows.map((device) => device.deviceName);
-    const groupedDeviceDeviceRows = deviceListRows.map((device) => ({
-      tabletName: device.deviceName,
-      printers: Array.isArray(device.connectedDevices)
-        ? device.connectedDevices.filter(Boolean)
-        : [],
-    }));
     const catalogNames = getGroupedDeviceCatalogNames(
       catalogRows,
       targetCatalogList || []
@@ -27158,7 +27417,7 @@ export default function App() {
                       label="Device List"
                       required
                       error={groupedDeviceDetailDraftErrors.deviceList}
-                      value={groupedDeviceDetailDraft.deviceList}
+                      value={normalizedDeviceList}
                       options={deviceSelectionOptions}
                       onChange={(value) =>
                         setGroupedDeviceDetailDraft((prev) => ({
@@ -27187,7 +27446,7 @@ export default function App() {
                       required
                       error={groupedDeviceDetailDraftErrors.catalogList}
                       value={groupedDeviceDetailDraft.catalogList}
-                      groups={groupedDeviceCatalogGroups}
+                      groups={groupedDeviceDetailCatalogGroups}
                       onClick={() =>
                         openModifierCatalogModal(
                           "grouped-device-detail",
@@ -27207,7 +27466,7 @@ export default function App() {
                     <CatalogPanelInfoRow
                       label="Device List"
                       value={
-                        deviceNames.length ? (
+                        groupedDeviceDeviceRows.length ? (
                           <ul className="grouped-device-detail-list">
                             {groupedDeviceDeviceRows.map((device) => (
                               <li
@@ -27278,6 +27537,14 @@ export default function App() {
   function saveGroupedDeviceDetailEdit() {
     const errors = {};
     const trimmedName = (groupedDeviceDetailDraft.name || "").trim();
+    const normalizedDeviceList = getNormalizedGroupedDeviceTabletRows(
+      records["device-management"] || [],
+      groupedDeviceDetailDraft.deviceList
+    ).map((device) => device.id);
+    const normalizedCatalogList = getNormalizedGroupedDeviceCatalogIds(
+      records.catalog || [],
+      groupedDeviceDetailDraft.catalogList
+    );
     if (!trimmedName) errors.name = true;
 
     const duplicateNameError = getDuplicateKdsGroupNameError(
@@ -27288,10 +27555,10 @@ export default function App() {
       errors.name = duplicateNameError;
     }
 
-    if (!groupedDeviceDetailDraft.deviceList || groupedDeviceDetailDraft.deviceList.length === 0) {
+    if (!normalizedDeviceList.length) {
       errors.deviceList = true;
     }
-    if (!groupedDeviceDetailDraft.catalogList || groupedDeviceDetailDraft.catalogList.length === 0) {
+    if (!normalizedCatalogList.length) {
       errors.catalogList = true;
     }
 
@@ -27306,7 +27573,14 @@ export default function App() {
     setRecords((prev) => ({
       ...prev,
       "grouped-device": prev["grouped-device"].map((g) =>
-        g.id === groupedDeviceDetailId ? { ...groupedDeviceDetailDraft } : g
+        g.id === groupedDeviceDetailId
+          ? {
+              ...groupedDeviceDetailDraft,
+              name: trimmedName,
+              deviceList: normalizedDeviceList,
+              catalogList: normalizedCatalogList,
+            }
+          : g
       ),
     }));
     setGroupedDeviceDetailEditing(null);
@@ -27331,6 +27605,9 @@ export default function App() {
       <RoleManagementCreatePanel
         draft={roleAccessDraft}
         errors={roleAccessDraftErrors}
+        activeTab={roleAccessCreatePanelTab}
+        onTabChange={setRoleAccessCreatePanelTab}
+        onNext={goToRoleAccessCreateRmsTab}
         onClose={closeRoleAccessCreatePage}
         onChange={handleRoleAccessChange}
         onSave={saveRoleAccessDraft}
@@ -27357,9 +27634,11 @@ export default function App() {
         onTabChange={(tab) => setRoleAccessDetailPanelTab(tab)}
         onClose={resetRoleAccessDetailState}
         onEdit={(value) => {
+          setRoleAccessDetailPanelTab("general");
           setRoleAccessDetailEditing(value);
           setRoleAccessDetailErrors({});
         }}
+        onNext={goToRoleAccessDetailRmsTab}
         onCancel={cancelRoleAccessDetailEdit}
         onSave={saveRoleAccessDetailEdit}
         onChange={handleRoleAccessChange}
@@ -31665,8 +31944,10 @@ export default function App() {
         }
         value={modifierCatalogModalValue}
         groups={
-          modifierCatalogModalTarget?.startsWith("grouped-device")
-            ? groupedDeviceCatalogGroups
+          modifierCatalogModalTarget === "grouped-device-create"
+            ? groupedDeviceCreateCatalogGroups
+            : modifierCatalogModalTarget === "grouped-device-detail"
+              ? groupedDeviceDetailCatalogGroups
             : modifierCatalogGroups
         }
         onChange={setModifierCatalogModalValue}

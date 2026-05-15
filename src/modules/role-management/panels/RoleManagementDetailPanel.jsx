@@ -12,6 +12,7 @@ export function RoleManagementDetailPanel({
   members = [],
   onClose,
   onEdit,
+  onNext,
   onCancel,
   onSave,
   onChange,
@@ -32,6 +33,27 @@ export function RoleManagementDetailPanel({
   const roleTypeClass =
     roleType === "System" ? "status-pill--primary" : "status-pill--success";
   const memberCountLabel = `${members.length} Member${members.length === 1 ? "" : "s"}`;
+  const resolvedActiveTab = isEditing && activeTab === "member" ? "general" : activeTab;
+  const accountPermissionGroups = permissionsStructure.filter(
+    (group) => group.id === "account-module"
+  );
+  const rmsBackOfficeGroups = permissionsStructure.filter(
+    (group) => group.id === "rms-back-office"
+  );
+  const rmsAppsGroups = permissionsStructure.filter(
+    (group) => group.id === "rms-apps"
+  );
+  const getScopedSectionErrors = (groupIds) =>
+    Object.fromEntries(
+      Object.entries(errors?.permissionSections ?? {}).filter(([groupId]) =>
+        groupIds.includes(groupId)
+      )
+    );
+  const roleTypePill = (
+    <span className={`status-pill ${roleTypeClass}`}>
+      <span className="type-body">{roleType}</span>
+    </span>
+  );
 
   return (
     <aside className="catalog-detail-side-panel catalog-detail-panel">
@@ -70,30 +92,43 @@ export function RoleManagementDetailPanel({
           <div className="catalog-detail-panel__tabs" role="tablist">
             <button
               type="button"
-              className={`catalog-detail-panel__tab${activeTab === "general" ? " is-active" : ""}`}
+              className={`catalog-detail-panel__tab${resolvedActiveTab === "general" ? " is-active" : ""}`}
               onClick={() => onTabChange?.("general")}
               role="tab"
-              aria-selected={activeTab === "general"}
+              aria-selected={resolvedActiveTab === "general"}
             >
               General
             </button>
             <button
               type="button"
-              className={`catalog-detail-panel__tab${activeTab === "member" ? " is-active" : ""}`}
-              onClick={() => onTabChange?.("member")}
+              className={`catalog-detail-panel__tab${resolvedActiveTab === "rms-module" ? " is-active" : ""}`}
+              onClick={() => onTabChange?.("rms-module")}
               role="tab"
-              aria-selected={activeTab === "member"}
+              aria-selected={resolvedActiveTab === "rms-module"}
             >
-              Member
+              RMS Permission
             </button>
+            {!isEditing ? (
+              <button
+                type="button"
+                className={`catalog-detail-panel__tab${resolvedActiveTab === "member" ? " is-active" : ""}`}
+                onClick={() => onTabChange?.("member")}
+                role="tab"
+                aria-selected={resolvedActiveTab === "member"}
+              >
+                Member
+              </button>
+            ) : null}
           </div>
         </div>
       </div>
       <div className="catalog-detail-panel__body">
-        {activeTab === "general" ? (
+        {resolvedActiveTab === "general" ? (
           <>
             <DetailSection title="General Information">
-              <div className="catalog-panel-info-list catalog-panel-info-list--single-column">
+              <div
+                className={`catalog-panel-info-list${isEditing ? " catalog-panel-info-list--single-column" : ""}`}
+              >
                 {isEditing ? (
                   <>
                     <DetailField
@@ -105,39 +140,35 @@ export function RoleManagementDetailPanel({
                       onChange={(val) => onChange("name", val)}
                       autoFocus
                     />
-                    <DetailField
-                      label="Role Description"
-                      value={draft.description}
-                      placeholder="Enter Role Description"
-                      onChange={(val) => onChange("description", val)}
-                    />
+                    <div className="catalog-panel-info-list--single-column">
+                      <DetailField
+                        label="Role Description"
+                        value={draft.description}
+                        placeholder="Enter Role Description"
+                        onChange={(val) => onChange("description", val)}
+                      />
+                    </div>
                   </>
                 ) : (
                   <>
-                    <CatalogPanelInfoRow label="Role Name" value={row.name} />
-                    <CatalogPanelInfoRow
-                      label="Role Type"
-                      value={
-                        <span className={`status-pill ${roleTypeClass}`}>
-                          <span className="type-body">{roleType}</span>
-                        </span>
-                      }
-                    />
-                    <CatalogPanelInfoRow
-                      label="Role Description"
-                      value={row.description || "-"}
-                    />
+                    <CatalogPanelInfoRow label="Role Name" value={effectiveName} />
+                    <CatalogPanelInfoRow label="Role Type" value={roleTypePill} />
+                    <div className="catalog-panel-info-list--single-column">
+                      <CatalogPanelInfoRow
+                        label="Role Description"
+                        value={row.description || "-"}
+                      />
+                    </div>
                   </>
                 )}
               </div>
             </DetailSection>
 
-            <DetailSection title="Access Permissions">
+            <DetailSection title="Account Module Permission">
               <RolePermissionsList
                 permissions={draft.permissions}
                 sectionStates={draft.permissionSections}
-                sectionErrors={errors?.permissionSections}
-                accessError={errors?.permissions}
+                sectionErrors={getScopedSectionErrors(["account-module"])}
                 isEditing={isEditing}
                 onChange={(modId, val) =>
                   onChange("permissions", { ...draft.permissions, [modId]: val })
@@ -148,12 +179,52 @@ export function RoleManagementDetailPanel({
                     [sectionId]: enabled,
                   })
                 }
-                structure={permissionsStructure}
+                structure={accountPermissionGroups}
+              />
+            </DetailSection>
+          </>
+        ) : resolvedActiveTab === "rms-module" ? (
+          <>
+            <DetailSection title="RMS Back Office Permission">
+              <RolePermissionsList
+                permissions={draft.permissions}
+                sectionStates={draft.permissionSections}
+                sectionErrors={getScopedSectionErrors(["rms-back-office"])}
+                isEditing={isEditing}
+                onChange={(modId, val) =>
+                  onChange("permissions", { ...draft.permissions, [modId]: val })
+                }
+                onSectionToggle={(sectionId, enabled) =>
+                  onChange("permissionSections", {
+                    ...draft.permissionSections,
+                    [sectionId]: enabled,
+                  })
+                }
+                structure={rmsBackOfficeGroups}
+              />
+            </DetailSection>
+
+            <DetailSection title="RMS Apps Permission">
+              <RolePermissionsList
+                permissions={draft.permissions}
+                sectionStates={draft.permissionSections}
+                sectionErrors={getScopedSectionErrors(["rms-apps"])}
+                isEditing={isEditing}
+                onChange={(modId, val) =>
+                  onChange("permissions", { ...draft.permissions, [modId]: val })
+                }
+                onSectionToggle={(sectionId, enabled) =>
+                  onChange("permissionSections", {
+                    ...draft.permissionSections,
+                    [sectionId]: enabled,
+                  })
+                }
+                structure={rmsAppsGroups}
               />
             </DetailSection>
           </>
         ) : (
-          <DetailSection title="Assigned Members" meta={memberCountLabel}>
+          <DetailSection title="Assigned Member" meta={memberCountLabel}>
             {members.length ? (
               <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
                 {members.map((member, memberIndex) => (
@@ -243,22 +314,45 @@ export function RoleManagementDetailPanel({
       </div>
       {isEditing ? (
         <div className="catalog-detail-panel__footer" style={{ display: "flex", gap: "12px", width: "100%" }}>
-          <button
-            type="button"
-            className="lab-button lab-button--medium lab-button--danger-outline"
-            style={{ flex: 1 }}
-            onClick={onCancel}
-          >
-            <span className="type-subtitle-2">Cancel</span>
-          </button>
-          <button
-            type="button"
-            className="lab-button lab-button--primary lab-button--medium"
-            style={{ flex: 1 }}
-            onClick={onSave}
-          >
-            <span className="type-subtitle-2">Save Changes</span>
-          </button>
+          {resolvedActiveTab === "general" ? (
+            <>
+              <button
+                type="button"
+                className="lab-button lab-button--medium lab-button--danger-outline"
+                style={{ flex: 1 }}
+                onClick={onCancel}
+              >
+                <span className="type-subtitle-2">Cancel</span>
+              </button>
+              <button
+                type="button"
+                className="lab-button lab-button--secondary lab-button--medium"
+                style={{ flex: 1 }}
+                onClick={onNext ?? (() => onTabChange?.("rms-module"))}
+              >
+                <span className="type-subtitle-2">Next</span>
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                type="button"
+                className="lab-button lab-button--medium lab-button--secondary"
+                style={{ flex: 1 }}
+                onClick={() => onTabChange?.("general")}
+              >
+                <span className="type-subtitle-2">Back</span>
+              </button>
+              <button
+                type="button"
+                className="lab-button lab-button--primary lab-button--medium"
+                style={{ flex: 1 }}
+                onClick={onSave}
+              >
+                <span className="type-subtitle-2">Save Changes</span>
+              </button>
+            </>
+          )}
         </div>
       ) : (
         <DetailPanelDeleteAction
