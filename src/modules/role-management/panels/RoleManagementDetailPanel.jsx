@@ -28,6 +28,9 @@ export function RoleManagementDetailPanel({
 
   const isEditing = editing?.kind === "all";
   const effectiveName = draft.name.trim() || row.name || "-";
+  const roleType = row.type ?? "Custom";
+  const roleTypeClass =
+    roleType === "System" ? "status-pill--primary" : "status-pill--success";
   const memberCountLabel = `${members.length} Member${members.length === 1 ? "" : "s"}`;
 
   return (
@@ -112,6 +115,14 @@ export function RoleManagementDetailPanel({
                 ) : (
                   <>
                     <CatalogPanelInfoRow label="Role Name" value={row.name} />
+                    <CatalogPanelInfoRow
+                      label="Role Type"
+                      value={
+                        <span className={`status-pill ${roleTypeClass}`}>
+                          <span className="type-body">{roleType}</span>
+                        </span>
+                      }
+                    />
                     <CatalogPanelInfoRow
                       label="Role Description"
                       value={row.description || "-"}

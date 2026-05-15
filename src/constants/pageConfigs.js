@@ -84,6 +84,9 @@ export const PAGE_CONFIGS = {
         key: "availability",
         label: "Availability",
         type: "component",
+        thClassName: "lab-table__cell--center",
+        tdClassName: "lab-table__cell--center",
+        width: "120px",
       },
       { key: "actions", label: "", type: "delete" },
     ],
@@ -159,6 +162,7 @@ export const PAGE_CONFIGS = {
     searchFields: ["name", "members", "description"],
     columns: [
       { key: "name", label: "Role Name", type: "link" },
+      { key: "type", label: "Type", type: "status" },
       { key: "members", label: "Member", type: "text" },
       { key: "description", label: "Description", type: "text" },
       { key: "actions", label: "", type: "delete" },

@@ -930,8 +930,12 @@ const ENTITY_BACK_OFFICE_ROLE_PERMISSION_MODULES = [
 const ENTITY_APP_ROLE_PERMISSION_MODULES = [
   {
     id: "cashier",
-    label: "Cashier",
-    additionalAccess: [{ id: "approveVoid", label: "Can approve VOID request" }],
+    label: "Cashier/Waitress",
+    additionalAccess: [
+      { id: "approveVoid", label: "Approve VOID Request" },
+      { id: "openShift", label: "Open Shift" },
+      { id: "closeShift", label: "Close Shift" },
+    ],
   },
   { id: "kitchen-display-system", label: "Kitchen Display System" },
   { id: "printer-settings", label: "Printer Settings" },
@@ -1009,6 +1013,7 @@ function createInitialRoleAccessDraft() {
   return {
     name: "",
     description: "",
+    type: "Custom",
     permissions,
     permissionSections: createRolePermissionSections(
       {},
@@ -1025,6 +1030,7 @@ function createRoleAccessDraftFromRecord(record) {
     ...record,
     name: record?.name ?? "",
     description: record?.description ?? "",
+    type: record?.type ?? "Custom",
     permissions,
     permissionSections: createRolePermissionSections(
       record?.permissionSections ?? {},
@@ -1735,7 +1741,7 @@ function buildCategoryRows(categories = [], catalogRows = []) {
   });
 }
 
-function buildModifierRows(modifiers = []) {
+function buildModifierRows(modifiers = [], modifierDetailDraft = null) {
   return modifiers.map((row) => {
     const optionNames = Array.isArray(row.options)
       ? row.options
@@ -1745,6 +1751,10 @@ function buildModifierRows(modifiers = []) {
     const connectedCatalogNames = Array.isArray(row.connectedCatalogItems)
       ? row.connectedCatalogItems.filter(Boolean)
       : [];
+    const availabilityValue =
+      modifierDetailDraft?.id === row.id
+        ? modifierDetailDraft.availability
+        : row.availability;
 
     return {
       ...row,
@@ -1760,10 +1770,13 @@ function buildModifierRows(modifiers = []) {
         <div
           className="modifier-table-availability-cell"
           onClick={(event) => event.stopPropagation()}
+          onMouseDown={(event) => event.stopPropagation()}
+          onPointerDown={(event) => event.stopPropagation()}
         >
           <Toggle
-            checked={row.availability !== false}
+            checked={availabilityValue !== false}
             onChange={() => handleModifierListAvailabilityToggle(row.id)}
+            onClick={(event) => event.stopPropagation()}
             ariaLabel={`Modifier availability for ${row.name}`}
           />
         </div>
@@ -2699,6 +2712,7 @@ function createInitialDataStore() {
     "role-access": [
       {
         id: "rl-001",
+        type: "System",
         name: "Holding Owner",
         members: "1 member",
         membersList: [
@@ -2715,6 +2729,7 @@ function createInitialDataStore() {
       },
       {
         id: "rl-002",
+        type: "System",
         name: "Account Administrator",
         members: "2 members",
         membersList: [
@@ -2744,6 +2759,7 @@ function createInitialDataStore() {
       },
       {
         id: "rl-003",
+        type: "Custom",
         name: "Outlet Manager",
         members: "5 members",
         membersList: [
@@ -2773,6 +2789,7 @@ function createInitialDataStore() {
       },
       {
         id: "rl-004",
+        type: "Custom",
         name: "Kitchen Lead",
         members: "3 members",
         membersList: [
@@ -2794,6 +2811,7 @@ function createInitialDataStore() {
       },
       {
         id: "rl-005",
+        type: "Custom",
         name: "Cashier Supervisor",
         members: "4 members",
         membersList: [
@@ -2818,6 +2836,7 @@ function createInitialDataStore() {
       },
       {
         id: "rl-006",
+        type: "Custom",
         name: "Audit Viewer",
         members: "6 members",
         membersList: [
@@ -13482,7 +13501,7 @@ export default function App() {
   }
 
   const categoryRows = buildCategoryRows(records.category || [], records.catalog || []);
-  const modifierRows = buildModifierRows(records.modifier || []);
+  const modifierRows = buildModifierRows(records.modifier || [], modifierDetailDraft);
   const unitRows = buildUnitRows(records.unit || [], records.catalog || []);
   const sellingTimeRows = buildSellingTimeRows(records["selling-time"] || []);
   const catalogCategoryOptions = buildCatalogCategoryOptions(
@@ -21382,7 +21401,7 @@ export default function App() {
                   </div>
                   <div className="modifier-option-table__header-cell modifier-option-table__header-cell--price">
                     <p className="type-title-3">
-                      Additional Price (Optional)
+                      Additional Price
                     </p>
                   </div>
                   <div className="modifier-option-table__header-cell modifier-option-table__header-cell--action" />
@@ -24537,7 +24556,11 @@ export default function App() {
           sortKey={sortByPage.catalog}
           sortDirection={sortDirectionByPage.catalog}
           onSort={(value) => handleSetSort("catalog", value)}
-          rows={paged.rows}
+          rows={paged.rows.map((row) =>
+            row.id === catalogDetailDraft?.id
+              ? { ...row, availability: catalogDetailDraft.availability }
+              : row
+          )}
           selectedCatalogId={catalogDetailDraft?.id ?? null}
           selectedRowIds={selectedRows.catalog}
           onToggleSelectedRow={(rowId) => handleToggleSelectedRow("catalog", rowId)}
@@ -25461,8 +25484,8 @@ export default function App() {
                   <section
                     className={`modifier-option-table ${
                       isEditing
-                        ? "modifier-option-table--editable modifier-option-table--with-availability"
-                        : "modifier-option-table--readonly"
+                        ? "modifier-option-table--editable"
+                        : "modifier-option-table--readonly modifier-option-table--with-availability"
                     }`}
                   >
                     <div className="modifier-option-table__row modifier-option-table__row--header">
@@ -25475,9 +25498,11 @@ export default function App() {
                       <div className="modifier-option-table__header-cell modifier-option-table__header-cell--price">
                         <p className="type-title-3">Additional Price</p>
                       </div>
-                      <div className="modifier-option-table__header-cell modifier-option-table__header-cell--availability">
-                        <p className="type-title-3">Availability</p>
-                      </div>
+                      {!isEditing ? (
+                        <div className="modifier-option-table__header-cell modifier-option-table__header-cell--availability">
+                          <p className="type-title-3">Availability</p>
+                        </div>
+                      ) : null}
                       {isEditing ? (
                         <div className="modifier-option-table__header-cell modifier-option-table__header-cell--action" />
                       ) : null}
@@ -25551,19 +25576,6 @@ export default function App() {
                                     value
                                   )
                                 }
-                              />
-                            </div>
-                            <div className="modifier-option-table__cell modifier-option-table__cell--availability" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                              <Toggle
-                                checked={option.isAvailable !== false}
-                                onChange={() =>
-                                  handleModifierDetailOptionChange(
-                                    option.id,
-                                    "isAvailable",
-                                    option.isAvailable === false ? true : false
-                                  )
-                                }
-                                ariaLabel={`Availability for ${option.name || 'Option'}`}
                               />
                             </div>
                             <div className="modifier-option-table__cell modifier-option-table__cell--action">
@@ -26369,7 +26381,7 @@ export default function App() {
                   customTable
                 ) : (
                   <table
-                    className={`lab-table${pageId === "unit" ? " is-layout-fixed" : ""
+                    className={`lab-table${pageId === "unit" || pageId === "modifier" ? " is-layout-fixed" : ""
                       }${pageId === "device-management" ? " is-device-management" : ""}`}
                   >
                     <thead>
@@ -26669,6 +26681,9 @@ export default function App() {
                                     key={column.key}
                                     className={cellClassName}
                                     style={cellStyle}
+                                    onClick={isSplitDetailPage ? (event) => event.stopPropagation() : undefined}
+                                    onMouseDown={isSplitDetailPage ? (event) => event.stopPropagation() : undefined}
+                                    onPointerDown={isSplitDetailPage ? (event) => event.stopPropagation() : undefined}
                                   >
                                     {cellValue}
                                   </td>

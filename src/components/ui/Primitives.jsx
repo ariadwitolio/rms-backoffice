@@ -76,14 +76,19 @@ function StatusPill({ status }) {
   );
 }
 
-function Toggle({ checked, onChange, ariaLabel }) {
+function Toggle({ checked, onChange, ariaLabel, onClick }) {
   return (
     <button
       type="button"
       className={`lab-toggle${checked ? " is-on" : ""}`}
       aria-pressed={checked}
       aria-label={ariaLabel}
-      onClick={onChange}
+      onClick={(event) => {
+        if (onClick) {
+          onClick(event);
+        }
+        onChange?.(event);
+      }}
     >
       <span className="lab-toggle__track" />
       <span className="lab-toggle__knob" />

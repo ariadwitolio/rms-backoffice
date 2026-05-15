@@ -16,6 +16,14 @@ export function getStatusTone(status) {
     return "success";
   }
 
+  if (status === "System") {
+    return "primary";
+  }
+
+  if (status === "Custom") {
+    return "success";
+  }
+
   if (
     status === "Preparing" ||
     status === "Queued" ||

@@ -2314,6 +2314,22 @@ img {
   vertical-align: middle;
 }
 
+.lab-table__cell--center {
+  text-align: center !important;
+  vertical-align: middle;
+}
+
+.lab-table__cell--center > .modifier-table-availability-cell,
+.modifier-table__cell--center .modifier-table-availability-cell,
+.modifier-table-availability-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  width: 100%;
+  pointer-events: auto;
+}
+
 .lab-table th {
   min-height: 44px;
   padding-top: 12px;

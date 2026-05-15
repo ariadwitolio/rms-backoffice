@@ -183,7 +183,10 @@ export default function CatalogListPage({
                         {formatIdr(row.basePrice)}
                       </p>
                     </td>
-                    <td className="lab-table__toggle">
+                    <td
+                      className="lab-table__toggle"
+                      onClick={(event) => event.stopPropagation()}
+                    >
                       <Toggle
                         checked={row.availability !== false}
                         onChange={() => onToggleAvailability(row.id)}
