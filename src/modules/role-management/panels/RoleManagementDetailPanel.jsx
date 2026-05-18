@@ -50,29 +50,36 @@ export function RoleManagementDetailPanel({
         groupIds.includes(groupId)
       )
     );
-  const accountSectionBehavior = isMainAccountSide
+  const generalPermissionGroup = {
+    id: "general-permissions",
+    group: "Back Office Permissions",
+    modules: [
+      ...(accountPermissionGroups[0]?.modules ?? []),
+      ...(rmsBackOfficeGroups[0]?.modules ?? []),
+    ],
+    menuHierarchy: [
+      ...(accountPermissionGroups[0]?.modules ?? []).map((module) => ({
+        id: module.id,
+        label: module.label,
+        isParent: false,
+      })),
+      ...(rmsBackOfficeGroups[0]?.menuHierarchy ?? []),
+    ],
+  };
+  const generalPermissionGroups = [generalPermissionGroup];
+  const generalSectionBehavior = isMainAccountSide
     ? {
-        forcedOpenSectionIds: ["account-module"],
-        nonToggleSectionIds: ["account-module"],
+        forcedOpenSectionIds: ["general-permissions"],
+        nonToggleSectionIds: ["general-permissions"],
       }
     : {};
-  const accountSectionErrors = isMainAccountSide
+  const generalSectionEnabled =
+    (draft.permissionSections?.["account-module"] !== false) ||
+    (draft.permissionSections?.["rms-back-office"] !== false);
+  const generalSectionErrors = isMainAccountSide
     ? {}
-    : getScopedSectionErrors(["account-module"]);
-  const resolvedActiveTab =
-    isMainAccountSide && baseResolvedActiveTab !== "general"
-      ? "general"
-      : baseResolvedActiveTab;
-  const showTabs = !isMainAccountSide;
-  const handleAccountPermissionChange = (modId, val) => {
-    onChange("permissions", { ...draft.permissions, [modId]: val });
-    if (isMainAccountSide && draft.permissionSections?.["account-module"] === false) {
-      onChange("permissionSections", {
-        ...draft.permissionSections,
-        "account-module": true,
-      });
-    }
-  };
+    : getScopedSectionErrors(["account-module", "rms-back-office"]);
+  const resolvedActiveTab = baseResolvedActiveTab;
   const roleTypePill = (
     <span className={`status-pill ${roleTypeClass}`}>
       <span className="type-body">{roleType}</span>
@@ -112,41 +119,39 @@ export function RoleManagementDetailPanel({
             </button>
           </div>
         </div>
-        {showTabs ? (
-          <div className="catalog-detail-panel__tabbar">
-            <div className="catalog-detail-panel__tabs" role="tablist">
+        <div className="catalog-detail-panel__tabbar">
+          <div className="catalog-detail-panel__tabs" role="tablist">
+            <button
+              type="button"
+              className={`catalog-detail-panel__tab${resolvedActiveTab === "general" ? " is-active" : ""}`}
+              onClick={() => onTabChange?.("general")}
+              role="tab"
+              aria-selected={resolvedActiveTab === "general"}
+            >
+              General
+            </button>
+            <button
+              type="button"
+              className={`catalog-detail-panel__tab${resolvedActiveTab === "rms-module" ? " is-active" : ""}`}
+              onClick={() => onTabChange?.("rms-module")}
+              role="tab"
+              aria-selected={resolvedActiveTab === "rms-module"}
+            >
+              Apps Permission
+            </button>
+            {!isEditing ? (
               <button
                 type="button"
-                className={`catalog-detail-panel__tab${resolvedActiveTab === "general" ? " is-active" : ""}`}
-                onClick={() => onTabChange?.("general")}
+                className={`catalog-detail-panel__tab${resolvedActiveTab === "member" ? " is-active" : ""}`}
+                onClick={() => onTabChange?.("member")}
                 role="tab"
-                aria-selected={resolvedActiveTab === "general"}
+                aria-selected={resolvedActiveTab === "member"}
               >
-                General
+                Member
               </button>
-              <button
-                type="button"
-                className={`catalog-detail-panel__tab${resolvedActiveTab === "rms-module" ? " is-active" : ""}`}
-                onClick={() => onTabChange?.("rms-module")}
-                role="tab"
-                aria-selected={resolvedActiveTab === "rms-module"}
-              >
-                RMS Permission
-              </button>
-              {!isEditing ? (
-                <button
-                  type="button"
-                  className={`catalog-detail-panel__tab${resolvedActiveTab === "member" ? " is-active" : ""}`}
-                  onClick={() => onTabChange?.("member")}
-                  role="tab"
-                  aria-selected={resolvedActiveTab === "member"}
-                >
-                  Member
-                </button>
-              ) : null}
-            </div>
+            ) : null}
           </div>
-        ) : null}
+        </div>
       </div>
       <div className="catalog-detail-panel__body">
         {resolvedActiveTab === "general" ? (
@@ -190,31 +195,15 @@ export function RoleManagementDetailPanel({
               </div>
             </DetailSection>
 
-            <DetailSection title="Account Module Permission">
+            <DetailSection title="Back Office Permissions">
               <RolePermissionsList
                 permissions={draft.permissions}
-                sectionStates={draft.permissionSections}
-                sectionErrors={accountSectionErrors}
-                isEditing={isEditing}
-                onChange={handleAccountPermissionChange}
-                onSectionToggle={(sectionId, enabled) =>
-                  onChange("permissionSections", {
-                    ...draft.permissionSections,
-                    [sectionId]: enabled,
-                  })
-                }
-                structure={accountPermissionGroups}
-                {...accountSectionBehavior}
-              />
-            </DetailSection>
-          </>
-        ) : resolvedActiveTab === "rms-module" ? (
-          <>
-            <DetailSection title="RMS Back Office Permission">
-              <RolePermissionsList
-                permissions={draft.permissions}
-                sectionStates={draft.permissionSections}
-                sectionErrors={getScopedSectionErrors(["rms-back-office"])}
+                sectionStates={{ "general-permissions": generalSectionEnabled }}
+                sectionErrors={{
+                  "general-permissions":
+                    generalSectionErrors["account-module"] ||
+                    generalSectionErrors["rms-back-office"],
+                }}
                 isEditing={isEditing}
                 onChange={(modId, val) =>
                   onChange("permissions", { ...draft.permissions, [modId]: val })
@@ -222,13 +211,17 @@ export function RoleManagementDetailPanel({
                 onSectionToggle={(sectionId, enabled) =>
                   onChange("permissionSections", {
                     ...draft.permissionSections,
-                    [sectionId]: enabled,
+                    ["account-module"]: enabled,
+                    ["rms-back-office"]: enabled,
                   })
                 }
-                structure={rmsBackOfficeGroups}
+                structure={generalPermissionGroups}
+                {...generalSectionBehavior}
               />
             </DetailSection>
-
+          </>
+        ) : resolvedActiveTab === "rms-module" ? (
+          <>
             <DetailSection title="RMS Apps Permission">
               <RolePermissionsList
                 permissions={draft.permissions}

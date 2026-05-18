@@ -1058,6 +1058,26 @@ const ENTITY_BACK_OFFICE_ROLE_PERMISSION_MODULES = [
   { id: "table-management", label: "Table Management" },
 ];
 
+const ENTITY_BACK_OFFICE_MENU_HIERARCHY = [
+  {
+    id: "catalog-management",
+    label: "Catalog Management",
+    isParent: true,
+    children: ["catalog", "category", "unit", "modifier"],
+  },
+  {
+    id: "device-management",
+    label: "Device Management",
+    isParent: true,
+    children: ["device", "grouped-device"],
+  },
+  {
+    id: "table-management",
+    label: "Table Management",
+    isParent: false,
+  },
+];
+
 const ENTITY_APP_ROLE_PERMISSION_MODULES = [
   {
     id: "cashier",
@@ -1082,6 +1102,7 @@ const ROLE_PERMISSION_GROUPS = [
     id: "rms-back-office",
     group: "RMS Back Office",
     modules: ENTITY_BACK_OFFICE_ROLE_PERMISSION_MODULES,
+    menuHierarchy: ENTITY_BACK_OFFICE_MENU_HIERARCHY,
   },
   {
     id: "rms-apps",
@@ -1167,6 +1188,22 @@ function createRoleAccessDraftFromRecord(record) {
       { defaultEnabled: false }
     ),
   };
+}
+
+function sortRoleAccessRows(rows = []) {
+  return rows
+    .map((row, index) => ({ row, index }))
+    .sort((a, b) => {
+      const aIsSystem = String(a.row?.type ?? "").toLowerCase() === "system";
+      const bIsSystem = String(b.row?.type ?? "").toLowerCase() === "system";
+
+      if (aIsSystem !== bIsSystem) {
+        return aIsSystem ? 1 : -1;
+      }
+
+      return a.index - b.index;
+    })
+    .map(({ row }) => row);
 }
 
 function getRoleAccessPermissionSectionErrors(
@@ -12773,6 +12810,7 @@ export default function App() {
   const pricingOverrideInputRef = useRef(null);
   const modifierDraggedOptionIdRef = useRef(null);
   const pendingCreateNavigationRef = useRef(null);
+  const pendingRoleAccessDetailIdRef = useRef(null);
   const devicePairingRequestTimerRef = useRef({});
 
   const deferredCurrentSearch = useDeferredValue(
@@ -14262,6 +14300,8 @@ export default function App() {
             ? unitRows
             : pageId === "selling-time"
               ? sellingTimeRows
+              : pageId === "role-access"
+                ? sortRoleAccessRows(records["role-access"] ?? [])
             : pageId === "grouped-device"
                 ? (records["grouped-device"] ?? []).map((row) => {
                   const devices = getGroupedDeviceDeviceRows(
@@ -14729,6 +14769,7 @@ export default function App() {
 
   function cancelDiscardCreateChanges() {
     pendingCreateNavigationRef.current = null;
+    pendingRoleAccessDetailIdRef.current = null;
     setDiscardCreateModalOpen(false);
   }
 
@@ -18374,11 +18415,32 @@ export default function App() {
     const row = records["role-access"].find((r) => r.id === rowId);
     if (!row) return;
 
-    setRoleAccessDetailId(rowId);
-    setRoleAccessDetailDraft(createRoleAccessDraftFromRecord(row));
-    setRoleAccessDetailEditing(null);
-    setRoleAccessDetailErrors({});
-    setRoleAccessDetailPanelTab("general");
+    const openDetail = (id) => {
+      setRoleAccessDetailId(id);
+      setRoleAccessDetailDraft(createRoleAccessDraftFromRecord(row));
+      setRoleAccessDetailEditing(null);
+      setRoleAccessDetailErrors({});
+      setRoleAccessDetailPanelTab("general");
+      pendingRoleAccessDetailIdRef.current = null;
+    };
+
+    const openAfterClose = () => {
+      handleSetPage("role-access", { skipCreateGuard: true });
+      openDetail(rowId);
+    };
+
+    if (
+      currentPage === "role-access-create" ||
+      currentPage === "role-management-create"
+    ) {
+      pendingRoleAccessDetailIdRef.current = rowId;
+      if (!guardCreatePanelNavigation(openAfterClose)) {
+        pendingRoleAccessDetailIdRef.current = null;
+      }
+      return;
+    }
+
+    openDetail(rowId);
   }
 
   function goToRoleAccessCreateRmsTab() {
@@ -26945,6 +27007,15 @@ export default function App() {
 
                               if (column.type === "link") {
                                 const cellValueToRender = cellValue;
+                                const isRoleAccessNameColumn = isRoleAccessPage && column.key === "name";
+                                const roleTypeBadge = isRoleAccessNameColumn && row.type === "System" ? (
+                                  <span
+                                    className="status-pill status-pill--primary"
+                                    style={{ flex: "none", verticalAlign: "middle" }}
+                                  >
+                                    <span className="type-body">System</span>
+                                  </span>
+                                ) : null;
 
                                 return (
                                   <td
@@ -26955,9 +27026,44 @@ export default function App() {
                                     <div className="lab-table__cell-stack">
                                       <p
                                         className="type-subtitle-2 lab-table__link"
-                                        style={column.key === "addedByName" ? { color: "var(--neutral-on-surface-primary)" } : {}}
+                                        style={
+                                          column.key === "addedByName"
+                                            ? {
+                                              color:
+                                                "var(--neutral-on-surface-primary)",
+                                            }
+                                            : {}
+                                        }
                                       >
-                                        {cellValueToRender}
+                                        {isRoleAccessNameColumn ? (
+                                          <span
+                                            style={{
+                                              display: "inline-flex",
+                                              alignItems: "center",
+                                              gap: "4px",
+                                              maxWidth: "100%",
+                                              minWidth: 0,
+                                              verticalAlign: "middle",
+                                            }}
+                                          >
+                                            <span
+                                              style={{
+                                                display: "block",
+                                                flex: "1 1 auto",
+                                                minWidth: 0,
+                                                overflow: "hidden",
+                                                textOverflow: "ellipsis",
+                                                whiteSpace: "nowrap",
+                                                verticalAlign: "middle",
+                                              }}
+                                            >
+                                              {cellValueToRender}
+                                            </span>
+                                            {roleTypeBadge}
+                                          </span>
+                                        ) : (
+                                          cellValueToRender
+                                        )}
                                       </p>
                                       {column.subtitleKey &&
                                         row[column.subtitleKey] ? (

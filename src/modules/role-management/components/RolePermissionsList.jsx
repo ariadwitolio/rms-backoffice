@@ -264,7 +264,7 @@ export function RolePermissionRow({
   permission,
   onChange,
   isEditing,
-  isLast = false,
+  isChild = false,
 }) {
   const normalizedPermission = normalizePermission(module, permission);
   const label =
@@ -281,7 +281,7 @@ export function RolePermissionRow({
         gap: "10px",
         gridTemplateColumns: "minmax(0, 1fr) minmax(200px, 1fr)",
         padding: "10px 0",
-        borderBottom: isLast ? "none" : "1px solid var(--neutral-line-outline)",
+        borderBottom: "none",
       }}
     >
       <div
@@ -298,6 +298,7 @@ export function RolePermissionRow({
             justifyContent: "center",
             color: "var(--neutral-on-surface-secondary)",
             flexShrink: 0,
+            opacity: isChild ? 0.7 : 1,
           }}
         >
           <Icon name={iconName} className="lab-icon lab-icon--18" alt="" />
@@ -307,7 +308,11 @@ export function RolePermissionRow({
         >
           <p
             className="type-subtitle-2 catalog-detail-field__input--ellipsis"
-            style={{ fontWeight: 600, fontSize: "14px" }}
+            style={{
+              fontWeight: isChild ? 500 : 600,
+              fontSize: "14px",
+              opacity: isChild ? 0.85 : 1,
+            }}
           >
             {module.label}
           </p>
@@ -360,6 +365,86 @@ export function RolePermissionRow({
   );
 }
 
+function ParentMenuRow({
+  menuItem,
+  isExpanded,
+  onToggle,
+}) {
+  // Map parent menu IDs directly to icon names
+  const parentIconMap = {
+    "catalog-management": "catalog",
+    "device-management": "deviceManagement",
+  };
+  const iconName = parentIconMap[menuItem.id] ?? "roleManagement";
+
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      style={{
+        width: "100%",
+        display: "flex",
+        alignItems: "center",
+        gap: "10px",
+        padding: "10px 0",
+        border: "none",
+        background: "none",
+        cursor: "pointer",
+        textAlign: "left",
+      }}
+      aria-expanded={isExpanded}
+      aria-label={`${menuItem.label}, ${isExpanded ? "expanded" : "collapsed"}`}
+    >
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "8px",
+          flex: 1,
+          minWidth: 0,
+        }}
+      >
+        <div
+          style={{
+            width: "32px",
+            height: "32px",
+            borderRadius: "8px",
+            background: "var(--neutral-background)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            color: "var(--neutral-on-surface-secondary)",
+            flexShrink: 0,
+          }}
+        >
+          <Icon name={iconName} className="lab-icon lab-icon--18" alt="" />
+        </div>
+        <p
+          className="type-subtitle-2"
+          style={{
+            fontWeight: 600,
+            fontSize: "14px",
+            margin: 0,
+            minWidth: 0,
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {menuItem.label}
+        </p>
+      </div>
+      <ChevronIcon
+        name="filterChevron"
+        size={16}
+        direction={isExpanded ? "up" : "down"}
+        color="var(--neutral-on-surface-secondary)"
+        style={{ flexShrink: 0 }}
+      />
+    </button>
+  );
+}
+
 function RolePermissionsGroup({
   group,
   permissions,
@@ -371,9 +456,23 @@ function RolePermissionsGroup({
   error = "",
   showSectionToggle = true,
 }) {
+  const [expandedMenus, setExpandedMenus] = useState(() => {
+    // Default: all parent menus are expanded
+    if (!group.menuHierarchy) return {};
+    return group.menuHierarchy
+      .filter((item) => item.isParent)
+      .reduce((acc, item) => ({ ...acc, [item.id]: true }), {});
+  });
+
   const showSectionStatus = !isEditing && !sectionEnabled;
   const showSectionError = isEditing && sectionEnabled && Boolean(error);
   const shouldShowBody = sectionEnabled;
+
+  const toggleMenuExpanded = (menuId) => {
+    setExpandedMenus((prev) => ({ ...prev, [menuId]: !prev[menuId] }));
+  };
+
+  const hasMenuHierarchy = Boolean(group.menuHierarchy);
 
   return (
     <section
@@ -443,16 +542,125 @@ function RolePermissionsGroup({
       ) : null}
       {shouldShowBody ? (
         <div style={{ padding: "0 16px", animation: "fadeIn 0.2s ease-out" }}>
-          {group.modules.map((module, moduleIdx) => (
-            <RolePermissionRow
-              key={module.id}
-              module={module}
-              permission={permissions[module.id]}
-              onChange={(nextPermission) => onChange(module.id, nextPermission)}
-              isEditing={isEditing}
-              isLast={moduleIdx === group.modules.length - 1}
-            />
-          ))}
+          {hasMenuHierarchy ? (
+            // Render with menu hierarchy (parent and default menu rows)
+            group.menuHierarchy.map((menuItem, itemIdx) => {
+              if (menuItem.isParent) {
+                // Parent Menu Row
+                const isExpanded = expandedMenus[menuItem.id] !== false;
+
+                return (
+                  <div
+                    key={menuItem.id}
+                    style={{
+                      borderBottom:
+                        itemIdx === group.menuHierarchy.length - 1
+                          ? "none"
+                          : "1px solid var(--neutral-line-outline)",
+                    }}
+                  >
+                    {/* Parent Menu Row - No access dropdown */}
+                    <ParentMenuRow
+                      menuItem={menuItem}
+                      isExpanded={isExpanded}
+                      onToggle={() => toggleMenuExpanded(menuItem.id)}
+                    />
+
+                    {/* Child Menu Rows (indented) */}
+                    {isExpanded && menuItem.children && (
+                      <div>
+                        {menuItem.children.map((childId, childIdx) => {
+                          const childModule = group.modules.find(
+                            (m) => m.id === childId
+                          );
+                          if (!childModule) return null;
+
+                          return (
+                            <div
+                              key={childModule.id}
+                              style={{
+                                paddingLeft: "24px",
+                                paddingTop: childIdx === 0 ? "6px" : "0",
+                                paddingBottom:
+                                  childIdx === menuItem.children.length - 1
+                                    ? "6px"
+                                    : "0",
+                                borderBottom:
+                                  childIdx === menuItem.children.length - 1
+                                    ? "none"
+                                    : "1px solid var(--neutral-line-outline)",
+                              }}
+                            >
+                              <RolePermissionRow
+                                module={childModule}
+                                permission={permissions[childModule.id]}
+                                onChange={(nextPermission) =>
+                                  onChange(childModule.id, nextPermission)
+                                }
+                                isEditing={isEditing}
+                                isChild={true}
+                              />
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              } else {
+                // Default/Standalone Menu Row (no indent)
+                const standaloneModule = group.modules.find(
+                  (m) => m.id === menuItem.id
+                );
+                if (!standaloneModule) return null;
+
+                return (
+                  <div
+                    key={standaloneModule.id}
+                    style={{
+                      borderBottom:
+                        itemIdx === group.menuHierarchy.length - 1
+                          ? "none"
+                          : "1px solid var(--neutral-line-outline)",
+                    }}
+                  >
+                    <div style={{ padding: "0" }}>
+                      <RolePermissionRow
+                        module={standaloneModule}
+                        permission={permissions[standaloneModule.id]}
+                        onChange={(nextPermission) =>
+                          onChange(standaloneModule.id, nextPermission)
+                        }
+                        isEditing={isEditing}
+                        isChild={false}
+                      />
+                    </div>
+                  </div>
+                );
+              }
+            })
+          ) : (
+            // Render flat list (legacy fallback)
+            group.modules.map((module, moduleIdx) => (
+              <div
+                key={module.id}
+                style={{
+                  borderBottom:
+                    moduleIdx === group.modules.length - 1
+                      ? "none"
+                      : "1px solid var(--neutral-line-outline)",
+                }}
+              >
+                <RolePermissionRow
+                  module={module}
+                  permission={permissions[module.id]}
+                  onChange={(nextPermission) => onChange(module.id, nextPermission)}
+                  isEditing={isEditing}
+                  isChild={false}
+                />
+              </div>
+            ))
+          )}
         </div>
       ) : null}
     </section>
