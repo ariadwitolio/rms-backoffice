@@ -781,6 +781,51 @@ function getCatalogModifierDetailValue(modifiers = []) {
   return selectedModifiers.length ? selectedModifiers.join(", ") : "-";
 }
 
+const MODIFIER_INGREDIENT_OPTIONS = [
+  {
+    id: "stock-level-1",
+    label: "Arabica Beans",
+    unitLabel: formatModifierIngredientUnitLabel("Kg"),
+  },
+  {
+    id: "stock-level-2",
+    label: "Mozzarella Cheese",
+    unitLabel: formatModifierIngredientUnitLabel("Packs"),
+  },
+  {
+    id: "stock-level-3",
+    label: "Romaine Lettuce",
+    unitLabel: formatModifierIngredientUnitLabel("Kg"),
+  },
+  {
+    id: "stock-level-4",
+    label: "Chicken Breast",
+    unitLabel: formatModifierIngredientUnitLabel("Kg"),
+  },
+  {
+    id: "stock-level-5",
+    label: "Burger Bun",
+    unitLabel: formatModifierIngredientUnitLabel("Pcs"),
+  },
+  {
+    id: "stock-level-6",
+    label: "Truffle Mayo",
+    unitLabel: formatModifierIngredientUnitLabel("Bottles"),
+  },
+];
+
+const MODIFIER_INGREDIENT_OPTIONS_BY_ID = Object.fromEntries(
+  MODIFIER_INGREDIENT_OPTIONS.map((option) => [option.id, option])
+);
+
+const MODIFIER_INGREDIENT_OPTIONS_BY_LABEL = Object.fromEntries(
+  MODIFIER_INGREDIENT_OPTIONS.map((option) => [option.label, option])
+);
+
+const MODIFIER_INGREDIENT_OPTION_LABELS = MODIFIER_INGREDIENT_OPTIONS.map(
+  (option) => option.label
+);
+
 
 function createEmptyModifierOption() {
   return {
@@ -789,16 +834,170 @@ function createEmptyModifierOption() {
     additionalPrice: "",
     overrideAdditionalPrice: "",
     isAvailable: true,
+    ingredientId: "",
+    selectedIngredient: "",
+    ingredientQty: "",
+    ingredientUnit: "",
   };
 }
 
-function normalizeModifierOptions(options = []) {
-  const nextOptions = options.map((option) => ({
+function formatModifierIngredientUnitLabel(unitLabel = "") {
+  return String(unitLabel ?? "").trim().toLowerCase();
+}
+
+function getModifierIngredientSelection({
+  ingredientId = "",
+  selectedIngredient = "",
+  ingredientUnit = "",
+} = {}) {
+  const byId = ingredientId
+    ? MODIFIER_INGREDIENT_OPTIONS_BY_ID[ingredientId] ?? null
+    : null;
+
+  if (byId) {
+    return {
+      ingredientId: byId.id,
+      selectedIngredient: byId.label,
+      ingredientUnit: byId.unitLabel,
+    };
+  }
+
+  const byLabel = selectedIngredient
+    ? MODIFIER_INGREDIENT_OPTIONS_BY_LABEL[selectedIngredient] ?? null
+    : null;
+
+  if (byLabel) {
+    return {
+      ingredientId: byLabel.id,
+      selectedIngredient: byLabel.label,
+      ingredientUnit: byLabel.unitLabel,
+    };
+  }
+
+  return {
+    ingredientId: ingredientId || "",
+    selectedIngredient: selectedIngredient || "",
+    ingredientUnit: formatModifierIngredientUnitLabel(ingredientUnit),
+  };
+}
+
+function normalizeModifierIngredientQtyInput(value) {
+  const digits = String(value ?? "").replace(/[^\d]/g, "");
+  if (!digits) return "";
+  return String(Number(digits));
+}
+
+function hasModifierOptionIngredient(option) {
+  return Boolean(option?.ingredientId || option?.selectedIngredient);
+}
+
+function isModifierOptionIngredientQtyValid(option) {
+  if (!hasModifierOptionIngredient(option)) return true;
+  return Number(option?.ingredientQty ?? 0) > 0;
+}
+
+function getModifierOptionNameErrorIds(options = []) {
+  return options
+    .filter((option) => !option?.name?.trim?.())
+    .map((option) => option.id);
+}
+
+function getModifierOptionIngredientQtyErrorIds(options = []) {
+  return options
+    .filter(
+      (option) =>
+        hasModifierOptionIngredient(option) &&
+        !isModifierOptionIngredientQtyValid(option)
+    )
+    .map((option) => option.id);
+}
+
+function getModifierOptionErrors(options = []) {
+  const nextErrors = {};
+  const optionNames = getModifierOptionNameErrorIds(options);
+  const optionIngredientQtys = getModifierOptionIngredientQtyErrorIds(options);
+
+  if (optionNames.length) {
+    nextErrors.optionNames = optionNames;
+  }
+
+  if (optionIngredientQtys.length) {
+    nextErrors.optionIngredientQtys = optionIngredientQtys;
+  }
+
+  return nextErrors;
+}
+
+function clearModifierOptionErrorId(previousErrors, key, optionId) {
+  const currentIds = previousErrors?.[key] ?? [];
+  if (!currentIds.includes(optionId)) {
+    return previousErrors;
+  }
+
+  const nextIds = currentIds.filter((currentId) => currentId !== optionId);
+  const nextErrors = { ...previousErrors };
+
+  if (nextIds.length) {
+    nextErrors[key] = nextIds;
+  } else {
+    delete nextErrors[key];
+  }
+
+  return nextErrors;
+}
+
+function buildModifierOptionDraft(option = {}) {
+  const ingredientSelection = getModifierIngredientSelection(option);
+  const hasIngredient = Boolean(
+    ingredientSelection.ingredientId || ingredientSelection.selectedIngredient
+  );
+  const normalizedIngredientQty = normalizeModifierIngredientQtyInput(
+    option?.ingredientQty
+  );
+
+  return {
     ...option,
     name: option?.name ?? "",
     additionalPrice: getNormalizedNominalDigits(option?.additionalPrice),
     isAvailable: option?.isAvailable !== false,
-  }));
+    ingredientId: ingredientSelection.ingredientId,
+    selectedIngredient: ingredientSelection.selectedIngredient,
+    ingredientUnit: ingredientSelection.ingredientUnit,
+    ingredientQty: hasIngredient
+      ? normalizedIngredientQty && Number(normalizedIngredientQty) > 0
+        ? normalizedIngredientQty
+        : "1"
+      : "",
+  };
+}
+
+function buildModifierOptionRecordForStorage(option = {}) {
+  const ingredientSelection = getModifierIngredientSelection(option);
+  const hasIngredient = Boolean(
+    ingredientSelection.ingredientId || ingredientSelection.selectedIngredient
+  );
+  const normalizedIngredientQty = normalizeModifierIngredientQtyInput(
+    option?.ingredientQty
+  );
+
+  return {
+    ...option,
+    name: option.name.trim(),
+    additionalPrice: getNormalizedNominalDigits(option.additionalPrice),
+    ingredientId: hasIngredient ? ingredientSelection.ingredientId : "",
+    selectedIngredient: hasIngredient
+      ? ingredientSelection.selectedIngredient
+      : "",
+    ingredientQty:
+      hasIngredient && Number(normalizedIngredientQty) > 0
+        ? normalizedIngredientQty
+        : "",
+    ingredientUnit: hasIngredient ? ingredientSelection.ingredientUnit : "",
+  };
+}
+
+function normalizeModifierOptions(options = []) {
+  const nextOptions = options.map((option) => buildModifierOptionDraft(option));
 
   return nextOptions.length ? nextOptions : [createEmptyModifierOption()];
 }
@@ -1354,6 +1553,19 @@ function getModifierDetailValidationMessage(detailDraft, detailEditing) {
     if (!option?.name?.trim()) {
       return "Field cannot be empty";
     }
+    if (
+      hasModifierOptionIngredient(option) &&
+      !isModifierOptionIngredientQtyValid(option)
+    ) {
+      return "Qty must be greater than 0 when ingredient is selected";
+    }
+  }
+
+  if (
+    (detailEditing.kind === "all" || detailEditing.kind === "option-row") &&
+    getModifierOptionIngredientQtyErrorIds(detailDraft.options ?? []).length
+  ) {
+    return "Qty must be greater than 0 when ingredient is selected";
   }
 
   return null;
@@ -7087,7 +7299,27 @@ function ModifierCreateNumberField({ label, value, onChange, helper }) {
   );
 }
 
-function ModifierReorderHandle({ onDragStart, onDragEnd, ariaLabel }) {
+function ModifierReorderHandle({
+  onDragStart,
+  onDragEnd,
+  ariaLabel,
+  disabled = false,
+}) {
+  if (disabled) {
+    return (
+      <span
+        className="modifier-option-table__handle modifier-option-table__handle--static"
+        aria-hidden="true"
+      >
+        <Icon
+          name="modifierReorder"
+          className="lab-icon lab-icon--20"
+          color="var(--neutral-on-surface-tertiary)"
+        />
+      </span>
+    );
+  }
+
   return (
     <button
       type="button"
@@ -7142,6 +7374,9 @@ function PackageItemSelectField({
   onChange,
   placeholder = "Select Catalog",
   disabled = false,
+  allowClear = false,
+  clearLabel = "Clear selection",
+  emptyCopy = "No catalog item available",
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [menuStyle, setMenuStyle] = useState(null);
@@ -7272,17 +7507,30 @@ function PackageItemSelectField({
             style={menuStyle}
           >
             {options.length ? (
-              options.map((option, index) => {
-                const isSelected = option === value;
-                const isLast = index === options.length - 1;
+              [
+                ...(allowClear
+                  ? [
+                    {
+                      value: "",
+                      label: clearLabel,
+                    },
+                  ]
+                  : []),
+                ...options.map((option) => ({
+                  value: option,
+                  label: option,
+                })),
+              ].map(({ value: optionValue, label: optionLabel }, index, items) => {
+                const isSelected = optionValue === value;
+                const isLast = index === items.length - 1;
 
                 return (
                   <button
-                    key={option}
+                    key={`${optionLabel}-${index}`}
                     type="button"
                     className="catalog-package-field__option"
                     onClick={() => {
-                      onChange(option);
+                      onChange(optionValue);
                       setIsOpen(false);
                     }}
                   >
@@ -7291,7 +7539,7 @@ function PackageItemSelectField({
                         className={`catalog-package-field__option-label ${isSelected ? "type-title-3" : "type-subtitle-2"
                           }`}
                       >
-                        {option}
+                        {optionLabel}
                       </p>
                       {isSelected ? (
                         <span
@@ -7311,13 +7559,299 @@ function PackageItemSelectField({
               })
             ) : (
               <p className="catalog-package-field__empty type-subtitle-2">
-                No catalog item available
+                {emptyCopy}
               </p>
             )}
           </div>,
           document.body
         )
         : null}
+    </div>
+  );
+}
+
+function ModifierOptionQtyField({
+  value,
+  unitLabel = "",
+  disabled = false,
+  error = false,
+  onChange,
+}) {
+  return (
+    <div className="modifier-option-table__field-stack">
+      <label
+        className={`modifier-option-table__field-shell modifier-option-table__field-shell--qty${error ? " is-error" : ""}${disabled ? " is-disabled" : ""}`}
+      >
+        <input
+          className={`modifier-option-table__qty-input type-subtitle-2${value ? "" : " text-tertiary"}`}
+          type="number"
+          inputMode="numeric"
+          min="0"
+          step="1"
+          value={disabled ? "" : value}
+          placeholder="0"
+          disabled={disabled}
+          onChange={(event) => onChange?.(event.target.value)}
+        />
+        {unitLabel ? (
+          <span className="modifier-option-table__qty-unit type-subtitle-2">
+            {unitLabel}
+          </span>
+        ) : null}
+      </label>
+      {error ? (
+        <p className="modifier-option-table__field-error type-body">
+          Qty must be greater than 0
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function ModifierOptionsTable({
+  options,
+  isEditing,
+  dragOverOptionId,
+  optionNameErrors = [],
+  optionIngredientQtyErrors = [],
+  ingredientOptions = [],
+  onOptionChange,
+  onRemoveOption,
+  onAddOption,
+  onDragStart,
+  onDragEnd,
+  onDragOver,
+  onDrop,
+  addButtonDisabled = false,
+  addButtonDataAttribute,
+  rowDataAttribute,
+  emptyReadonlyContent = null,
+}) {
+  if (!isEditing && !options.length) {
+    return emptyReadonlyContent;
+  }
+
+  return (
+    <div className="modifier-option-table-shell">
+      <div className="modifier-option-table__scroll">
+        <section
+          className={`modifier-option-table ${
+            isEditing
+              ? "modifier-option-table--editable"
+              : "modifier-option-table--readonly modifier-option-table--with-availability"
+          }`}
+        >
+          <div className="modifier-option-table__row modifier-option-table__row--header">
+            <div className="modifier-option-table__header-cell modifier-option-table__header-cell--handle" />
+            <div className="modifier-option-table__header-cell modifier-option-table__header-cell--name">
+              <p className="type-title-3">Option Name</p>
+            </div>
+            <div className="modifier-option-table__header-cell modifier-option-table__header-cell--price">
+              <p className="type-title-3">Additional Price</p>
+            </div>
+            <div className="modifier-option-table__header-cell modifier-option-table__header-cell--ingredient">
+              <p className="type-title-3">Ingredient</p>
+            </div>
+            <div className="modifier-option-table__header-cell modifier-option-table__header-cell--qty">
+              <p className="type-title-3">Qty</p>
+            </div>
+            {isEditing ? (
+              <div className="modifier-option-table__header-cell modifier-option-table__header-cell--action" />
+            ) : (
+              <div className="modifier-option-table__header-cell modifier-option-table__header-cell--availability">
+                <p className="type-title-3">Availability</p>
+              </div>
+            )}
+          </div>
+          {options.map((option, index) => {
+            const optionNameError = optionNameErrors.includes(option.id);
+            const optionIngredientQtyError =
+              optionIngredientQtyErrors.includes(option.id);
+            const hasIngredient = hasModifierOptionIngredient(option);
+            const ingredientUnit = getModifierIngredientSelection(option)
+              .ingredientUnit;
+
+            return (
+              <div
+                key={option.id}
+                {...(rowDataAttribute
+                  ? { [rowDataAttribute]: "true" }
+                  : {})}
+                className={`modifier-option-table__row${
+                  dragOverOptionId === option.id ? " is-drag-over" : ""
+                }`}
+                onDragOver={
+                  isEditing
+                    ? (event) => {
+                      event.preventDefault();
+                      event.dataTransfer.dropEffect = "move";
+                      onDragOver?.(option.id);
+                    }
+                    : undefined
+                }
+                onDrop={
+                  isEditing
+                    ? (event) => {
+                      event.preventDefault();
+                      onDrop?.(option.id);
+                    }
+                    : undefined
+                }
+              >
+                <div className="modifier-option-table__cell modifier-option-table__cell--handle">
+                  <ModifierReorderHandle
+                    ariaLabel={`Reorder option ${index + 1}`}
+                    disabled={!isEditing}
+                    onDragStart={
+                      isEditing
+                        ? (event) => onDragStart?.(option.id, event)
+                        : undefined
+                    }
+                    onDragEnd={isEditing ? onDragEnd : undefined}
+                  />
+                </div>
+                <div className="modifier-option-table__cell modifier-option-table__cell--name">
+                  {isEditing ? (
+                    <div className="modifier-option-table__field-stack">
+                      <label
+                        className={`modifier-option-table__field-shell${
+                          optionNameError ? " is-error" : ""
+                        }`}
+                      >
+                        <input
+                          className={`type-subtitle-2${option.name ? "" : " text-tertiary"}`}
+                          type="text"
+                          value={option.name}
+                          placeholder={`Option Name ${index + 1}`}
+                          onChange={(event) =>
+                            onOptionChange?.(
+                              option.id,
+                              "name",
+                              event.target.value
+                            )
+                          }
+                        />
+                      </label>
+                      {optionNameError ? (
+                        <p className="modifier-option-table__field-error type-body">
+                          Field cannot be empty
+                        </p>
+                      ) : null}
+                    </div>
+                  ) : (
+                    <p className="type-subtitle-2">{option.name || "-"}</p>
+                  )}
+                </div>
+                <div className="modifier-option-table__cell modifier-option-table__cell--price">
+                  {isEditing ? (
+                    <ModifierOptionPriceField
+                      value={option.additionalPrice}
+                      onChange={(value) =>
+                        onOptionChange?.(option.id, "additionalPrice", value)
+                      }
+                    />
+                  ) : (
+                    <p className="type-subtitle-2">
+                      {formatModifierDetailOptionPrice(option.additionalPrice)}
+                    </p>
+                  )}
+                </div>
+                <div className="modifier-option-table__cell modifier-option-table__cell--ingredient">
+                  {isEditing ? (
+                    <div className="modifier-option-table__field-stack">
+                      <label className="modifier-option-table__field-shell modifier-option-table__field-shell--select">
+                        <PackageItemSelectField
+                          value={option.selectedIngredient}
+                          options={ingredientOptions}
+                          placeholder="Select Ingredient"
+                          allowClear
+                          clearLabel="No Ingredient"
+                          emptyCopy="No ingredient available"
+                          onChange={(value) =>
+                            onOptionChange?.(
+                              option.id,
+                              "selectedIngredient",
+                              value
+                            )
+                          }
+                        />
+                      </label>
+                    </div>
+                  ) : (
+                    <p className="type-subtitle-2">
+                      {option.selectedIngredient || "-"}
+                    </p>
+                  )}
+                </div>
+                <div className="modifier-option-table__cell modifier-option-table__cell--qty">
+                  {isEditing ? (
+                    <ModifierOptionQtyField
+                      value={option.ingredientQty}
+                      unitLabel={ingredientUnit}
+                      disabled={!hasIngredient}
+                      error={optionIngredientQtyError}
+                      onChange={(value) =>
+                        onOptionChange?.(option.id, "ingredientQty", value)
+                      }
+                    />
+                  ) : (
+                    <p className="type-subtitle-2">
+                      {hasIngredient && option.ingredientQty
+                        ? `${option.ingredientQty} ${ingredientUnit}`.trim()
+                        : "-"}
+                    </p>
+                  )}
+                </div>
+                {isEditing ? (
+                  <div className="modifier-option-table__cell modifier-option-table__cell--action">
+                    <TableActionButton
+                      tooltip="Remove"
+                      onClick={() => onRemoveOption?.(option.id)}
+                      ariaLabel={`Remove option ${index + 1}`}
+                    >
+                      <Icon
+                        name="delete"
+                        className="lab-icon lab-icon--16"
+                        alt="Delete"
+                      />
+                    </TableActionButton>
+                  </div>
+                ) : (
+                  <div className="modifier-option-table__cell modifier-option-table__cell--availability">
+                    <Toggle
+                      checked={option.isAvailable !== false}
+                      onChange={() =>
+                        onOptionChange?.(
+                          option.id,
+                          "isAvailable",
+                          option.isAvailable === false ? true : false
+                        )
+                      }
+                      ariaLabel={`Availability for ${option.name || "Option"}`}
+                    />
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </section>
+      </div>
+      {isEditing ? (
+        <button
+          type="button"
+          className="modifier-option-table__add"
+          disabled={addButtonDisabled}
+          {...(addButtonDataAttribute
+            ? { [addButtonDataAttribute]: "true" }
+            : {})}
+          onClick={onAddOption}
+        >
+          <Icon name="modifierOptionAdd" className="lab-icon" alt="" />
+          <span className="modifier-option-table__add-label type-title-3">
+            Add Option
+          </span>
+        </button>
+      ) : null}
     </div>
   );
 }
@@ -14647,7 +15181,9 @@ export default function App() {
       (draft.options ?? []).some(
         (option) =>
           option.name.trim() !== "" ||
-          getNormalizedNominalDigits(option.additionalPrice) !== ""
+          getNormalizedNominalDigits(option.additionalPrice) !== "" ||
+          Boolean(option.ingredientId || option.selectedIngredient) ||
+          normalizeModifierIngredientQtyInput(option.ingredientQty) !== ""
       )
     );
   }
@@ -16808,11 +17344,7 @@ export default function App() {
   function buildModifierRecordForStorage(detailDraft) {
     const namedOptions = (detailDraft.options ?? [])
       .filter((option) => option?.name?.trim?.())
-      .map((option) => ({
-        ...option,
-        name: option.name.trim(),
-        additionalPrice: getNormalizedNominalDigits(option.additionalPrice),
-      }));
+      .map((option) => buildModifierOptionRecordForStorage(option));
     const connectedCatalogItems = Array.isArray(detailDraft.connectedCatalog)
       ? detailDraft.connectedCatalog.filter(Boolean)
       : [];
@@ -16960,13 +17492,36 @@ export default function App() {
       detailEditing
     );
     if (validationMessage) {
+      const nextErrors = {};
+      const optionNames = getModifierOptionNameErrorIds(
+        detailDraft.options ?? []
+      );
+      const optionIngredientQtys = getModifierOptionIngredientQtyErrorIds(
+        detailDraft.options ?? []
+      );
+
       if (
         detailEditing.kind === "all" ||
         (detailEditing.kind === "field" && detailEditing.field === "name")
       ) {
-        setModifierDetailErrors({ name: true });
+        if (!detailDraft.name.trim()) {
+          nextErrors.name = true;
+        }
+        if (optionNames.length) {
+          nextErrors.optionNames = optionNames;
+        }
+        if (optionIngredientQtys.length) {
+          nextErrors.optionIngredientQtys = optionIngredientQtys;
+        }
+        setModifierDetailErrors(nextErrors);
       } else if (detailEditing.kind === "option-row") {
-        setModifierDetailErrors({ optionNames: [detailEditing.optionId] });
+        if (optionNames.includes(detailEditing.optionId)) {
+          nextErrors.optionNames = [detailEditing.optionId];
+        }
+        if (optionIngredientQtys.includes(detailEditing.optionId)) {
+          nextErrors.optionIngredientQtys = [detailEditing.optionId];
+        }
+        setModifierDetailErrors(nextErrors);
       } else {
         showSnackbar(validationMessage, "red");
       }
@@ -17132,16 +17687,57 @@ export default function App() {
     const currentDraft = modifierDetailDraftRef.current;
     if (!currentDraft) return;
 
-    const normalizedValue =
-      key === "additionalPrice"
-        ? getNormalizedNominalDigits(value)
-        : key === "isAvailable"
-          ? Boolean(value)
-          : String(value ?? "");
-
     const nextOptions = currentDraft.options.map((option) =>
       option.id === optionId
-        ? { ...option, [key]: normalizedValue }
+        ? (() => {
+            if (key === "additionalPrice") {
+              return {
+                ...option,
+                additionalPrice: getNormalizedNominalDigits(value),
+              };
+            }
+
+            if (key === "isAvailable") {
+              return {
+                ...option,
+                isAvailable: Boolean(value),
+              };
+            }
+
+            if (key === "selectedIngredient") {
+              const ingredientSelection = getModifierIngredientSelection({
+                selectedIngredient: String(value ?? ""),
+              });
+              const hasIngredient = Boolean(
+                ingredientSelection.ingredientId ||
+                  ingredientSelection.selectedIngredient
+              );
+
+              return {
+                ...option,
+                ingredientId: ingredientSelection.ingredientId,
+                selectedIngredient: ingredientSelection.selectedIngredient,
+                ingredientUnit: ingredientSelection.ingredientUnit,
+                ingredientQty: hasIngredient
+                  ? Number(option.ingredientQty) > 0
+                    ? normalizeModifierIngredientQtyInput(option.ingredientQty)
+                    : "1"
+                  : "",
+              };
+            }
+
+            if (key === "ingredientQty") {
+              return {
+                ...option,
+                ingredientQty: normalizeModifierIngredientQtyInput(value),
+              };
+            }
+
+            return {
+              ...option,
+              [key]: String(value ?? ""),
+            };
+          })()
         : option
     );
     const hasAnyAvailable = nextOptions.some(
@@ -17157,6 +17753,31 @@ export default function App() {
     if (modifierDetailEditingRef.current?.kind === "all") {
       setModifierDetailDraft(nextDraft);
       modifierDetailDraftRef.current = nextDraft;
+      if (key === "name" && String(value ?? "").trim()) {
+        setModifierDetailErrors((previous) =>
+          clearModifierOptionErrorId(previous, "optionNames", optionId)
+        );
+      }
+
+      if (
+        (key === "selectedIngredient" && !String(value ?? "").trim()) ||
+        (key === "selectedIngredient" &&
+          Number(
+            nextOptions.find((option) => option.id === optionId)?.ingredientQty ?? 0
+          ) > 0) ||
+        (key === "ingredientQty" &&
+          Number(
+            nextOptions.find((option) => option.id === optionId)?.ingredientQty ?? 0
+          ) > 0)
+      ) {
+        setModifierDetailErrors((previous) =>
+          clearModifierOptionErrorId(
+            previous,
+            "optionIngredientQtys",
+            optionId
+          )
+        );
+      }
       return;
     }
 
@@ -17217,6 +17838,19 @@ export default function App() {
     if (modifierDetailEditingRef.current?.kind === "all") {
       setModifierDetailDraft(nextDraft);
       modifierDetailDraftRef.current = nextDraft;
+      setModifierDetailErrors((previous) => {
+        let nextErrors = clearModifierOptionErrorId(
+          previous,
+          "optionNames",
+          optionId
+        );
+        nextErrors = clearModifierOptionErrorId(
+          nextErrors,
+          "optionIngredientQtys",
+          optionId
+        );
+        return nextErrors;
+      });
       return;
     }
 
@@ -19129,39 +19763,89 @@ export default function App() {
   }
 
   function handleModifierOptionChange(optionId, key, value) {
-    const normalizedValue =
-      key === "additionalPrice"
-        ? getNormalizedNominalDigits(value)
-        : key === "isAvailable"
-          ? Boolean(value)
-          : String(value ?? "");
-
     setModifierDraft((previous) => {
       const nextOptions = previous.options.map((option) =>
-        option.id === optionId ? { ...option, [key]: normalizedValue } : option
+        option.id === optionId
+          ? (() => {
+              if (key === "additionalPrice") {
+                return {
+                  ...option,
+                  additionalPrice: getNormalizedNominalDigits(value),
+                };
+              }
+
+              if (key === "isAvailable") {
+                return {
+                  ...option,
+                  isAvailable: Boolean(value),
+                };
+              }
+
+              if (key === "selectedIngredient") {
+                const ingredientSelection = getModifierIngredientSelection({
+                  selectedIngredient: String(value ?? ""),
+                });
+                const hasIngredient = Boolean(
+                  ingredientSelection.ingredientId ||
+                    ingredientSelection.selectedIngredient
+                );
+
+                return {
+                  ...option,
+                  ingredientId: ingredientSelection.ingredientId,
+                  selectedIngredient: ingredientSelection.selectedIngredient,
+                  ingredientUnit: ingredientSelection.ingredientUnit,
+                  ingredientQty: hasIngredient
+                    ? Number(option.ingredientQty) > 0
+                      ? normalizeModifierIngredientQtyInput(option.ingredientQty)
+                      : "1"
+                    : "",
+                };
+              }
+
+              if (key === "ingredientQty") {
+                return {
+                  ...option,
+                  ingredientQty: normalizeModifierIngredientQtyInput(value),
+                };
+              }
+
+              return {
+                ...option,
+                [key]: String(value ?? ""),
+              };
+            })()
+          : option
       );
 
       return {
         ...previous,
         options: nextOptions,
         availability:
-          key === "isAvailable" && normalizedValue === true
+          key === "isAvailable" && Boolean(value) === true
             ? true
             : previous.availability,
       };
     });
 
-    if (key === "name" && String(normalizedValue).trim()) {
+    if (key === "name" && String(value ?? "").trim()) {
       setModifierDraftErrors((previous) => {
-        const optionNames = previous.optionNames || [];
-        if (!optionNames.includes(optionId)) return previous;
+        return clearModifierOptionErrorId(previous, "optionNames", optionId);
+      });
+    }
 
-        const nextOptionNames = optionNames.filter((id) => id !== optionId);
-        const next = { ...previous, optionNames: nextOptionNames };
-        if (!nextOptionNames.length) {
-          delete next.optionNames;
-        }
-        return next;
+    if (
+      (key === "selectedIngredient" && !String(value ?? "").trim()) ||
+      (key === "selectedIngredient" && String(value ?? "").trim()) ||
+      (key === "ingredientQty" &&
+        Number(normalizeModifierIngredientQtyInput(value)) > 0)
+    ) {
+      setModifierDraftErrors((previous) => {
+        return clearModifierOptionErrorId(
+          previous,
+          "optionIngredientQtys",
+          optionId
+        );
       });
     }
   }
@@ -19186,16 +19870,17 @@ export default function App() {
     });
 
     setModifierDraftErrors((previous) => {
-      if (!previous.optionNames?.includes(optionId)) return previous;
-
-      const nextOptionNames = previous.optionNames.filter(
-        (entryId) => entryId !== optionId
+      let nextErrors = clearModifierOptionErrorId(
+        previous,
+        "optionNames",
+        optionId
       );
-      const next = { ...previous, optionNames: nextOptionNames };
-      if (!nextOptionNames.length) {
-        delete next.optionNames;
-      }
-      return next;
+      nextErrors = clearModifierOptionErrorId(
+        nextErrors,
+        "optionIngredientQtys",
+        optionId
+      );
+      return nextErrors;
     });
   }
 
@@ -19588,9 +20273,7 @@ export default function App() {
     const namedOptions = modifierDraft.options.filter((option) =>
       option.name.trim()
     );
-    const emptyOptionIds = modifierDraft.options
-      .filter((option) => !option.name.trim())
-      .map((option) => option.id);
+    const optionErrors = getModifierOptionErrors(modifierDraft.options);
 
     if (!trimmedName) {
       nextErrors.name = true;
@@ -19601,9 +20284,7 @@ export default function App() {
       nextErrors.name = duplicateNameError;
     }
 
-    if (emptyOptionIds.length) {
-      nextErrors.optionNames = emptyOptionIds;
-    }
+    Object.assign(nextErrors, optionErrors);
 
     if (Object.keys(nextErrors).length) {
       setModifierDraftErrors(nextErrors);
@@ -19625,11 +20306,9 @@ export default function App() {
       allowOverridePrice: Boolean(modifierDraft.allowOverridePrice),
       availability: modifierDraft.availability !== false,
       assignedUnits: cloneAssignedUnits(modifierDraft.assignedUnits),
-      options: namedOptions.map((option) => ({
-        ...option,
-        name: option.name.trim(),
-        additionalPrice: getNormalizedNominalDigits(option.additionalPrice),
-      })),
+      options: namedOptions.map((option) =>
+        buildModifierOptionRecordForStorage(option)
+      ),
     };
 
     setRecords((previous) => ({
@@ -19658,13 +20337,7 @@ export default function App() {
     }
 
     if (stepIndex === 1) {
-      const emptyOptionIds = modifierDraft.options
-        .filter((option) => !option.name.trim())
-        .map((option) => option.id);
-
-      if (emptyOptionIds.length) {
-        nextErrors.optionNames = emptyOptionIds;
-      }
+      Object.assign(nextErrors, getModifierOptionErrors(modifierDraft.options));
     }
 
     return nextErrors;
@@ -20267,113 +20940,23 @@ export default function App() {
             </div>
 
             <div className="catalog-create-column catalog-create-column--right">
-              <section className="modifier-option-table modifier-option-table--editable">
-                <div className="modifier-option-table__row modifier-option-table__row--header">
-                  <div className="modifier-option-table__header-cell modifier-option-table__header-cell--handle" />
-                  <div className="modifier-option-table__header-cell">
-                    <p className="type-title-3">Option Name</p>
-                  </div>
-                  <div className="modifier-option-table__header-cell modifier-option-table__header-cell--price">
-                    <p className="type-title-3">Additional Price</p>
-                  </div>
-                  <div className="modifier-option-table__header-cell modifier-option-table__header-cell--action" />
-                </div>
-                {modifierDraft.options.map((option, index) => (
-                  <div
-                    key={option.id}
-                    className={`modifier-option-table__row${modifierDragOverOptionId === option.id
-                      ? " is-drag-over"
-                      : ""
-                      }`}
-                    onDragOver={(event) => {
-                      event.preventDefault();
-                      event.dataTransfer.dropEffect = "move";
-                      handleModifierOptionDragOver(option.id);
-                    }}
-                    onDrop={(event) => {
-                      event.preventDefault();
-                      handleModifierOptionDrop(option.id);
-                    }}
-                  >
-                    <div className="modifier-option-table__cell modifier-option-table__cell--handle">
-                      <ModifierReorderHandle
-                        ariaLabel={`Reorder option ${index + 1}`}
-                        onDragStart={(event) =>
-                          handleModifierOptionDragStart(option.id, event)
-                        }
-                        onDragEnd={handleModifierOptionDragEnd}
-                      />
-                    </div>
-                    <div className="modifier-option-table__cell modifier-option-table__cell--name">
-                      <div className="modifier-option-table__field-stack">
-                        <label
-                          className={`modifier-option-table__field-shell${modifierDraftErrors.optionNames?.includes(option.id)
-                            ? " is-error"
-                            : ""
-                            }`}
-                        >
-                          <input
-                            className={`type-subtitle-2${option.name ? "" : " text-tertiary"
-                              }`}
-                            type="text"
-                            value={option.name}
-                            placeholder={`Option Name ${index + 1}`}
-                            onChange={(event) =>
-                              handleModifierOptionChange(
-                                option.id,
-                                "name",
-                                event.target.value
-                              )
-                            }
-                          />
-                        </label>
-                        {modifierDraftErrors.optionNames?.includes(
-                          option.id
-                        ) ? (
-                          <p className="modifier-option-table__field-error type-body">
-                            Field cannot be empty
-                          </p>
-                        ) : null}
-                      </div>
-                    </div>
-                    <div className="modifier-option-table__cell modifier-option-table__cell--price">
-                      <ModifierOptionPriceField
-                        value={option.additionalPrice}
-                        onChange={(value) =>
-                          handleModifierOptionChange(
-                            option.id,
-                            "additionalPrice",
-                            value
-                          )
-                        }
-                      />
-                    </div>
-                    <div className="modifier-option-table__cell modifier-option-table__cell--action">
-                      <TableActionButton
-                        tooltip="Remove"
-                        onClick={() => handleRemoveModifierOption(option.id)}
-                        ariaLabel={`Remove option ${index + 1}`}
-                      >
-                        <Icon
-                          name="delete"
-                          className="lab-icon lab-icon--16"
-                          alt="Delete"
-                        />
-                      </TableActionButton>
-                    </div>
-                  </div>
-                ))}
-                <button
-                  type="button"
-                  className="modifier-option-table__add"
-                  onClick={handleAddModifierOption}
-                >
-                  <Icon name="modifierOptionAdd" className="lab-icon" alt="" />
-                  <span className="modifier-option-table__add-label type-title-3">
-                    Add Option
-                  </span>
-                </button>
-              </section>
+              <ModifierOptionsTable
+                options={modifierDraft.options}
+                isEditing={true}
+                dragOverOptionId={modifierDragOverOptionId}
+                optionNameErrors={modifierDraftErrors.optionNames ?? []}
+                optionIngredientQtyErrors={
+                  modifierDraftErrors.optionIngredientQtys ?? []
+                }
+                ingredientOptions={MODIFIER_INGREDIENT_OPTION_LABELS}
+                onOptionChange={handleModifierOptionChange}
+                onRemoveOption={handleRemoveModifierOption}
+                onAddOption={handleAddModifierOption}
+                onDragStart={handleModifierOptionDragStart}
+                onDragEnd={handleModifierOptionDragEnd}
+                onDragOver={handleModifierOptionDragOver}
+                onDrop={handleModifierOptionDrop}
+              />
 
               <section className="modifier-create-card">
                 <div className="modifier-create-card__header">
@@ -21720,113 +22303,23 @@ export default function App() {
 
 
             <DetailSection title="Modifier Options">
-              <section className="modifier-option-table modifier-option-table--editable">
-                <div className="modifier-option-table__row modifier-option-table__row--header">
-                  <div className="modifier-option-table__header-cell modifier-option-table__header-cell--handle" />
-                  <div className="modifier-option-table__header-cell">
-                    <p className="type-title-3">Option Name</p>
-                  </div>
-                  <div className="modifier-option-table__header-cell modifier-option-table__header-cell--price">
-                    <p className="type-title-3">
-                      Additional Price
-                    </p>
-                  </div>
-                  <div className="modifier-option-table__header-cell modifier-option-table__header-cell--action" />
-                </div>
-                {modifierDraft.options.map((option, index) => (
-                  <div
-                    key={option.id}
-                    className={`modifier-option-table__row${modifierDragOverOptionId === option.id
-                      ? " is-drag-over"
-                      : ""
-                      }`}
-                    onDragOver={(event) => {
-                      event.preventDefault();
-                      event.dataTransfer.dropEffect = "move";
-                      handleModifierOptionDragOver(option.id);
-                    }}
-                    onDrop={(event) => {
-                      event.preventDefault();
-                      handleModifierOptionDrop(option.id);
-                    }}
-                  >
-                    <div className="modifier-option-table__cell modifier-option-table__cell--handle">
-                      <ModifierReorderHandle
-                        ariaLabel={`Reorder option ${index + 1}`}
-                        onDragStart={(event) =>
-                          handleModifierOptionDragStart(option.id, event)
-                        }
-                        onDragEnd={handleModifierOptionDragEnd}
-                      />
-                    </div>
-                    <div className="modifier-option-table__cell modifier-option-table__cell--name">
-                      <div className="modifier-option-table__field-stack">
-                        <label
-                          className={`modifier-option-table__field-shell${modifierDraftErrors.optionNames?.includes(option.id)
-                            ? " is-error"
-                            : ""
-                            }`}
-                        >
-                          <input
-                            className={`type-subtitle-2${option.name ? "" : " text-tertiary"
-                              }`}
-                            type="text"
-                            value={option.name}
-                            placeholder={`Option Name ${index + 1}`}
-                            onChange={(event) =>
-                              handleModifierOptionChange(
-                                option.id,
-                                "name",
-                                event.target.value
-                              )
-                            }
-                          />
-                        </label>
-                        {modifierDraftErrors.optionNames?.includes(option.id) ? (
-                          <p className="modifier-option-table__field-error type-body">
-                            Field cannot be empty
-                          </p>
-                        ) : null}
-                      </div>
-                    </div>
-                    <div className="modifier-option-table__cell modifier-option-table__cell--price">
-                      <ModifierOptionPriceField
-                        value={option.additionalPrice}
-                        onChange={(value) =>
-                          handleModifierOptionChange(
-                            option.id,
-                            "additionalPrice",
-                            value
-                          )
-                        }
-                      />
-                    </div>
-                    <div className="modifier-option-table__cell modifier-option-table__cell--action">
-                      <TableActionButton
-                        tooltip="Remove"
-                        onClick={() => handleRemoveModifierOption(option.id)}
-                        ariaLabel={`Remove option ${index + 1}`}
-                      >
-                        <Icon
-                          name="delete"
-                          className="lab-icon lab-icon--16"
-                          alt="Delete"
-                        />
-                      </TableActionButton>
-                    </div>
-                  </div>
-                ))}
-                <button
-                  type="button"
-                  className="modifier-option-table__add"
-                  onClick={handleAddModifierOption}
-                >
-                  <Icon name="modifierOptionAdd" className="lab-icon" alt="" />
-                  <span className="modifier-option-table__add-label type-title-3">
-                    Add Option
-                  </span>
-                </button>
-              </section>
+              <ModifierOptionsTable
+                options={modifierDraft.options}
+                isEditing={true}
+                dragOverOptionId={modifierDragOverOptionId}
+                optionNameErrors={modifierDraftErrors.optionNames ?? []}
+                optionIngredientQtyErrors={
+                  modifierDraftErrors.optionIngredientQtys ?? []
+                }
+                ingredientOptions={MODIFIER_INGREDIENT_OPTION_LABELS}
+                onOptionChange={handleModifierOptionChange}
+                onRemoveOption={handleRemoveModifierOption}
+                onAddOption={handleAddModifierOption}
+                onDragStart={handleModifierOptionDragStart}
+                onDragEnd={handleModifierOptionDragEnd}
+                onDragOver={handleModifierOptionDragOver}
+                onDrop={handleModifierOptionDrop}
+              />
             </DetailSection>
             
             <DetailSection title="Connected Catalog">
@@ -25807,186 +26300,33 @@ export default function App() {
                 </div>
               </DetailSection>
               <DetailSection title="Modifier Options">
-                {visibleModifierOptions.length ? (
-                  <section
-                    className={`modifier-option-table ${
-                      isEditing
-                        ? "modifier-option-table--editable"
-                        : "modifier-option-table--readonly modifier-option-table--with-availability"
-                    }`}
-                  >
-                    <div className="modifier-option-table__row modifier-option-table__row--header">
-                      {isEditing ? (
-                        <div className="modifier-option-table__header-cell modifier-option-table__header-cell--handle" />
-                      ) : null}
-                      <div className="modifier-option-table__header-cell">
-                        <p className="type-title-3">Option Name</p>
-                      </div>
-                      <div className="modifier-option-table__header-cell modifier-option-table__header-cell--price">
-                        <p className="type-title-3">Additional Price</p>
-                      </div>
-                      {!isEditing ? (
-                        <div className="modifier-option-table__header-cell modifier-option-table__header-cell--availability">
-                          <p className="type-title-3">Availability</p>
-                        </div>
-                      ) : null}
-                      {isEditing ? (
-                        <div className="modifier-option-table__header-cell modifier-option-table__header-cell--action" />
-                      ) : null}
-                    </div>
-                    {visibleModifierOptions.map((option, index) => {
-                      if (isEditing) {
-                        return (
-                          <div
-                            key={option.id}
-                            data-modifier-detail-editor="true"
-                            className={`modifier-option-table__row${modifierDragOverOptionId === option.id ? " is-drag-over" : ""}`}
-                            onDragOver={(event) => {
-                              event.preventDefault();
-                              event.dataTransfer.dropEffect = "move";
-                              handleModifierDetailOptionDragOver(option.id);
-                            }}
-                            onDrop={(event) => {
-                              event.preventDefault();
-                              handleModifierDetailOptionDrop(option.id);
-                            }}
-                          >
-                            <div className="modifier-option-table__cell modifier-option-table__cell--handle">
-                              <ModifierReorderHandle
-                                ariaLabel={`Reorder option ${index + 1}`}
-                                onDragStart={(event) =>
-                                  handleModifierDetailOptionDragStart(option.id, event)
-                                }
-                                onDragEnd={handleModifierDetailOptionDragEnd}
-                              />
-                            </div>
-                            <div className="modifier-option-table__cell modifier-option-table__cell--name">
-                              <div className="modifier-option-table__field-stack">
-                                {(() => {
-                                  const optionNameError = modifierDetailErrors.optionNames?.includes(option.id);
-                                  return (
-                                    <>
-                                      <label
-                                        className={`modifier-option-table__field-shell${optionNameError ? " is-error" : ""}`}
-                                      >
-                                        <input
-                                          className={`type-subtitle-2${option.name ? "" : " text-tertiary"}`}
-                                          type="text"
-                                          value={option.name}
-                                          placeholder={`Option Name ${index + 1}`}
-                                          onChange={(event) =>
-                                            handleModifierDetailOptionChange(
-                                              option.id,
-                                              "name",
-                                              event.target.value
-                                            )
-                                          }
-                                        />
-                                      </label>
-                                      {optionNameError ? (
-                                        <p className="modifier-option-table__field-error type-body">
-                                          Field cannot be empty
-                                        </p>
-                                      ) : null}
-                                    </>
-                                  );
-                                })()}
-                              </div>
-                            </div>
-                            <div className="modifier-option-table__cell modifier-option-table__cell--price">
-                              <ModifierOptionPriceField
-                                value={option.additionalPrice}
-                                onChange={(value) =>
-                                  handleModifierDetailOptionChange(
-                                    option.id,
-                                    "additionalPrice",
-                                    value
-                                  )
-                                }
-                              />
-                            </div>
-                            <div className="modifier-option-table__cell modifier-option-table__cell--action">
-                              <div className="modifier-detail-options-table__action-group">
-                                <TableActionButton
-                                  tooltip="Remove"
-                                  onClick={() => handleRemoveModifierDetailOption(option.id)}
-                                  ariaLabel={`Remove option ${index + 1}`}
-                                >
-                                  <Icon
-                                    name="delete"
-                                    className="lab-icon lab-icon--16"
-                                    alt="Delete"
-                                  />
-                                </TableActionButton>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      }
-
-                      return (
-                        <div key={option.id} className="modifier-option-table__row">
-                          <div className="modifier-option-table__cell modifier-option-table__cell--name">
-                            <p className="type-subtitle-2">{option.name || "-"}</p>
-                          </div>
-                          <div className="modifier-option-table__cell modifier-option-table__cell--price">
-                            <p className="type-subtitle-2">
-                              {formatModifierDetailOptionPrice(option.additionalPrice)}
-                            </p>
-                          </div>
-                          <div className="modifier-option-table__cell modifier-option-table__cell--availability" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <Toggle
-                              checked={option.isAvailable !== false}
-                              onChange={() =>
-                                handleModifierDetailOptionChange(
-                                  option.id,
-                                  "isAvailable",
-                                  option.isAvailable === false ? true : false
-                                )
-                              }
-                              ariaLabel={`Availability for ${option.name || 'Option'}`}
-                            />
-                          </div>
-                        </div>
-                      );
-                    })}
-                    {isEditing ? (
-                      <button
-                        type="button"
-                        className="modifier-option-table__add"
-                        data-modifier-detail-trigger="true"
-                        disabled={isLockedSelectedBusinessUnit}
-                        onClick={handleAddModifierDetailOption}
-                      >
-                        <Icon name="modifierOptionAdd" className="lab-icon" alt="" />
-                        <span className="modifier-option-table__add-label type-title-3">
-                          Add Option
-                        </span>
-                      </button>
-                    ) : null}
-                  </section>
-                ) : (
-                  <div className="modifier-detail-options-empty">
-                    {isEditing ? (
-                      <button
-                        type="button"
-                        className="modifier-option-table__add"
-                        data-modifier-detail-trigger="true"
-                        disabled={isLockedSelectedBusinessUnit}
-                        onClick={handleAddModifierDetailOption}
-                      >
-                        <Icon name="modifierOptionAdd" className="lab-icon" alt="" />
-                        <span className="modifier-option-table__add-label type-title-3">
-                          Add Option
-                        </span>
-                      </button>
-                    ) : (
+                <ModifierOptionsTable
+                  options={visibleModifierOptions}
+                  isEditing={isEditing}
+                  dragOverOptionId={modifierDragOverOptionId}
+                  optionNameErrors={modifierDetailErrors.optionNames ?? []}
+                  optionIngredientQtyErrors={
+                    modifierDetailErrors.optionIngredientQtys ?? []
+                  }
+                  ingredientOptions={MODIFIER_INGREDIENT_OPTION_LABELS}
+                  onOptionChange={handleModifierDetailOptionChange}
+                  onRemoveOption={handleRemoveModifierDetailOption}
+                  onAddOption={handleAddModifierDetailOption}
+                  onDragStart={handleModifierDetailOptionDragStart}
+                  onDragEnd={handleModifierDetailOptionDragEnd}
+                  onDragOver={handleModifierDetailOptionDragOver}
+                  onDrop={handleModifierDetailOptionDrop}
+                  addButtonDisabled={isLockedSelectedBusinessUnit}
+                  addButtonDataAttribute="data-modifier-detail-trigger"
+                  rowDataAttribute={isEditing ? "data-modifier-detail-editor" : undefined}
+                  emptyReadonlyContent={
+                    <div className="modifier-detail-options-empty">
                       <p className="type-body text-secondary">
                         No modifier options added yet.
                       </p>
-                    )}
-                  </div>
-                )}
+                    </div>
+                  }
+                />
               </DetailSection>
 
               <DetailSection title="Connected Catalog">
@@ -26652,6 +26992,12 @@ export default function App() {
                 <div className="grouped-device-info-banner">
                   {!hasGroupedDeviceGroups ? (
                     <div className="lab-infobox lab-infobox--blue">
+                      <Icon
+                        name="infoBlue"
+                        className="lab-icon lab-icon--20 grouped-device-info-banner__icon"
+                        alt=""
+                        color="var(--feature-brand-primary)"
+                      />
                       <div className="lab-infobox__copy grouped-device-empty-banner__copy">
                         <p className="type-body grouped-device-empty-banner__message">
                           <span className="grouped-device-empty-banner__title">
@@ -26666,6 +27012,12 @@ export default function App() {
                     </div>
                   ) : groupedDeviceUnassignedCatalogCount > 0 ? (
                     <div className="lab-infobox lab-infobox--orange">
+                      <Icon
+                        name="infoBlue"
+                        className="lab-icon lab-icon--20 grouped-device-info-banner__icon"
+                        alt=""
+                        color="var(--status-orange-primary)"
+                      />
                       <div className="lab-infobox__copy grouped-device-unrouted-banner__copy">
                         <p className="type-body grouped-device-unrouted-banner__message">
                           <span className="grouped-device-unrouted-banner__count">
@@ -32065,7 +32417,7 @@ export default function App() {
       {isUnroutedCatalogModalOpen && (
         <div className="unit-assignment-modal-overlay" onMouseDown={() => setIsUnroutedCatalogModalOpen(false)}>
           <div
-            className="unit-assignment-modal modifier-catalog-modal"
+            className="unit-assignment-modal modifier-catalog-modal modifier-catalog-modal--unrouted"
             role="dialog"
             aria-modal="true"
             aria-labelledby="unrouted-catalog-modal-title"
