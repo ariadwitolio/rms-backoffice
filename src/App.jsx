@@ -1314,7 +1314,11 @@ const ALL_ROLE_PERMISSION_MODULES = ROLE_PERMISSION_GROUPS.flatMap(
   (group) => group.modules
 );
 const MAIN_ACCOUNT_ROLE_PERMISSION_GROUP_IDS = ["account-module"];
-const ENTITY_ROLE_PERMISSION_GROUP_IDS = ["rms-back-office", "rms-apps"];
+const ENTITY_ROLE_PERMISSION_GROUP_IDS = [
+  "account-module",
+  "rms-back-office",
+  "rms-apps",
+];
 
 function getRolePermissionLevel(permission) {
   return typeof permission === "string" ? permission : permission?.level ?? "none";
@@ -1368,10 +1372,30 @@ function getRolePermissionsStructure(isEntitySide = false) {
   );
 }
 
+function normalizeRoleAccessPermissionSections(
+  permissionSections,
+  isEntitySide = false
+) {
+  if (!isEntitySide) {
+    return permissionSections;
+  }
+
+  const nextSections = { ...permissionSections };
+  const generalEnabled =
+    nextSections["account-module"] !== false ||
+    nextSections["rms-back-office"] !== false;
+
+  nextSections["account-module"] = generalEnabled;
+  nextSections["rms-back-office"] = generalEnabled;
+
+  return nextSections;
+}
+
 function createInitialRoleAccessDraft(isEntitySide = false) {
   const permissions = createRolePermissions();
   const defaultSectionStates = isEntitySide
     ? {
+        "account-module": true,
         "rms-back-office": true,
         "rms-apps": false,
       }
@@ -1393,12 +1417,20 @@ function createInitialRoleAccessDraft(isEntitySide = false) {
     description: "",
     type: "Custom",
     permissions,
-    permissionSections,
+    permissionSections: normalizeRoleAccessPermissionSections(
+      permissionSections,
+      isEntitySide
+    ),
   };
 }
 
-function createRoleAccessDraftFromRecord(record) {
+function createRoleAccessDraftFromRecord(record, isEntitySide = false) {
   const permissions = createRolePermissions(record?.permissions ?? {});
+  const permissionSections = createRolePermissionSections(
+    record?.permissionSections ?? {},
+    permissions,
+    { defaultEnabled: false }
+  );
 
   return {
     ...record,
@@ -1406,12 +1438,53 @@ function createRoleAccessDraftFromRecord(record) {
     description: record?.description ?? "",
     type: record?.type ?? "Custom",
     permissions,
-    permissionSections: createRolePermissionSections(
-      record?.permissionSections ?? {},
-      permissions,
-      { defaultEnabled: false }
+    permissionSections: normalizeRoleAccessPermissionSections(
+      permissionSections,
+      isEntitySide
     ),
   };
+}
+
+function getRoleAccessValidationGroups(structure = ROLE_PERMISSION_GROUPS) {
+  const groupsById = new Map(structure.map((group) => [group.id, group]));
+  const validationGroups = [];
+  const accountGroup = groupsById.get("account-module");
+  const backOfficeGroup = groupsById.get("rms-back-office");
+  const rmsAppsGroup = groupsById.get("rms-apps");
+
+  if (accountGroup && backOfficeGroup) {
+    validationGroups.push({
+      id: "rms-back-office",
+      sectionIds: ["account-module", "rms-back-office"],
+      modules: [...accountGroup.modules, ...backOfficeGroup.modules],
+    });
+  } else {
+    if (accountGroup) {
+      validationGroups.push({
+        id: accountGroup.id,
+        sectionIds: [accountGroup.id],
+        modules: accountGroup.modules,
+      });
+    }
+
+    if (backOfficeGroup) {
+      validationGroups.push({
+        id: backOfficeGroup.id,
+        sectionIds: [backOfficeGroup.id],
+        modules: backOfficeGroup.modules,
+      });
+    }
+  }
+
+  if (rmsAppsGroup) {
+    validationGroups.push({
+      id: rmsAppsGroup.id,
+      sectionIds: [rmsAppsGroup.id],
+      modules: rmsAppsGroup.modules,
+    });
+  }
+
+  return validationGroups;
 }
 
 function sortRoleAccessRows(rows = []) {
@@ -1438,8 +1511,12 @@ function getRoleAccessPermissionSectionErrors(
   const permissions = draft?.permissions ?? {};
   const permissionSections = draft?.permissionSections ?? {};
 
-  structure.forEach((group) => {
-    if (!permissionSections[group.id]) return;
+  getRoleAccessValidationGroups(structure).forEach((group) => {
+    const sectionEnabled = group.sectionIds.some(
+      (sectionId) => permissionSections[sectionId]
+    );
+
+    if (!sectionEnabled) return;
 
     const hasAssignedPermissions = group.modules.some((module) =>
       hasRolePermissionAccess(permissions[module.id])
@@ -1460,9 +1537,9 @@ function hasAnyVisibleRoleAccessPermission(
   const permissions = draft?.permissions ?? {};
   const permissionSections = draft?.permissionSections ?? {};
 
-  return structure.some(
+  return getRoleAccessValidationGroups(structure).some(
     (group) =>
-      permissionSections[group.id] &&
+      group.sectionIds.some((sectionId) => permissionSections[sectionId]) &&
       group.modules.some((module) => hasRolePermissionAccess(permissions[module.id]))
   );
 }
@@ -19084,7 +19161,12 @@ export default function App() {
 
     const openDetail = (id) => {
       setRoleAccessDetailId(id);
-      setRoleAccessDetailDraft(createRoleAccessDraftFromRecord(row));
+      setRoleAccessDetailDraft(
+        createRoleAccessDraftFromRecord(
+          row,
+          Boolean(selectedSidebarBusinessUnit)
+        )
+      );
       setRoleAccessDetailEditing(null);
       setRoleAccessDetailErrors({});
       setRoleAccessDetailPanelTab("general");
@@ -19183,7 +19265,10 @@ export default function App() {
       return;
     }
 
-    const normalizedDraft = createRoleAccessDraftFromRecord(roleAccessDraft);
+    const normalizedDraft = createRoleAccessDraftFromRecord(
+      roleAccessDraft,
+      Boolean(selectedSidebarBusinessUnit)
+    );
 
     const newRow = {
       ...normalizedDraft,
@@ -19251,7 +19336,8 @@ export default function App() {
     }
 
     const normalizedDraft = createRoleAccessDraftFromRecord(
-      roleAccessDetailDraft
+      roleAccessDetailDraft,
+      Boolean(selectedSidebarBusinessUnit)
     );
 
     setRecords((prev) => ({
@@ -19281,7 +19367,12 @@ export default function App() {
     setRoleAccessDetailPanelTab("general");
     const originalRow = records["role-access"].find((r) => r.id === roleAccessDetailId);
     if (originalRow) {
-      setRoleAccessDetailDraft(createRoleAccessDraftFromRecord(originalRow));
+      setRoleAccessDetailDraft(
+        createRoleAccessDraftFromRecord(
+          originalRow,
+          Boolean(selectedSidebarBusinessUnit)
+        )
+      );
     }
   }
 
