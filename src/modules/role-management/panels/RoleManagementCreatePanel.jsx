@@ -17,6 +17,7 @@ export function RoleManagementCreatePanel({
   DetailSection,
   DetailField,
 }) {
+  const isEntitySide = !isMainAccountSide;
   const accountPermissionGroups = permissionsStructure.filter(
     (group) => group.id === "account-module"
   );
@@ -28,7 +29,7 @@ export function RoleManagementCreatePanel({
   );
   const generalPermissionGroup = {
     id: "general-permissions",
-    group: "Back Office Permissions",
+    group: isMainAccountSide ? "General Permissions" : "Back Office Permissions",
     modules: [
       ...(accountPermissionGroups[0]?.modules ?? []),
       ...(rmsBackOfficeGroups[0]?.modules ?? []),
@@ -43,7 +44,12 @@ export function RoleManagementCreatePanel({
     ],
   };
   const generalPermissionGroups = [generalPermissionGroup];
-  const resolvedActiveTab = activeTab;
+  const generalSourceGroupIds = [
+    ...accountPermissionGroups.map((group) => group.id),
+    ...rmsBackOfficeGroups.map((group) => group.id),
+  ];
+  const showAppsPermissionTab = isEntitySide && rmsAppsGroups.length > 0;
+  const resolvedActiveTab = showAppsPermissionTab ? activeTab : "general";
   const getScopedSectionErrors = (groupIds) =>
     Object.fromEntries(
       Object.entries(errors?.permissionSections ?? {}).filter(([groupId]) =>
@@ -56,12 +62,58 @@ export function RoleManagementCreatePanel({
         nonToggleSectionIds: ["general-permissions"],
       }
     : {};
-  const generalSectionEnabled =
-    (draft.permissionSections?.["account-module"] !== false) ||
-    (draft.permissionSections?.["rms-back-office"] !== false);
+  const generalSectionEnabled = isMainAccountSide
+    ? true
+    : generalSourceGroupIds.some(
+        (groupId) => draft.permissionSections?.[groupId] !== false
+      );
   const generalSectionErrors = isMainAccountSide
     ? {}
-    : getScopedSectionErrors(["account-module", "rms-back-office"]);
+    : getScopedSectionErrors(generalSourceGroupIds);
+
+  const updatePermissionsForGroupToggle = (modules, enabled) => {
+    if (enabled) return draft.permissions;
+
+    return modules.reduce(
+      (nextPermissions, module) => ({
+        ...nextPermissions,
+        [module.id]: "none",
+      }),
+      { ...draft.permissions }
+    );
+  };
+
+  const handleGeneralSectionToggle = (sectionId, enabled) => {
+    void sectionId;
+
+    onChange(
+      "permissions",
+      updatePermissionsForGroupToggle(generalPermissionGroup.modules, enabled)
+    );
+    onChange(
+      "permissionSections",
+      generalSourceGroupIds.reduce(
+        (nextSections, groupId) => ({
+          ...nextSections,
+          [groupId]: enabled,
+        }),
+        { ...draft.permissionSections }
+      )
+    );
+  };
+
+  const handleRmsAppsSectionToggle = (sectionId, enabled) => {
+    const targetGroup = rmsAppsGroups.find((group) => group.id === sectionId);
+
+    onChange(
+      "permissions",
+      updatePermissionsForGroupToggle(targetGroup?.modules ?? [], enabled)
+    );
+    onChange("permissionSections", {
+      ...draft.permissionSections,
+      [sectionId]: enabled,
+    });
+  };
 
   return (
     <aside className="catalog-detail-side-panel catalog-detail-panel">
@@ -85,28 +137,30 @@ export function RoleManagementCreatePanel({
             </button>
           </div>
         </div>
-        <div className="catalog-detail-panel__tabbar">
-          <div className="catalog-detail-panel__tabs" role="tablist">
-            <button
-              type="button"
-              className={`catalog-detail-panel__tab${resolvedActiveTab === "general" ? " is-active" : ""}`}
-              onClick={() => onTabChange?.("general")}
-              role="tab"
-              aria-selected={resolvedActiveTab === "general"}
-            >
-              General
-            </button>
-            <button
-              type="button"
-              className={`catalog-detail-panel__tab${resolvedActiveTab === "rms-module" ? " is-active" : ""}`}
-              onClick={() => onTabChange?.("rms-module")}
-              role="tab"
-              aria-selected={resolvedActiveTab === "rms-module"}
-            >
-              Apps Permission
-            </button>
+        {showAppsPermissionTab ? (
+          <div className="catalog-detail-panel__tabbar">
+            <div className="catalog-detail-panel__tabs" role="tablist">
+              <button
+                type="button"
+                className={`catalog-detail-panel__tab${resolvedActiveTab === "general" ? " is-active" : ""}`}
+                onClick={() => onTabChange?.("general")}
+                role="tab"
+                aria-selected={resolvedActiveTab === "general"}
+              >
+                General
+              </button>
+              <button
+                type="button"
+                className={`catalog-detail-panel__tab${resolvedActiveTab === "rms-module" ? " is-active" : ""}`}
+                onClick={() => onTabChange?.("rms-module")}
+                role="tab"
+                aria-selected={resolvedActiveTab === "rms-module"}
+              >
+                Apps Permission
+              </button>
+            </div>
           </div>
-        </div>
+        ) : null}
       </div>
       <div className="catalog-detail-panel__body">
         {resolvedActiveTab === "general" ? (
@@ -131,56 +185,71 @@ export function RoleManagementCreatePanel({
               </div>
             </DetailSection>
 
-            <DetailSection title="Back Office Permissions">
+            <DetailSection
+              title={
+                isMainAccountSide
+                  ? "General Permissions"
+                  : "Back Office Permissions"
+              }
+            >
               <RolePermissionsList
                 permissions={draft.permissions}
                 sectionStates={{ "general-permissions": generalSectionEnabled }}
                 sectionErrors={{
-                  "general-permissions":
-                    generalSectionErrors["account-module"] ||
-                    generalSectionErrors["rms-back-office"],
+                  "general-permissions": generalSourceGroupIds
+                    .map((groupId) => generalSectionErrors[groupId])
+                    .find(Boolean),
                 }}
                 isEditing={true}
                 onChange={(modId, val) =>
                   onChange("permissions", { ...draft.permissions, [modId]: val })
                 }
-                onSectionToggle={(sectionId, enabled) =>
-                  onChange("permissionSections", {
-                    ...draft.permissionSections,
-                    ["account-module"]: enabled,
-                    ["rms-back-office"]: enabled,
-                  })
-                }
+                onSectionToggle={handleGeneralSectionToggle}
                 structure={generalPermissionGroups}
                 {...generalSectionBehavior}
               />
             </DetailSection>
           </>
         ) : (
-          <>
-            <DetailSection title="RMS Apps Permission">
-              <RolePermissionsList
-                permissions={draft.permissions}
-                sectionStates={draft.permissionSections}
-                sectionErrors={getScopedSectionErrors(["rms-apps"])}
-                isEditing={true}
-                onChange={(modId, val) =>
-                  onChange("permissions", { ...draft.permissions, [modId]: val })
-                }
-                onSectionToggle={(sectionId, enabled) =>
-                  onChange("permissionSections", {
-                    ...draft.permissionSections,
-                    [sectionId]: enabled,
-                  })
-                }
-                structure={rmsAppsGroups}
-              />
-            </DetailSection>
-          </>
+          <DetailSection title="RMS Apps Permission">
+            <RolePermissionsList
+              permissions={draft.permissions}
+              sectionStates={draft.permissionSections}
+              sectionErrors={getScopedSectionErrors(["rms-apps"])}
+              isEditing={true}
+              onChange={(modId, val) =>
+                onChange("permissions", { ...draft.permissions, [modId]: val })
+              }
+              onSectionToggle={handleRmsAppsSectionToggle}
+              structure={rmsAppsGroups}
+            />
+          </DetailSection>
         )}
       </div>
-      <div className="catalog-detail-panel__footer" style={{ display: "flex", gap: "12px", width: "100%" }}>
-        {resolvedActiveTab === "general" ? (
+      <div
+        className="catalog-detail-panel__footer"
+        style={{ display: "flex", gap: "12px", width: "100%" }}
+      >
+        {!showAppsPermissionTab ? (
+          <>
+            <button
+              type="button"
+              className="lab-button lab-button--medium lab-button--danger-outline"
+              style={{ flex: 1 }}
+              onClick={onClose}
+            >
+              <span className="type-subtitle-2">Cancel</span>
+            </button>
+            <button
+              type="button"
+              className="lab-button lab-button--primary lab-button--medium"
+              style={{ flex: 1 }}
+              onClick={onSave}
+            >
+              <span className="type-subtitle-2">Create Role</span>
+            </button>
+          </>
+        ) : resolvedActiveTab === "general" ? (
           <>
             <button
               type="button"

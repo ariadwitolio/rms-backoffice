@@ -1313,6 +1313,8 @@ const ROLE_PERMISSION_GROUPS = [
 const ALL_ROLE_PERMISSION_MODULES = ROLE_PERMISSION_GROUPS.flatMap(
   (group) => group.modules
 );
+const MAIN_ACCOUNT_ROLE_PERMISSION_GROUP_IDS = ["account-module"];
+const ENTITY_ROLE_PERMISSION_GROUP_IDS = ["rms-back-office", "rms-apps"];
 
 function getRolePermissionLevel(permission) {
   return typeof permission === "string" ? permission : permission?.level ?? "none";
@@ -1352,23 +1354,46 @@ function createRolePermissionSections(
   }, {});
 }
 
-function getRolePermissionsStructure() {
-  return ROLE_PERMISSION_GROUPS;
+function getRolePermissionGroupIdsForContext(isEntitySide = false) {
+  return isEntitySide
+    ? ENTITY_ROLE_PERMISSION_GROUP_IDS
+    : MAIN_ACCOUNT_ROLE_PERMISSION_GROUP_IDS;
 }
 
-function createInitialRoleAccessDraft() {
+function getRolePermissionsStructure(isEntitySide = false) {
+  const visibleGroupIds = getRolePermissionGroupIdsForContext(isEntitySide);
+
+  return ROLE_PERMISSION_GROUPS.filter((group) =>
+    visibleGroupIds.includes(group.id)
+  );
+}
+
+function createInitialRoleAccessDraft(isEntitySide = false) {
   const permissions = createRolePermissions();
+  const defaultSectionStates = isEntitySide
+    ? {
+        "rms-back-office": true,
+        "rms-apps": false,
+      }
+    : {
+        "account-module": true,
+      };
+  const permissionSections = createRolePermissionSections(
+    {},
+    permissions,
+    { defaultEnabled: false }
+  );
+
+  ROLE_PERMISSION_GROUPS.forEach((group) => {
+    permissionSections[group.id] = defaultSectionStates[group.id] ?? false;
+  });
 
   return {
     name: "",
     description: "",
     type: "Custom",
     permissions,
-    permissionSections: createRolePermissionSections(
-      {},
-      permissions,
-      { defaultEnabled: true }
-    ),
+    permissionSections,
   };
 }
 
@@ -14363,21 +14388,25 @@ export default function App() {
     return nextErrors;
   }
 
-  function getRoleAccessErrorTab(nextErrors = {}) {
+  function getRoleAccessErrorTab(nextErrors = {}, isEntitySide = false) {
     if (nextErrors.name) {
       return "general";
     }
 
     const permissionSectionIds = Object.keys(nextErrors.permissionSections ?? {});
-    if (permissionSectionIds.includes("account-module")) {
+    const generalSectionIds = getRolePermissionGroupIdsForContext(
+      isEntitySide
+    ).filter((groupId) => groupId !== "rms-apps");
+
+    if (
+      permissionSectionIds.some((sectionId) =>
+        generalSectionIds.includes(sectionId)
+      )
+    ) {
       return "general";
     }
 
-    if (
-      nextErrors.permissions ||
-      permissionSectionIds.includes("rms-back-office") ||
-      permissionSectionIds.includes("rms-apps")
-    ) {
+    if (isEntitySide && permissionSectionIds.includes("rms-apps")) {
       return "rms-module";
     }
 
@@ -15220,7 +15249,9 @@ export default function App() {
   }
 
   function hasRoleAccessCreateChanges(draft) {
-    const defaultSectionState = createInitialRoleAccessDraft().permissionSections;
+    const defaultSectionState = createInitialRoleAccessDraft(
+      Boolean(selectedSidebarBusinessUnit)
+    ).permissionSections;
 
     return Boolean(
       draft &&
@@ -19031,7 +19062,9 @@ export default function App() {
   }
 
   function resetRoleAccessDraft() {
-    setRoleAccessDraft(createInitialRoleAccessDraft());
+    setRoleAccessDraft(
+      createInitialRoleAccessDraft(Boolean(selectedSidebarBusinessUnit))
+    );
     setRoleAccessDraftErrors({});
     setRoleAccessCreatePanelTab("general");
   }
@@ -19138,7 +19171,12 @@ export default function App() {
 
     if (Object.keys(nextErrors).length) {
       setRoleAccessDraftErrors(nextErrors);
-      setRoleAccessCreatePanelTab(getRoleAccessErrorTab(nextErrors));
+      setRoleAccessCreatePanelTab(
+        getRoleAccessErrorTab(
+          nextErrors,
+          Boolean(selectedSidebarBusinessUnit)
+        )
+      );
       if (nextErrors.permissions) {
         showSnackbar(nextErrors.permissions, "red");
       }
@@ -19200,7 +19238,12 @@ export default function App() {
 
     if (Object.keys(nextErrors).length) {
       setRoleAccessDetailErrors(nextErrors);
-      setRoleAccessDetailPanelTab(getRoleAccessErrorTab(nextErrors));
+      setRoleAccessDetailPanelTab(
+        getRoleAccessErrorTab(
+          nextErrors,
+          Boolean(selectedSidebarBusinessUnit)
+        )
+      );
       if (nextErrors.permissions) {
         showSnackbar(nextErrors.permissions, "red");
       }
