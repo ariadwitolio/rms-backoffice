@@ -29,7 +29,7 @@ export function RoleManagementCreatePanel({
   );
   const generalPermissionGroup = {
     id: "general-permissions",
-    group: isMainAccountSide ? "General Permissions" : "Back Office Permissions",
+    group: isMainAccountSide ? "Account Module" : "Back Office Permissions",
     modules: [
       ...(accountPermissionGroups[0]?.modules ?? []),
       ...(rmsBackOfficeGroups[0]?.modules ?? []),
@@ -188,7 +188,7 @@ export function RoleManagementCreatePanel({
             <DetailSection
               title={
                 isMainAccountSide
-                  ? "General Permissions"
+                  ? "Permissions"
                   : "Back Office Permissions"
               }
             >
