@@ -6,6 +6,11 @@ export default defineConfig({
   server: {
     port: 5173,
     strictPort: true,
+    warmup: {
+      // Pre-transform App.jsx on server start so the first browser request
+      // doesn't have to wait for the heavy 1 MB JSX file to be compiled.
+      clientFiles: ["./src/App.jsx", "./src/main.jsx"],
+    },
     watch: {
       // Use polling to avoid false positives from macOS/iCloud metadata updates
       // this is much more stable when the project is in a synced directory.

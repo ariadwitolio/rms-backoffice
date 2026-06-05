@@ -1091,7 +1091,7 @@ function getNormalizedGroupedDeviceTabletRows(deviceRows = [], values = []) {
   const seen = new Set();
 
   return getGroupedDeviceDeviceRows(deviceRows, values)
-    .filter((row) => row.deviceType === "Tablet (KDS)")
+    .filter((row) => row.deviceType === "Kitchen Display System (KDS)")
     .filter((row) => {
       const key = row.id ?? row.deviceName;
       if (!key || seen.has(key)) return false;
@@ -1153,7 +1153,7 @@ function buildGroupedDeviceSelectionOptions(
   return deviceRows
     .filter(
       (row) =>
-        row.deviceType === "Tablet (KDS)" &&
+        row.deviceType === "Kitchen Display System (KDS)" &&
         (!assignedIds.has(row.id) || currentIds.has(row.id))
     )
     .map((row) => ({
@@ -1395,13 +1395,13 @@ function createInitialRoleAccessDraft(isEntitySide = false) {
   const permissions = createRolePermissions();
   const defaultSectionStates = isEntitySide
     ? {
-        "account-module": true,
-        "rms-back-office": true,
-        "rms-apps": false,
-      }
+      "account-module": true,
+      "rms-back-office": true,
+      "rms-apps": false,
+    }
     : {
-        "account-module": true,
-      };
+      "account-module": true,
+    };
   const permissionSections = createRolePermissionSections(
     {},
     permissions,
@@ -3402,7 +3402,7 @@ function createInitialDataStore() {
         id: "dm-001",
         deviceName: "Cashier Tablet A",
         pairingCode: "TSH - 4921 - 285",
-        deviceType: "Tablet (POS)",
+        deviceType: "Point of Sales (POS)",
         status: "Connected",
         deviceConnected: "Epson TM-T88VI",
         connectedDevices: ["Front Printer B"],
@@ -3416,7 +3416,7 @@ function createInitialDataStore() {
         id: "dm-002",
         deviceName: "Kitchen Tablet 01",
         pairingCode: "KDS - 1205 - 442",
-        deviceType: "Tablet (KDS)",
+        deviceType: "Kitchen Display System (KDS)",
         status: "Connected",
         deviceConnected: "Star TSP143III",
         connectedDevices: ["Kitchen Printer A"],
@@ -3430,7 +3430,7 @@ function createInitialDataStore() {
         id: "dm-004",
         deviceName: "Waiter Tablet B",
         pairingCode: "TSH - 3192 - 118",
-        deviceType: "Tablet (Waiter)",
+        deviceType: "Point of Sales (POS)",
         status: "Connected",
         deviceConnected: "Brother QL-820NWB",
         connectedDevices: ["Kitchen Printer A"],
@@ -3444,7 +3444,7 @@ function createInitialDataStore() {
         id: "dm-003",
         deviceName: "Cashier Dual Screen A",
         pairingCode: "POS - 8823 - 910",
-        deviceType: "Dual Screen (POS)",
+        deviceType: "Point of Sales (POS)",
         status: "Disconnected",
         deviceConnected: null,
         connectedDevices: [],
@@ -4747,7 +4747,7 @@ function generateRandomPairingCode() {
 function getSimulatedPairingRequestDevice(deviceType, pairingCode = "") {
   const candidates =
     SIMULATED_PAIRING_REQUEST_DEVICES[deviceType] ??
-    SIMULATED_PAIRING_REQUEST_DEVICES["Tablet (POS)"];
+    SIMULATED_PAIRING_REQUEST_DEVICES["Point of Sales (POS)"];
   const seed = `${deviceType}-${pairingCode}`
     .split("")
     .reduce((total, character) => total + character.charCodeAt(0), 0);
@@ -7105,22 +7105,22 @@ function ModifierCatalogSelectionModal({
   const normalizedSearch = searchValue.trim().toLowerCase();
   const filteredGroups = normalizedSearch
     ? groups
-        .map((group) => {
-          const matchesGroupLabel = group.label
-            .toLowerCase()
-            .includes(normalizedSearch);
-          const filteredItems = (group.items ?? []).filter((item) =>
-            item.label.toLowerCase().includes(normalizedSearch)
-          );
-          if (matchesGroupLabel) {
-            return group;
-          }
-          if (filteredItems.length) {
-            return { ...group, items: filteredItems };
-          }
-          return null;
-        })
-        .filter(Boolean)
+      .map((group) => {
+        const matchesGroupLabel = group.label
+          .toLowerCase()
+          .includes(normalizedSearch);
+        const filteredItems = (group.items ?? []).filter((item) =>
+          item.label.toLowerCase().includes(normalizedSearch)
+        );
+        if (matchesGroupLabel) {
+          return group;
+        }
+        if (filteredItems.length) {
+          return { ...group, items: filteredItems };
+        }
+        return null;
+      })
+      .filter(Boolean)
     : groups;
   const allItems = filteredGroups.flatMap((group) => group.items ?? []);
   const allItemValues = allItems.map((item) => item.value);
@@ -7737,11 +7737,10 @@ function ModifierOptionsTable({
     <div className="modifier-option-table-shell">
       <div className="modifier-option-table__scroll">
         <section
-          className={`modifier-option-table ${
-            isEditing
-              ? "modifier-option-table--editable"
-              : "modifier-option-table--readonly modifier-option-table--with-availability"
-          }`}
+          className={`modifier-option-table ${isEditing
+            ? "modifier-option-table--editable"
+            : "modifier-option-table--readonly modifier-option-table--with-availability"
+            }`}
         >
           <div className="modifier-option-table__row modifier-option-table__row--header">
             <div className="modifier-option-table__header-cell modifier-option-table__header-cell--handle" />
@@ -7779,9 +7778,8 @@ function ModifierOptionsTable({
                 {...(rowDataAttribute
                   ? { [rowDataAttribute]: "true" }
                   : {})}
-                className={`modifier-option-table__row${
-                  dragOverOptionId === option.id ? " is-drag-over" : ""
-                }`}
+                className={`modifier-option-table__row${dragOverOptionId === option.id ? " is-drag-over" : ""
+                  }`}
                 onDragOver={
                   isEditing
                     ? (event) => {
@@ -7816,9 +7814,8 @@ function ModifierOptionsTable({
                   {isEditing ? (
                     <div className="modifier-option-table__field-stack">
                       <label
-                        className={`modifier-option-table__field-shell${
-                          optionNameError ? " is-error" : ""
-                        }`}
+                        className={`modifier-option-table__field-shell${optionNameError ? " is-error" : ""
+                          }`}
                       >
                         <input
                           className={`type-subtitle-2${option.name ? "" : " text-tertiary"}`}
@@ -14942,25 +14939,25 @@ export default function App() {
               ? sellingTimeRows
               : pageId === "role-access"
                 ? sortRoleAccessRows(records["role-access"] ?? [])
-            : pageId === "grouped-device"
-                ? (records["grouped-device"] ?? []).map((row) => {
-                  const devices = getGroupedDeviceDeviceRows(
-                    records["device-management"] || [],
-                    row.deviceList || []
-                  )
-                    .map((device) => device.deviceName)
-                    .join(", ");
-                  const catalogs = getGroupedDeviceCatalogNames(
-                    records["catalog"] || [],
-                    row.catalogList || []
-                  ).join(", ");
-                  return {
-                    ...row,
-                    deviceListDisplay: devices || "-",
-                    catalogListDisplay: catalogs || "-",
-                  };
-                })
-                : records[pageId] ?? [];
+                : pageId === "grouped-device"
+                  ? (records["grouped-device"] ?? []).map((row) => {
+                    const devices = getGroupedDeviceDeviceRows(
+                      records["device-management"] || [],
+                      row.deviceList || []
+                    )
+                      .map((device) => device.deviceName)
+                      .join(", ");
+                    const catalogs = getGroupedDeviceCatalogNames(
+                      records["catalog"] || [],
+                      row.catalogList || []
+                    ).join(", ");
+                    return {
+                      ...row,
+                      deviceListDisplay: devices || "-",
+                      catalogListDisplay: catalogs || "-",
+                    };
+                  })
+                  : records[pageId] ?? [];
     const pageFilters = filtersByPage[pageId] ?? {};
 
     const filteredRows = pageRows.filter((row) => {
@@ -15336,7 +15333,7 @@ export default function App() {
         draft.name.trim() !== "" ||
         draft.description.trim() !== "" ||
         JSON.stringify(draft.permissionSections ?? {}) !==
-          JSON.stringify(defaultSectionState) ||
+        JSON.stringify(defaultSectionState) ||
         Object.values(draft.permissions ?? {}).some(
           (permission) => hasRolePermissionAccess(permission)
         )
@@ -15999,16 +15996,16 @@ export default function App() {
       modifier: previous.modifier.map((item) =>
         item.id === rowId
           ? {
-              ...item,
-              availability: nextAvailability,
-              options:
-                !nextAvailability && Array.isArray(item.options)
-                  ? item.options.map((option) => ({
-                      ...option,
-                      isAvailable: false,
-                    }))
-                  : item.options,
-            }
+            ...item,
+            availability: nextAvailability,
+            options:
+              !nextAvailability && Array.isArray(item.options)
+                ? item.options.map((option) => ({
+                  ...option,
+                  isAvailable: false,
+                }))
+                : item.options,
+          }
           : item
       ),
     }));
@@ -16022,9 +16019,9 @@ export default function App() {
           options:
             !nextAvailability && Array.isArray(previous.options)
               ? previous.options.map((option) => ({
-                  ...option,
-                  isAvailable: false,
-                }))
+                ...option,
+                isAvailable: false,
+              }))
               : previous.options,
         };
         modifierDetailDraftRef.current = nextDraft;
@@ -16038,11 +16035,11 @@ export default function App() {
         availability: nextAvailability,
         options:
           !nextAvailability &&
-          Array.isArray(modifierDetailSnapshotRef.current.options)
+            Array.isArray(modifierDetailSnapshotRef.current.options)
             ? modifierDetailSnapshotRef.current.options.map((option) => ({
-                ...option,
-                isAvailable: false,
-              }))
+              ...option,
+              isAvailable: false,
+            }))
             : modifierDetailSnapshotRef.current.options,
       };
       setModifierDetailSnapshot(nextSnapshot);
@@ -17776,9 +17773,9 @@ export default function App() {
       options: nextAvailability
         ? currentDraft.options
         : currentDraft.options.map((option) => ({
-            ...option,
-            isAvailable: false,
-          })),
+          ...option,
+          isAvailable: false,
+        })),
     };
 
     if (modifierDetailEditingRef.current?.kind === "all") {
@@ -17798,54 +17795,54 @@ export default function App() {
     const nextOptions = currentDraft.options.map((option) =>
       option.id === optionId
         ? (() => {
-            if (key === "additionalPrice") {
-              return {
-                ...option,
-                additionalPrice: getNormalizedNominalDigits(value),
-              };
-            }
+          if (key === "additionalPrice") {
+            return {
+              ...option,
+              additionalPrice: getNormalizedNominalDigits(value),
+            };
+          }
 
-            if (key === "isAvailable") {
-              return {
-                ...option,
-                isAvailable: Boolean(value),
-              };
-            }
+          if (key === "isAvailable") {
+            return {
+              ...option,
+              isAvailable: Boolean(value),
+            };
+          }
 
-            if (key === "selectedIngredient") {
-              const ingredientSelection = getModifierIngredientSelection({
-                selectedIngredient: String(value ?? ""),
-              });
-              const hasIngredient = Boolean(
-                ingredientSelection.ingredientId ||
-                  ingredientSelection.selectedIngredient
-              );
-
-              return {
-                ...option,
-                ingredientId: ingredientSelection.ingredientId,
-                selectedIngredient: ingredientSelection.selectedIngredient,
-                ingredientUnit: ingredientSelection.ingredientUnit,
-                ingredientQty: hasIngredient
-                  ? Number(option.ingredientQty) > 0
-                    ? normalizeModifierIngredientQtyInput(option.ingredientQty)
-                    : "1"
-                  : "",
-              };
-            }
-
-            if (key === "ingredientQty") {
-              return {
-                ...option,
-                ingredientQty: normalizeModifierIngredientQtyInput(value),
-              };
-            }
+          if (key === "selectedIngredient") {
+            const ingredientSelection = getModifierIngredientSelection({
+              selectedIngredient: String(value ?? ""),
+            });
+            const hasIngredient = Boolean(
+              ingredientSelection.ingredientId ||
+              ingredientSelection.selectedIngredient
+            );
 
             return {
               ...option,
-              [key]: String(value ?? ""),
+              ingredientId: ingredientSelection.ingredientId,
+              selectedIngredient: ingredientSelection.selectedIngredient,
+              ingredientUnit: ingredientSelection.ingredientUnit,
+              ingredientQty: hasIngredient
+                ? Number(option.ingredientQty) > 0
+                  ? normalizeModifierIngredientQtyInput(option.ingredientQty)
+                  : "1"
+                : "",
             };
-          })()
+          }
+
+          if (key === "ingredientQty") {
+            return {
+              ...option,
+              ingredientQty: normalizeModifierIngredientQtyInput(value),
+            };
+          }
+
+          return {
+            ...option,
+            [key]: String(value ?? ""),
+          };
+        })()
         : option
     );
     const hasAnyAvailable = nextOptions.some(
@@ -19901,54 +19898,54 @@ export default function App() {
       const nextOptions = previous.options.map((option) =>
         option.id === optionId
           ? (() => {
-              if (key === "additionalPrice") {
-                return {
-                  ...option,
-                  additionalPrice: getNormalizedNominalDigits(value),
-                };
-              }
+            if (key === "additionalPrice") {
+              return {
+                ...option,
+                additionalPrice: getNormalizedNominalDigits(value),
+              };
+            }
 
-              if (key === "isAvailable") {
-                return {
-                  ...option,
-                  isAvailable: Boolean(value),
-                };
-              }
+            if (key === "isAvailable") {
+              return {
+                ...option,
+                isAvailable: Boolean(value),
+              };
+            }
 
-              if (key === "selectedIngredient") {
-                const ingredientSelection = getModifierIngredientSelection({
-                  selectedIngredient: String(value ?? ""),
-                });
-                const hasIngredient = Boolean(
-                  ingredientSelection.ingredientId ||
-                    ingredientSelection.selectedIngredient
-                );
-
-                return {
-                  ...option,
-                  ingredientId: ingredientSelection.ingredientId,
-                  selectedIngredient: ingredientSelection.selectedIngredient,
-                  ingredientUnit: ingredientSelection.ingredientUnit,
-                  ingredientQty: hasIngredient
-                    ? Number(option.ingredientQty) > 0
-                      ? normalizeModifierIngredientQtyInput(option.ingredientQty)
-                      : "1"
-                    : "",
-                };
-              }
-
-              if (key === "ingredientQty") {
-                return {
-                  ...option,
-                  ingredientQty: normalizeModifierIngredientQtyInput(value),
-                };
-              }
+            if (key === "selectedIngredient") {
+              const ingredientSelection = getModifierIngredientSelection({
+                selectedIngredient: String(value ?? ""),
+              });
+              const hasIngredient = Boolean(
+                ingredientSelection.ingredientId ||
+                ingredientSelection.selectedIngredient
+              );
 
               return {
                 ...option,
-                [key]: String(value ?? ""),
+                ingredientId: ingredientSelection.ingredientId,
+                selectedIngredient: ingredientSelection.selectedIngredient,
+                ingredientUnit: ingredientSelection.ingredientUnit,
+                ingredientQty: hasIngredient
+                  ? Number(option.ingredientQty) > 0
+                    ? normalizeModifierIngredientQtyInput(option.ingredientQty)
+                    : "1"
+                  : "",
               };
-            })()
+            }
+
+            if (key === "ingredientQty") {
+              return {
+                ...option,
+                ingredientQty: normalizeModifierIngredientQtyInput(value),
+              };
+            }
+
+            return {
+              ...option,
+              [key]: String(value ?? ""),
+            };
+          })()
           : option
       );
 
@@ -22455,7 +22452,7 @@ export default function App() {
                 onDrop={handleModifierOptionDrop}
               />
             </DetailSection>
-            
+
             <DetailSection title="Connected Catalog">
               <div className="catalog-panel-info-list catalog-panel-info-list--single-column">
                 <ModifierCatalogModalField
@@ -23180,18 +23177,18 @@ export default function App() {
                       />
                     ) : null}
                     {catalogDraft.type === "single" ? (
-                        <DetailSelectField
-                          label="Modifier"
-                          value={catalogDraft.modifier}
-                          options={catalogModifierOptions}
-                          onChange={(value) =>
-                            handleCatalogDraftChange("modifier", value)
-                          }
-                          placeholder="Select Modifier"
-                          multiple
-                          multipleDisplay="summary"
-                          multipleSummaryFormatter={getCatalogModifierSummaryValue}
-                        />
+                      <DetailSelectField
+                        label="Modifier"
+                        value={catalogDraft.modifier}
+                        options={catalogModifierOptions}
+                        onChange={(value) =>
+                          handleCatalogDraftChange("modifier", value)
+                        }
+                        placeholder="Select Modifier"
+                        multiple
+                        multipleDisplay="summary"
+                        multipleSummaryFormatter={getCatalogModifierSummaryValue}
+                      />
                     ) : null}
                     <div className="catalog-panel-info-list--single-column">
                       <DetailTextAreaField
@@ -23862,18 +23859,18 @@ export default function App() {
                   />
                 ) : null}
                 {catalogDetailDraft.type === "single" ? (
-                    <DetailSelectField
-                      label="Modifier"
-                      value={catalogDetailDraft.modifier}
-                      options={catalogModifierOptions}
-                      onChange={(value) =>
-                        handleCatalogDetailChange("modifier", value)
-                      }
-                      placeholder="Select Modifier"
-                      multiple
-                      multipleDisplay="summary"
-                      multipleSummaryFormatter={getCatalogModifierSummaryValue}
-                    />
+                  <DetailSelectField
+                    label="Modifier"
+                    value={catalogDetailDraft.modifier}
+                    options={catalogModifierOptions}
+                    onChange={(value) =>
+                      handleCatalogDetailChange("modifier", value)
+                    }
+                    placeholder="Select Modifier"
+                    multiple
+                    multipleDisplay="summary"
+                    multipleSummaryFormatter={getCatalogModifierSummaryValue}
+                  />
                 ) : null}
                 <div className="catalog-panel-info-list--single-column">
                   <DetailTextAreaField
@@ -27138,7 +27135,7 @@ export default function App() {
                             No KDS group configured yet.
                           </span>{" "}
                           <span>
-                            All catalog items will be sent to all Tablet (KDS)
+                            All catalog items will be sent to all Kitchen Display System (KDS)
                             devices until you create a KDS group.
                           </span>
                         </p>
@@ -28167,11 +28164,11 @@ export default function App() {
       "grouped-device": prev["grouped-device"].map((g) =>
         g.id === groupedDeviceDetailId
           ? {
-              ...groupedDeviceDetailDraft,
-              name: trimmedName,
-              deviceList: normalizedDeviceList,
-              catalogList: normalizedCatalogList,
-            }
+            ...groupedDeviceDetailDraft,
+            name: trimmedName,
+            deviceList: normalizedDeviceList,
+            catalogList: normalizedCatalogList,
+          }
           : g
       ),
     }));
@@ -28249,10 +28246,9 @@ export default function App() {
 
   function renderDeviceManagementCreateSidePanel() {
     const deviceTypeOptions = [
-      "Tablet (POS)",
-      "Tablet (Waiter)",
-      "Tablet (KDS)",
-      "Dual Screen (POS)",
+      "Point of Sales (POS)",
+      "Kitchen Display System (KDS)",
+      "Payment",
       "Kiosk",
     ];
     return (
@@ -28322,10 +28318,10 @@ export default function App() {
     const isExpired = row.status === "Expired";
     const isPrinterDevice = row.deviceType === "Printer";
     const isTabletOrKiosk = [
-      "Tablet (POS)",
-      "Tablet (Waiter)",
-      "Tablet (KDS)",
-      "Dual Screen (POS)",
+      "Point of Sales (POS)",
+      "Point of Sales (POS)",
+      "Kitchen Display System (KDS)",
+      "Point of Sales (POS)",
       "Kiosk",
     ].includes(row.deviceType);
     const detailActionsDisabled = isPrinterDevice;
@@ -32542,7 +32538,7 @@ export default function App() {
             ? groupedDeviceCreateCatalogGroups
             : modifierCatalogModalTarget === "grouped-device-detail"
               ? groupedDeviceDetailCatalogGroups
-            : modifierCatalogGroups
+              : modifierCatalogGroups
         }
         onChange={setModifierCatalogModalValue}
         onClose={closeModifierCatalogModal}

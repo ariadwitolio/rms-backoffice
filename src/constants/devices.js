@@ -1,49 +1,49 @@
 export const SIMULATED_PAIRING_REQUEST_DEVICES = {
-  "Tablet (POS)": [
+  "Point of Sales (POS)": [
     {
       actualDeviceName: "iPad (9th Gen)",
-      actualDeviceType: "Tablet (POS)",
+      actualDeviceType: "Point of Sales (POS)",
       deviceOs: "iPadOS 17",
     },
     {
       actualDeviceName: "Samsung Galaxy Tab S7",
-      actualDeviceType: "Tablet (POS)",
+      actualDeviceType: "Point of Sales (POS)",
       deviceOs: "Android 13",
     },
   ],
-  "Tablet (Waiter)": [
+  "Point of Sales (POS)": [
     {
       actualDeviceName: "Samsung Galaxy Tab A9",
-      actualDeviceType: "Tablet (Waiter)",
+      actualDeviceType: "Point of Sales (POS)",
       deviceOs: "Android 14",
     },
     {
       actualDeviceName: "iPad mini (6th Gen)",
-      actualDeviceType: "Tablet (Waiter)",
+      actualDeviceType: "Point of Sales (POS)",
       deviceOs: "iPadOS 17",
     },
   ],
-  "Tablet (KDS)": [
+  "Kitchen Display System (KDS)": [
     {
       actualDeviceName: "Lenovo Tab M10",
-      actualDeviceType: "Tablet (KDS)",
+      actualDeviceType: "Kitchen Display System (KDS)",
       deviceOs: "Android 12",
     },
     {
       actualDeviceName: "Samsung Galaxy Tab Active4 Pro",
-      actualDeviceType: "Tablet (KDS)",
+      actualDeviceType: "Kitchen Display System (KDS)",
       deviceOs: "Android 13",
     },
   ],
-  "Dual Screen (POS)": [
+  "Point of Sales (POS)": [
     {
       actualDeviceName: "Sunmi D3 Pro",
-      actualDeviceType: "Dual Screen (POS)",
+      actualDeviceType: "Point of Sales (POS)",
       deviceOs: "Android 11",
     },
     {
       actualDeviceName: "Nexgo N86",
-      actualDeviceType: "Dual Screen (POS)",
+      actualDeviceType: "Point of Sales (POS)",
       deviceOs: "Android 12",
     },
   ],
