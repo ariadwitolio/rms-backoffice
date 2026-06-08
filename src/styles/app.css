@@ -10089,6 +10089,14 @@ textarea::placeholder,
   margin-top: 16px;
 }
 
+.modifier-catalog-modal .unit-assignment-modal__body {
+  overflow-y: auto;
+}
+
+.modifier-catalog-modal .unit-assignment-modal__footer {
+  flex-shrink: 0;
+}
+
 .modifier-catalog-modal__list {
   margin: 0;
   display: flex;

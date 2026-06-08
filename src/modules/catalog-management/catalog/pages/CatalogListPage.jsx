@@ -176,7 +176,7 @@ export default function CatalogListPage({
                       </p>
                     </td>
                     <td>
-                      <p className="type-subtitle-2">{row.category}</p>
+                      <p className="type-subtitle-2">{row.category || "Uncategorized"}</p>
                     </td>
                     <td>
                       <p className="type-subtitle-2">

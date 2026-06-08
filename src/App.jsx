@@ -2119,22 +2119,12 @@ function buildModifierCatalogGroups(categoryRows = [], catalogRows = []) {
   const groups = [];
   const usedCategories = new Set();
 
-  if (catalogsByCategory.has("Uncategorized")) {
-    groups.push({
-      id: "Uncategorized",
-      label: "Uncategorized",
-      indentLevel: 0,
-      items: catalogsByCategory.get("Uncategorized").map((row) => ({
-        id: row.id,
-        label: row.name,
-        value: row.name,
-        indentLevel: 1,
-      })),
-    });
-    usedCategories.add("uncategorized");
-  }
-
   orderedCategoryRows.forEach((row) => {
+    const normalizedName = normalizeDuplicateNameValue(row.name);
+    if (normalizedName === "uncategorized" || usedCategories.has(normalizedName)) {
+      return;
+    }
+
     const groupItems = catalogsByCategory.get(row.name) ?? [];
     if (!groupItems.length) {
       return;
@@ -2156,10 +2146,29 @@ function buildModifierCatalogGroups(categoryRows = [], catalogRows = []) {
         indentLevel: groupIndentLevel + 1,
       })),
     });
-    usedCategories.add(normalizeDuplicateNameValue(row.name));
+    usedCategories.add(normalizedName);
   });
 
+  const packageItems = catalogsByCategory.get("Package");
+  if (packageItems?.length) {
+    groups.unshift({
+      id: "Package",
+      label: "Package",
+      indentLevel: 0,
+      items: packageItems.map((item) => ({
+        id: item.id,
+        label: item.name,
+        value: item.name,
+        indentLevel: 1,
+      })),
+    });
+    usedCategories.add("package");
+  }
+
   catalogsByCategory.forEach((groupItems, categoryName) => {
+    if (categoryName === "Uncategorized") {
+      return;
+    }
     const normalizedCategoryName = normalizeDuplicateNameValue(categoryName);
     if (usedCategories.has(normalizedCategoryName)) {
       return;
@@ -2177,6 +2186,20 @@ function buildModifierCatalogGroups(categoryRows = [], catalogRows = []) {
       })),
     });
   });
+
+  if (catalogsByCategory.has("Uncategorized")) {
+    groups.push({
+      id: "Uncategorized",
+      label: "Uncategorized",
+      indentLevel: 0,
+      items: catalogsByCategory.get("Uncategorized").map((row) => ({
+        id: row.id,
+        label: row.name,
+        value: row.name,
+        indentLevel: 1,
+      })),
+    });
+  }
 
   return groups;
 }
@@ -15109,6 +15132,12 @@ export default function App() {
       });
     }
 
+    if (pageId === "unit" || pageId === "category") {
+      const defaults = filteredRows.filter((r) => r.isDefault);
+      const nonDefaults = filteredRows.filter((r) => !r.isDefault);
+      return [...nonDefaults, ...defaults];
+    }
+
     return filteredRows;
   }
 
@@ -16242,7 +16271,7 @@ export default function App() {
   function confirmDeleteRow() {
     setDeleteConfirmationOpen(false);
     if (deleteConfirmationTarget.pageId && deleteConfirmationTarget.rowId) {
-      handleDeleteRow(deleteConfirmationTarget.pageId, deleteConfirmationTarget.rowId);
+      handleDeleteRow(deleteConfirmationTarget.pageId, deleteConfirmationTarget.rowId, deleteConfirmationTarget.itemLabel);
     }
     setDeleteConfirmationTarget({ pageId: null, rowId: null, itemLabel: "", message: null });
   }
@@ -16472,7 +16501,7 @@ export default function App() {
     setDevicePairingRequest(null);
   }
 
-  function handleDeleteRow(pageId, rowId) {
+  function handleDeleteRow(pageId, rowId, itemLabel = "") {
     if (pageId === "device-management") {
       clearDevicePairingSimulation(rowId);
       if (pairingCodePopup?.id === rowId) {
@@ -16541,7 +16570,7 @@ export default function App() {
       ...previous,
       [pageId]: previous[pageId].filter((id) => id !== rowId),
     }));
-    showSnackbar("Row deleted successfully", "black");
+    showSnackbar(itemLabel ? `${itemLabel} has been deleted` : "Data has been deleted", "black");
   }
 
   function handleToggleAllPricingOverrides(sectionKey, groups) {
