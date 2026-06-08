@@ -17,24 +17,29 @@ export function Sidebar({
   onToggleSidebarCollapse,
   SidebarUnitSwitcherComponent,
 }) {
-  const visibleMenu = MENU.map((item) => {
-    if (!item.children || !selectedBusinessUnit) {
-      return item;
-    }
+  const isEntitySide = Boolean(selectedBusinessUnit);
 
-    return {
-      ...item,
-      children: item.children.filter((child) => child.id !== "pricing-rule"),
-    };
-  }).filter((item) => {
-    if (selectedBusinessUnit) {
-      // Entity Side
-      return item.id !== "business-unit" && (!item.children || item.children.length);
-    } else {
-      // Main Account Side
-      return item.id !== "device-management" && (!item.children || item.children.length);
-    }
-  });
+  const MAIN_ACCOUNT_ORDER = ["dashboard", "user-management", "role-management", "business-unit"];
+  const ENTITY_SIDE_ORDER = ["dashboard", "catalog-group", "device-group", "user-management", "role-management", "business-unit"];
+  const sideOrder = isEntitySide ? ENTITY_SIDE_ORDER : MAIN_ACCOUNT_ORDER;
+
+  const visibleMenu = MENU
+    .map((item) => {
+      if (item.children && isEntitySide) {
+        return {
+          ...item,
+          children: item.children.filter((child) => child.id !== "pricing-rule"),
+        };
+      }
+      return item;
+    })
+    .map((item) => {
+      if (item.id === "user-management") return { ...item, isLocked: true };
+      if (item.id === "business-unit") return { ...item, isLocked: true };
+      return item;
+    })
+    .filter((item) => sideOrder.includes(item.id) && (!item.children || item.children.length))
+    .sort((a, b) => sideOrder.indexOf(a.id) - sideOrder.indexOf(b.id));
 
   return (
     <aside
@@ -74,8 +79,9 @@ export function Sidebar({
                 <button
                   type="button"
                   className={`sidebar-parent${isCurrent ? " is-current" : ""}${isGroupCurrent ? " is-group-current" : ""
-                    }${isStandaloneActive ? " is-standalone-active" : ""}`}
+                    }${isStandaloneActive ? " is-standalone-active" : ""}${item.isLocked ? " is-locked" : ""}`}
                   onClick={() => {
+                    if (item.isLocked) return;
                     if (isGroup) {
                       onToggleGroup(item.id, item.children[0].id);
                     } else {

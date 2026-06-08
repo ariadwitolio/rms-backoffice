@@ -89,8 +89,9 @@ export default function CategoryListPage({
                 <td key={col.key} className="lab-table__action" onClick={(e) => e.stopPropagation()}>
                   <div className="lab-table__action-group">
                     <TableActionButton
-                      tooltip="Delete"
-                      onClick={(e) => { e.stopPropagation(); handleDelete(row.id); }}
+                      tooltip={row.isDefault ? "Cannot delete default category" : "Delete"}
+                      disabled={row.isDefault}
+                      onClick={(e) => { e.stopPropagation(); if (!row.isDefault) handleDelete(row.id); }}
                     >
                       <Icon name="delete" className="lab-icon lab-icon--16" />
                     </TableActionButton>

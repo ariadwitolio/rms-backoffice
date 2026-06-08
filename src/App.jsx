@@ -928,6 +928,23 @@ function getModifierOptionErrors(options = []) {
   return nextErrors;
 }
 
+function getModifierSelectionCountError(draft) {
+  const namedOptions = (draft.options || []).filter((opt) =>
+    String(opt.name || "").trim()
+  );
+  const optionCount = namedOptions.length;
+  const minSel = Number(draft.minimumSelection) || 0;
+  const maxSel = Number(draft.maximumSelection) || 0;
+
+  if (minSel > 0 && optionCount < minSel) {
+    return `Add at least ${minSel} option${minSel === 1 ? "" : "s"} to meet the minimum selection of ${minSel}`;
+  }
+  if (maxSel > 0 && optionCount < maxSel) {
+    return `Add at least ${maxSel} option${maxSel === 1 ? "" : "s"} to meet the maximum selection of ${maxSel}`;
+  }
+  return null;
+}
+
 function clearModifierOptionErrorId(previousErrors, key, optionId) {
   const currentIds = previousErrors?.[key] ?? [];
   if (!currentIds.includes(optionId)) {
@@ -2958,6 +2975,13 @@ function createInitialDataStore() {
     ],
     category: [
       {
+        id: "cg-000",
+        name: "Uncategorized",
+        parentCategory: "",
+        sellingTime: "All Day",
+        isDefault: true,
+      },
+      {
         id: "cg-001",
         name: "Main Course",
         parentCategory: "",
@@ -2989,7 +3013,7 @@ function createInitialDataStore() {
       },
     ],
     unit: [
-      { id: "unit-uom-001", name: "Pcs", precision: "1" },
+      { id: "unit-uom-001", name: "Pcs", precision: "1", isDefault: true },
       { id: "unit-uom-002", name: "Kilogram (kg)", precision: ".000" },
       { id: "unit-uom-003", name: "Gram (gr)", precision: "1" },
       { id: "unit-uom-004", name: "Liter (L)", precision: ".00" },
@@ -6446,6 +6470,7 @@ function DetailSelectField({
   multipleDisplay = "chips",
   multipleSummaryFormatter = null,
   ellipsis = false,
+  disabled = false,
 }) {
   const errorMessage =
     typeof error === "string"
@@ -6519,7 +6544,7 @@ function DetailSelectField({
       : defaultDisplayValue;
 
   return (
-    <div ref={rootRef} className="catalog-detail-field">
+    <div ref={rootRef} className={`catalog-detail-field${disabled ? " is-disabled" : ""}`}>
       <span className="catalog-detail-field__label type-body">
         {required ? (
           <span className="catalog-detail-field__required">*</span>
@@ -6527,7 +6552,7 @@ function DetailSelectField({
         {label}
       </span>
       <span
-        className={`catalog-detail-field__shell${hasError ? " is-error" : ""}${multiple && !isMultipleSummary
+        className={`catalog-detail-field__shell${hasError ? " is-error" : ""}${disabled ? " is-disabled" : ""}${multiple && !isMultipleSummary
           ? " catalog-detail-field__shell--multiline"
           : ""
           }`}
@@ -6539,7 +6564,8 @@ function DetailSelectField({
             : ""
             }`}
           aria-expanded={isOpen}
-          onClick={() => setIsOpen((previous) => !previous)}
+          disabled={disabled}
+          onClick={() => { if (!disabled) setIsOpen((previous) => !previous); }}
         >
           {multiple && !isMultipleSummary ? (
             <span className="catalog-detail-field__value-stack">
@@ -8322,8 +8348,8 @@ function PairingCodeModal({ open, device, onClose }) {
               </p>
               <p className="type-body text-secondary" style={{ margin: 0 }}>
                 {device.isReconnectFromDisconnect
-                  ? "Enter this code on the device’s onboarding screen to connect"
-                  : "Enter this code on the device’s onboarding screen to connect"}
+                  ? "Enter this code on the device's onboarding screen to connect"
+                  : "Enter this code on the device's onboarding screen to connect"}
               </p>
             </div>
             <button
@@ -8456,7 +8482,7 @@ function DevicePairingRequestModal({
   return createPortal(content, document.body);
 }
 
-function DeleteConfirmationModal({ open, itemLabel, onClose, onConfirm }) {
+function DeleteConfirmationModal({ open, itemLabel, message, onClose, onConfirm }) {
   if (!open) return null;
 
   return (
@@ -8470,7 +8496,7 @@ function DeleteConfirmationModal({ open, itemLabel, onClose, onConfirm }) {
       >
         <div className="discard-changes-modal__header">
           <p id="delete-confirmation-modal-title" className="type-title-1">
-            Delete Data?
+            {itemLabel ? `Delete ${itemLabel}?` : "Delete Data?"}
           </p>
           <button
             type="button"
@@ -8482,9 +8508,9 @@ function DeleteConfirmationModal({ open, itemLabel, onClose, onConfirm }) {
           </button>
         </div>
         <div className="discard-changes-modal__copy type-body text-secondary">
-          {itemLabel
-            ? `Are you sure you want to delete “${itemLabel}”? This action cannot be undone.`
-            : "Are you sure you want to delete this item? This action cannot be undone."}
+          {message ?? (itemLabel
+            ? `Are you sure you want to delete "${itemLabel}"? This action cannot be undone.`
+            : "Are you sure you want to delete this item? This action cannot be undone.")}
         </div>
         <div className="discard-changes-modal__actions">
           <LabButton
@@ -8496,6 +8522,96 @@ function DeleteConfirmationModal({ open, itemLabel, onClose, onConfirm }) {
           />
           <LabButton
             label="Yes, Delete"
+            variant="danger"
+            size="medium"
+            onClick={onConfirm}
+            fullWidth
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DeleteBlockedModal({ open, title, message, onClose }) {
+  if (!open) return null;
+
+  return (
+    <div className="modal-overlay discard-changes-modal-overlay" onMouseDown={onClose}>
+      <div
+        className="discard-changes-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="delete-blocked-modal-title"
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <div className="discard-changes-modal__header">
+          <p id="delete-blocked-modal-title" className="type-title-1">
+            {title || "Cannot Delete Modifier"}
+          </p>
+          <button
+            type="button"
+            className="discard-changes-modal__close"
+            onClick={onClose}
+            aria-label="Close"
+          >
+            <Icon name="modalClose" className="lab-icon lab-icon--20" alt="" />
+          </button>
+        </div>
+        <div className="discard-changes-modal__copy type-body text-secondary">
+          {message}
+        </div>
+        <div className="discard-changes-modal__actions discard-changes-modal__actions--single">
+          <LabButton
+            label="Okay"
+            variant="secondary"
+            size="medium"
+            onClick={onClose}
+            fullWidth
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ModifierOptionDeactivateModal({ open, minimumSelection, onClose, onConfirm }) {
+  if (!open) return null;
+  return (
+    <div className="modal-overlay discard-changes-modal-overlay" onMouseDown={onClose}>
+      <div
+        className="discard-changes-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="modifier-option-deactivate-modal-title"
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <div className="discard-changes-modal__header">
+          <p id="modifier-option-deactivate-modal-title" className="type-title-1">
+            Deactivate Last Option?
+          </p>
+          <button
+            type="button"
+            className="discard-changes-modal__close"
+            onClick={onClose}
+            aria-label="Close"
+          >
+            <Icon name="modalClose" className="lab-icon lab-icon--20" alt="" />
+          </button>
+        </div>
+        <div className="discard-changes-modal__copy type-body text-secondary">
+          This modifier requires at least {minimumSelection} active option. Deactivating the last option will automatically turn off the modifier availability.
+        </div>
+        <div className="discard-changes-modal__actions">
+          <LabButton
+            label="Cancel"
+            variant="secondary"
+            size="medium"
+            onClick={onClose}
+            fullWidth
+          />
+          <LabButton
+            label="Yes, Deactivate"
             variant="danger"
             size="medium"
             onClick={onConfirm}
@@ -13341,7 +13457,10 @@ export default function App() {
     pageId: null,
     rowId: null,
     itemLabel: "",
+    message: null,
   });
+  const [deleteBlockedModal, setDeleteBlockedModal] = useState({ open: false, title: "", message: "" });
+  const [modifierOptionDeactivateConfirm, setModifierOptionDeactivateConfirm] = useState(null);
   const [deviceStatusConfirmation, setDeviceStatusConfirmation] = useState({
     rowId: null,
     deviceName: "",
@@ -14319,11 +14438,11 @@ export default function App() {
   const catalogUnitOptions = (records.unit || []).map((row) => row.name);
   const modifierCatalogGroups = buildModifierCatalogGroups(
     categoryRows,
-    (records.catalog || []).filter((row) => row.type !== "package")
+    records.catalog || []
   );
   const baseGroupedDeviceCatalogGroups = buildModifierCatalogGroups(
     categoryRows,
-    (records.catalog || []).filter((row) => row.type !== "package")
+    records.catalog || []
   );
   const groupedDeviceGroups = records["grouped-device"] || [];
   const groupedDeviceCatalogValues = new Set(
@@ -16055,7 +16174,45 @@ export default function App() {
   }
 
   function requestDeleteRow(pageId, rowId, itemLabel = "") {
-    setDeleteConfirmationTarget({ pageId, rowId, itemLabel });
+    if (pageId === "category") {
+      const categoryRecord = (records.category || []).find((r) => r.id === rowId);
+      const connectedCount = (records.catalog || []).filter(
+        (c) => (c.category || "Uncategorized") === categoryRecord?.name
+      ).length;
+      if (connectedCount > 0) {
+        const msg = `"${categoryRecord?.name}" has ${connectedCount} connected catalog item${connectedCount > 1 ? "s" : ""}. All catalog items inside this category will be automatically moved to "Uncategorized". This action cannot be undone.`;
+        setDeleteConfirmationTarget({ pageId, rowId, itemLabel, message: msg });
+        setDeleteConfirmationOpen(true);
+        return;
+      }
+    }
+    if (pageId === "unit") {
+      const unitRecord = (records.unit || []).find((r) => r.id === rowId);
+      const connectedCount = (records.catalog || []).filter(
+        (c) => (c.unit || "Pcs") === unitRecord?.name
+      ).length;
+      if (connectedCount > 0) {
+        const msg = `"${unitRecord?.name}" has ${connectedCount} connected catalog item${connectedCount > 1 ? "s" : ""}. All catalog items inside this unit will be automatically moved to "Pcs". This action cannot be undone.`;
+        setDeleteConfirmationTarget({ pageId, rowId, itemLabel, message: msg });
+        setDeleteConfirmationOpen(true);
+        return;
+      }
+    }
+    if (pageId === "modifier") {
+      const modifierRecord = (records.modifier || []).find((r) => r.id === rowId);
+      const connectedItems = Array.isArray(modifierRecord?.connectedCatalogItems)
+        ? modifierRecord.connectedCatalogItems.filter(Boolean)
+        : [];
+      if (connectedItems.length > 0) {
+        setDeleteBlockedModal({
+          open: true,
+          title: `${modifierRecord?.name} is In Use`,
+          message: `"${modifierRecord?.name}" is connected to ${connectedItems.length} catalog item${connectedItems.length > 1 ? "s" : ""}. Remove all catalog links before deleting this modifier.`,
+        });
+        return;
+      }
+    }
+    setDeleteConfirmationTarget({ pageId, rowId, itemLabel, message: null });
     setDeleteConfirmationOpen(true);
   }
 
@@ -16070,7 +16227,7 @@ export default function App() {
 
   function cancelDeleteRequest() {
     setDeleteConfirmationOpen(false);
-    setDeleteConfirmationTarget({ pageId: null, rowId: null, itemLabel: "" });
+    setDeleteConfirmationTarget({ pageId: null, rowId: null, itemLabel: "", message: null });
   }
 
   function cancelDeviceStatusChange() {
@@ -16087,7 +16244,7 @@ export default function App() {
     if (deleteConfirmationTarget.pageId && deleteConfirmationTarget.rowId) {
       handleDeleteRow(deleteConfirmationTarget.pageId, deleteConfirmationTarget.rowId);
     }
-    setDeleteConfirmationTarget({ pageId: null, rowId: null, itemLabel: "" });
+    setDeleteConfirmationTarget({ pageId: null, rowId: null, itemLabel: "", message: null });
   }
 
   function createDeviceManagementTimestamp(date = new Date()) {
@@ -16356,6 +16513,8 @@ export default function App() {
       deletedUnitRecord && deletedUnitRecord.name
         ? records.unit.find((row) => row.id !== rowId)?.name ?? "Pcs"
         : null;
+    const deletedCategoryRecord =
+      pageId === "category" ? (records.category || []).find((row) => row.id === rowId) : null;
     setRecords((previous) => ({
       ...previous,
       [pageId]: previous[pageId].filter((row) => row.id !== rowId),
@@ -16364,6 +16523,15 @@ export default function App() {
           catalog: previous.catalog.map((row) =>
             (row.unit || "Pcs") === deletedUnitRecord.name
               ? { ...row, unit: fallbackUnitName }
+              : row
+          ),
+        }
+        : {}),
+      ...(deletedCategoryRecord
+        ? {
+          catalog: previous.catalog.map((row) =>
+            (row.category || "Uncategorized") === deletedCategoryRecord.name
+              ? { ...row, category: "" }
               : row
           ),
         }
@@ -17640,6 +17808,14 @@ export default function App() {
     if (duplicateNameError) {
       setModifierDetailErrors({ name: duplicateNameError });
       return { ok: false, nextDraft: detailDraft };
+    }
+
+    if (detailEditing.kind === "all") {
+      const selectionCountError = getModifierSelectionCountError(detailDraft);
+      if (selectionCountError) {
+        setModifierDetailErrors({ selectionCount: selectionCountError });
+        return { ok: false, nextDraft: detailDraft };
+      }
     }
 
     const nextDraft = persistModifierDetailDraft(
@@ -20417,6 +20593,11 @@ export default function App() {
 
     Object.assign(nextErrors, optionErrors);
 
+    const selectionCountError = getModifierSelectionCountError(modifierDraft);
+    if (selectionCountError) {
+      nextErrors.selectionCount = selectionCountError;
+    }
+
     if (Object.keys(nextErrors).length) {
       setModifierDraftErrors(nextErrors);
       return;
@@ -21088,6 +21269,11 @@ export default function App() {
                 onDragOver={handleModifierOptionDragOver}
                 onDrop={handleModifierOptionDrop}
               />
+              {modifierDraftErrors.selectionCount && (
+                <p className="modifier-option-table__field-error type-body" style={{ marginTop: "4px" }}>
+                  {modifierDraftErrors.selectionCount}
+                </p>
+              )}
 
               <section className="modifier-create-card">
                 <div className="modifier-create-card__header">
@@ -22451,6 +22637,11 @@ export default function App() {
                 onDragOver={handleModifierOptionDragOver}
                 onDrop={handleModifierOptionDrop}
               />
+              {modifierDraftErrors.selectionCount && (
+                <p className="modifier-option-table__field-error type-body" style={{ marginTop: "4px" }}>
+                  {modifierDraftErrors.selectionCount}
+                </p>
+              )}
             </DetailSection>
 
             <DetailSection title="Connected Catalog">
@@ -25596,6 +25787,7 @@ export default function App() {
                     onChange={(value) => handleCategoryDetailChange("name", value)}
                     error={categoryDetailErrors.name}
                     autoFocus
+                    disabled={effectiveCategoryRow.isDefault}
                     ellipsis
                   />
                   <DetailSelectField
@@ -25604,6 +25796,7 @@ export default function App() {
                     options={categoryDetailParentOptions}
                     onChange={(value) => handleCategoryDetailChange("parentCategory", value)}
                     placeholder="None (Main Category)"
+                    disabled={effectiveCategoryRow.isDefault}
                     ellipsis
                   />
 
@@ -26431,6 +26624,14 @@ export default function App() {
                 </div>
               </DetailSection>
               <DetailSection title="Modifier Options">
+                {Number(modifierDetailDraft.minimumSelection) > 0 && (
+                  <div className="catalog-assignment-info" style={{ marginBottom: "8px", justifyContent: "flex-start", alignItems: "flex-start" }}>
+                    <Icon name="infoBlue" className="lab-icon lab-icon--18" alt="" />
+                    <p className="type-body">
+                      At least {modifierDetailDraft.minimumSelection} option must be active to enable this modifier
+                    </p>
+                  </div>
+                )}
                 <ModifierOptionsTable
                   options={visibleModifierOptions}
                   isEditing={isEditing}
@@ -26440,7 +26641,18 @@ export default function App() {
                     modifierDetailErrors.optionIngredientQtys ?? []
                   }
                   ingredientOptions={MODIFIER_INGREDIENT_OPTION_LABELS}
-                  onOptionChange={handleModifierDetailOptionChange}
+                  onOptionChange={(optionId, key, value) => {
+                    if (key === "isAvailable" && !value) {
+                      const activeCount = (modifierDetailDraft.options || []).filter(
+                        (opt) => opt.id !== optionId && opt.isAvailable !== false
+                      ).length;
+                      if (activeCount === 0 && Number(modifierDetailDraft.minimumSelection) > 0) {
+                        setModifierOptionDeactivateConfirm({ optionId });
+                        return;
+                      }
+                    }
+                    handleModifierDetailOptionChange(optionId, key, value);
+                  }}
                   onRemoveOption={handleRemoveModifierDetailOption}
                   onAddOption={handleAddModifierDetailOption}
                   onDragStart={handleModifierDetailOptionDragStart}
@@ -26458,6 +26670,11 @@ export default function App() {
                     </div>
                   }
                 />
+                {modifierDetailErrors.selectionCount && (
+                  <p className="modifier-option-table__field-error type-body" style={{ marginTop: "4px" }}>
+                    {modifierDetailErrors.selectionCount}
+                  </p>
+                )}
               </DetailSection>
 
               <DetailSection title="Connected Catalog">
@@ -27431,11 +27648,13 @@ export default function App() {
                                         tooltip={
                                           row.deviceType === "Printer"
                                             ? "Delete unavailable for printers"
-                                            : "Delete"
+                                            : row.isDefault
+                                              ? "Cannot delete default item"
+                                              : "Delete"
                                         }
-                                        disabled={row.deviceType === "Printer"}
+                                        disabled={row.deviceType === "Printer" || row.isDefault}
                                         onClick={() => {
-                                          if (row.deviceType === "Printer") {
+                                          if (row.deviceType === "Printer" || row.isDefault) {
                                             return;
                                           }
 
@@ -29485,7 +29704,7 @@ export default function App() {
           highlights: [
             [
               "Peak hour contribution",
-              "Lunch service contributed 38% of today’s revenue with the highest dine-in conversion.",
+              "Lunch service contributed 38% of today's revenue with the highest dine-in conversion.",
               "12:00 - 14:00",
             ],
             [
@@ -29519,7 +29738,7 @@ export default function App() {
             ],
             [
               "Review bundle pricing",
-              "Compare combo conversion against the prior seven-day average before tomorrow’s promo sync.",
+              "Compare combo conversion against the prior seven-day average before tomorrow's promo sync.",
               "Pricing",
             ],
             [
@@ -29760,7 +29979,7 @@ export default function App() {
           highlights: [
             [
               "Low stock warning",
-              "Cheddar slices and burger buns are both near reorder threshold for tomorrow’s service.",
+              "Cheddar slices and burger buns are both near reorder threshold for tomorrow's service.",
               "Critical",
             ],
             [
@@ -29770,7 +29989,7 @@ export default function App() {
             ],
             [
               "Receiving status",
-              "Today’s dairy replenishment was posted successfully and synced to RMS inventory balances.",
+              "Today's dairy replenishment was posted successfully and synced to RMS inventory balances.",
               "Receiving",
             ],
           ],
@@ -29794,7 +30013,7 @@ export default function App() {
             ],
             [
               "Check par levels",
-              "Review tomorrow’s par settings against expected promo demand.",
+              "Review tomorrow's par settings against expected promo demand.",
               "Inventory",
             ],
             [
@@ -29832,7 +30051,7 @@ export default function App() {
           notes: [
             [
               "Finance watch",
-              "Track protein cost trends before finalizing next week’s pricing update proposal.",
+              "Track protein cost trends before finalizing next week's pricing update proposal.",
               "orange",
             ],
             [
@@ -32313,6 +32532,7 @@ export default function App() {
           onSort={(key) => handleSetSort("category", key)}
           handleDelete={(rowId) => {
             const row = categoryRows.find((item) => item.id === rowId);
+            if (row?.isDefault) return;
             requestDeleteRow("category", rowId, row?.name ?? rowId);
           }}
         />
@@ -32603,8 +32823,26 @@ export default function App() {
       <DeleteConfirmationModal
         open={deleteConfirmationOpen}
         itemLabel={deleteConfirmationTarget.itemLabel}
+        message={deleteConfirmationTarget.message}
         onClose={cancelDeleteRequest}
         onConfirm={confirmDeleteRow}
+      />
+      <DeleteBlockedModal
+        open={deleteBlockedModal.open}
+        title={deleteBlockedModal.title}
+        message={deleteBlockedModal.message}
+        onClose={() => setDeleteBlockedModal({ open: false, title: "", message: "" })}
+      />
+      <ModifierOptionDeactivateModal
+        open={Boolean(modifierOptionDeactivateConfirm)}
+        minimumSelection={modifierDetailDraft?.minimumSelection || 1}
+        onClose={() => setModifierOptionDeactivateConfirm(null)}
+        onConfirm={() => {
+          if (modifierOptionDeactivateConfirm) {
+            handleModifierDetailOptionChange(modifierOptionDeactivateConfirm.optionId, "isAvailable", false);
+          }
+          setModifierOptionDeactivateConfirm(null);
+        }}
       />
       <DeviceStatusConfirmationModal
         open={Boolean(deviceStatusConfirmation.rowId)}

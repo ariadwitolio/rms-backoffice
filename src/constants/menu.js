@@ -12,7 +12,6 @@ export const MENU = [
       { id: "pricing-rule", label: "Pricing Rule" },
     ],
   },
-  { id: "business-unit", label: "Entity Management", icon: "businessUnit" },
   {
     id: "device-group",
     label: "Device Management",
@@ -22,7 +21,9 @@ export const MENU = [
       { id: "grouped-device", label: "KDS Group" },
     ],
   },
+  { id: "user-management", label: "User Management", icon: "userList" },
   { id: "role-management", label: "Role Management", icon: "roleManagement" },
+  { id: "business-unit", label: "Entity Management", icon: "businessUnit" },
 ];
 
 export const DETAIL_PAGE_PARENT = {

@@ -413,6 +413,10 @@ img {
   background: rgba(0, 107, 255, 0.05);
 }
 
+.sidebar-parent.is-locked {
+  cursor: default;
+}
+
 .sidebar-parent__container {
   align-items: center;
   border-radius: var(--radius-md);
@@ -6033,16 +6037,14 @@ img {
 
 .table-row-action:disabled,
 .table-row-action[disabled] {
-  background: var(--neutral-surface-grey-darker);
-  border-radius: var(--radius-md);
-  color: var(--neutral-on-surface-reverse);
+  background: transparent;
   cursor: not-allowed;
 }
 
 .table-row-action:disabled .lab-icon,
 .table-row-action[disabled] .lab-icon {
-  color: var(--neutral-on-surface-reverse);
-  opacity: 1;
+  color: var(--neutral-on-surface-tertiary);
+  opacity: 0.35;
 }
 
 .device-detail-connect-btn {
@@ -7037,7 +7039,7 @@ img {
     minmax(156px, 0.9fr)
     minmax(192px, 1fr)
     minmax(108px, 0.7fr)
-    68px;
+    100px;
 }
 
 .modifier-option-table__row.is-drag-over .modifier-option-table__cell,
@@ -7066,14 +7068,22 @@ img {
 .modifier-option-table__header-cell--handle,
 .modifier-option-table__header-cell--action,
 .modifier-option-table__cell--handle,
-.modifier-option-table__cell--action,
+.modifier-option-table__cell--action {
+  justify-content: center;
+}
+
 .modifier-option-table__header-cell--availability,
 .modifier-option-table__cell--availability {
-  justify-content: center;
+  justify-content: flex-start;
 }
 
 .modifier-option-table__cell {
   padding: 6px 10px;
+}
+
+.modifier-option-table__row--header .modifier-option-table__header-cell--availability,
+.modifier-option-table__cell--availability {
+  padding-left: 20px;
 }
 
 .modifier-option-table__header-cell--price,
@@ -10274,6 +10284,10 @@ textarea::placeholder,
   display: grid;
   gap: 12px;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.discard-changes-modal__actions--single {
+  grid-template-columns: 1fr;
 }
 
 .discard-changes-modal__actions .lab-button {
