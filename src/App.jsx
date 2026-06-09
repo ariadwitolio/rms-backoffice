@@ -2122,7 +2122,7 @@ function buildModifierCatalogGroups(categoryRows = [], catalogRows = []) {
 
   orderedCategoryRows.forEach((row) => {
     const normalizedName = normalizeDuplicateNameValue(row.name);
-    if (normalizedName === "uncategorized" || usedCategories.has(normalizedName)) {
+    if (normalizedName === "uncategorized" || normalizedName === "package" || usedCategories.has(normalizedName)) {
       return;
     }
 
@@ -2166,6 +2166,21 @@ function buildModifierCatalogGroups(categoryRows = [], catalogRows = []) {
     usedCategories.add("package");
   }
 
+  if (catalogsByCategory.has("Uncategorized")) {
+    const insertIndex = usedCategories.has("package") ? 1 : 0;
+    groups.splice(insertIndex, 0, {
+      id: "Uncategorized",
+      label: "Uncategorized",
+      indentLevel: 0,
+      items: catalogsByCategory.get("Uncategorized").map((row) => ({
+        id: row.id,
+        label: row.name,
+        value: row.name,
+        indentLevel: 1,
+      })),
+    });
+  }
+
   catalogsByCategory.forEach((groupItems, categoryName) => {
     if (categoryName === "Uncategorized") {
       return;
@@ -2187,20 +2202,6 @@ function buildModifierCatalogGroups(categoryRows = [], catalogRows = []) {
       })),
     });
   });
-
-  if (catalogsByCategory.has("Uncategorized")) {
-    groups.push({
-      id: "Uncategorized",
-      label: "Uncategorized",
-      indentLevel: 0,
-      items: catalogsByCategory.get("Uncategorized").map((row) => ({
-        id: row.id,
-        label: row.name,
-        value: row.name,
-        indentLevel: 1,
-      })),
-    });
-  }
 
   return groups;
 }
@@ -7148,7 +7149,7 @@ function ModifierCatalogModalField({
             {displayValue}
           </p>
           <span className="catalog-detail-field__chevron">
-            <ChevronIcon name="selectChevron" size={24} direction="down" />
+            <ChevronIcon name="selectChevron" size={24} direction="right" />
           </span>
         </button>
       </span>
