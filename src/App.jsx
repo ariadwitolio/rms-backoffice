@@ -2032,6 +2032,7 @@ function buildCategoryParentOptions(
     ...orderedRows
       .filter((row) => {
         if (row.id === excludeId) return false;
+        if (row.isDefault) return false;
 
         const path = row.hierarchyPath || row.name;
         const itemDepth = getCategoryHierarchyDepth(path);
@@ -3002,6 +3003,15 @@ function createInitialDataStore() {
         name: "Uncategorized",
         parentCategory: "",
         sellingTime: "All Day",
+        color: "#F9EB9E",
+        isDefault: true,
+      },
+      {
+        id: "cg-pkg-000",
+        name: "Package",
+        parentCategory: "",
+        sellingTime: "All Day",
+        color: "#D1C0F6",
         isDefault: true,
       },
       {
@@ -3009,30 +3019,35 @@ function createInitialDataStore() {
         name: "Main Course",
         parentCategory: "",
         sellingTime: "All Day",
+        color: "#F5BCBC",
       },
       {
         id: "cg-002",
         name: "Appetizers",
         parentCategory: "",
         sellingTime: "All Day",
+        color: "#F6D3B8",
       },
       {
         id: "cg-003",
         name: "Beverages",
         parentCategory: "",
         sellingTime: "Breakfast",
+        color: "#A5EEE6",
       },
       {
         id: "cg-004",
         name: "Desserts",
         parentCategory: "",
         sellingTime: "Lunch Rush",
+        color: "#F9C0DD",
       },
       {
         id: "cg-005",
         name: "Seasonal",
         parentCategory: "",
         sellingTime: "Late Night",
+        color: "#CDE7C9",
       },
     ],
     unit: [
@@ -6304,6 +6319,7 @@ function DetailField({
   autoFocus = false,
   disabled = false,
   ellipsis = false,
+  valueColor = null,
 }) {
   const errorMessage =
     typeof error === "string"
@@ -6335,6 +6351,7 @@ function DetailField({
           step={step}
           inputMode={inputMode}
           disabled={disabled}
+          style={valueColor ? { color: valueColor } : undefined}
         />
       </span>
       {hasError ? (
@@ -6494,6 +6511,8 @@ function DetailSelectField({
   multipleSummaryFormatter = null,
   ellipsis = false,
   disabled = false,
+  hideChevron = false,
+  valueColor = null,
 }) {
   const errorMessage =
     typeof error === "string"
@@ -6614,18 +6633,21 @@ function DetailSelectField({
                   ? ""
                   : " text-tertiary"
                 }${ellipsis ? " catalog-detail-field__input--ellipsis" : ""}`}
+              style={valueColor ? { color: valueColor } : undefined}
             >
               {displayValue}
             </p>
 
           )}
-          <span className="catalog-detail-field__chevron">
-            <ChevronIcon
-              name="selectChevron"
-              size={24}
-              direction={isOpen ? "up" : "down"}
-            />
-          </span>
+          {!hideChevron && (
+            <span className="catalog-detail-field__chevron">
+              <ChevronIcon
+                name="selectChevron"
+                size={24}
+                direction={isOpen ? "up" : "down"}
+              />
+            </span>
+          )}
         </button>
         {isOpen ? (
           <div className="catalog-detail-field__menu">
@@ -25826,6 +25848,8 @@ export default function App() {
                     onChange={(value) => handleCategoryDetailChange("parentCategory", value)}
                     placeholder="None (Main Category)"
                     disabled={effectiveCategoryRow.isDefault}
+                    hideChevron={effectiveCategoryRow.isDefault}
+                    valueColor={effectiveCategoryRow.isDefault ? "var(--neutral-on-surface-secondary)" : undefined}
                     ellipsis
                   />
 
@@ -32538,7 +32562,6 @@ export default function App() {
         filteredCategoryRows.every((row) =>
           selectedRows.category.includes(row.id)
         );
-
       return (
         <CategoryListPage
           renderListPage={(customTable) =>
