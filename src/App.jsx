@@ -524,6 +524,10 @@ function createEmptyIngredientItem() {
   };
 }
 
+function createEmptyAdditionalName() {
+  return { id: nextCatalogBuilderId("additional-name"), value: "" };
+}
+
 
 function normalizePackageItems(items) {
   const filledItems = [];
@@ -734,6 +738,7 @@ function createInitialCatalogDraft() {
     photos: [],
     type: "single",
     name: "",
+    additionalNames: [],
     description: "",
     unit: "Pcs",
     category: "Uncategorized",
@@ -834,6 +839,7 @@ function createEmptyModifierOption() {
     additionalPrice: "",
     overrideAdditionalPrice: "",
     isAvailable: true,
+    isDefault: false,
     ingredientId: "",
     selectedIngredient: "",
     ingredientQty: "",
@@ -941,6 +947,16 @@ function getModifierSelectionCountError(draft) {
   }
   if (maxSel > 0 && optionCount < maxSel) {
     return `Add at least ${maxSel} option${maxSel === 1 ? "" : "s"} to meet the maximum selection of ${maxSel}`;
+  }
+  return null;
+}
+
+function getModifierDefaultSelectionError(draft) {
+  const minSel = Number(draft.minimumSelection) || 0;
+  if (minSel === 0) return null;
+  const defaultCount = (draft.options || []).filter((opt) => Boolean(opt.isDefault)).length;
+  if (defaultCount !== minSel) {
+    return "Default selections must match the Minimum Selection value";
   }
   return null;
 }
@@ -2640,6 +2656,13 @@ function createCatalogDetailDraftFromRecord(record) {
     photos: cloneCatalogPhotos(record?.photos ?? []),
     type,
     name: record?.name ?? "",
+    additionalNames: Array.isArray(record?.additionalNames)
+      ? record.additionalNames.map((entry) =>
+          typeof entry === "string"
+            ? { id: nextCatalogBuilderId("additional-name"), value: entry }
+            : { id: nextCatalogBuilderId("additional-name"), value: entry.value ?? "" }
+        )
+      : [],
     description: record?.description ?? "",
     unit: record?.unit ?? "Pcs",
     category: getCatalogCategoryForType(type, record?.category),
@@ -3087,9 +3110,9 @@ function createInitialDataStore() {
         allowOverridePrice: false,
         assignedUnits: [],
         options: [
-          { id: "md-002-opt-1", name: "Rare", additionalPrice: "0" },
-          { id: "md-002-opt-2", name: "Medium", additionalPrice: "0" },
-          { id: "md-002-opt-3", name: "Well Done", additionalPrice: "0" },
+          { id: "md-002-opt-1", name: "Rare", additionalPrice: "0", isDefault: false },
+          { id: "md-002-opt-2", name: "Medium", additionalPrice: "0", isDefault: true },
+          { id: "md-002-opt-3", name: "Well Done", additionalPrice: "0", isDefault: false },
         ],
         connectedCatalogItems: ["Burger Supreme"],
       },
@@ -3108,11 +3131,11 @@ function createInitialDataStore() {
           defaultPricingOverrideSections
         ),
         options: [
-          { id: "md-003-opt-1", name: "0%", additionalPrice: "0" },
-          { id: "md-003-opt-2", name: "25%", additionalPrice: "0" },
-          { id: "md-003-opt-3", name: "50%", additionalPrice: "1000" },
-          { id: "md-003-opt-4", name: "75%", additionalPrice: "3000" },
-          { id: "md-003-opt-5", name: "100%", additionalPrice: "5000" },
+          { id: "md-003-opt-1", name: "0%", additionalPrice: "0", isDefault: false },
+          { id: "md-003-opt-2", name: "25%", additionalPrice: "0", isDefault: false },
+          { id: "md-003-opt-3", name: "50%", additionalPrice: "1000", isDefault: true },
+          { id: "md-003-opt-4", name: "75%", additionalPrice: "3000", isDefault: false },
+          { id: "md-003-opt-5", name: "100%", additionalPrice: "5000", isDefault: false },
         ],
         connectedCatalogItems: [
           "Burger Supreme",
@@ -7785,6 +7808,7 @@ function ModifierOptionQtyField({
 function ModifierOptionsTable({
   options,
   isEditing,
+  minimumSelection = "0",
   dragOverOptionId,
   optionNameErrors = [],
   optionIngredientQtyErrors = [],
@@ -7805,6 +7829,9 @@ function ModifierOptionsTable({
     return emptyReadonlyContent;
   }
 
+  const minSel = Number(minimumSelection) || 0;
+  const defaultCheckedCount = options.filter((opt) => Boolean(opt.isDefault)).length;
+
   return (
     <div className="modifier-option-table-shell">
       <div className="modifier-option-table__scroll">
@@ -7816,6 +7843,23 @@ function ModifierOptionsTable({
         >
           <div className="modifier-option-table__row modifier-option-table__row--header">
             <div className="modifier-option-table__header-cell modifier-option-table__header-cell--handle" />
+            <div className="modifier-option-table__header-cell modifier-option-table__header-cell--default">
+              <span className="modifier-option-table__default-header">
+                <p className="type-title-3">Default</p>
+                <span
+                  className="modifier-option-table__default-tooltip-trigger"
+                  tabIndex={0}
+                  role="button"
+                  aria-label="Default column help"
+                >
+                  <Icon name="infoBlue" className="lab-icon lab-icon--14" alt="" />
+                  <span className="modifier-option-table__default-tooltip-bubble type-body" aria-hidden="true">
+                    Default option will be automatically selected in POS when this modifier group is shown.
+                    {" "}If Minimum Selection is greater than 0, the number of default options must match the Minimum Selection value.
+                  </span>
+                </span>
+              </span>
+            </div>
             <div className="modifier-option-table__header-cell modifier-option-table__header-cell--name">
               <p className="type-title-3">Option Name</p>
             </div>
@@ -7880,6 +7924,23 @@ function ModifierOptionsTable({
                         : undefined
                     }
                     onDragEnd={isEditing ? onDragEnd : undefined}
+                  />
+                </div>
+                <div className="modifier-option-table__cell modifier-option-table__cell--default">
+                  <input
+                    type="checkbox"
+                    className="modifier-option-table__default-checkbox"
+                    checked={Boolean(option.isDefault)}
+                    disabled={
+                      !isEditing ||
+                      (minSel > 0 && !option.isDefault && defaultCheckedCount >= minSel)
+                    }
+                    onChange={
+                      isEditing
+                        ? () => onOptionChange?.(option.id, "isDefault", !option.isDefault)
+                        : undefined
+                    }
+                    aria-label={`Default for ${option.name || `Option ${index + 1}`}`}
                   />
                 </div>
                 <div className="modifier-option-table__cell modifier-option-table__cell--name">
@@ -16854,6 +16915,9 @@ export default function App() {
     return {
       ...detailRecord,
       name: detailRecord.name.trim(),
+      additionalNames: (detailRecord.additionalNames ?? [])
+        .filter((entry) => entry.value.trim())
+        .map((entry) => ({ id: entry.id, value: entry.value.trim() })),
       description: String(detailRecord.description ?? "").trim(),
       unit: detailRecord.unit || "Pcs",
       category: getCatalogCategoryForType(
@@ -17866,6 +17930,12 @@ export default function App() {
       const selectionCountError = getModifierSelectionCountError(detailDraft);
       if (selectionCountError) {
         setModifierDetailErrors({ selectionCount: selectionCountError });
+        return { ok: false, nextDraft: detailDraft };
+      }
+
+      const defaultSelectionError = getModifierDefaultSelectionError(detailDraft);
+      if (defaultSelectionError) {
+        setModifierDetailErrors({ defaultSelection: defaultSelectionError });
         return { ok: false, nextDraft: detailDraft };
       }
     }
@@ -19077,6 +19147,48 @@ export default function App() {
     });
   }
 
+  function handleAddCatalogDetailAdditionalName() {
+    if (isLockedSelectedBusinessUnit) return;
+    setCatalogDetailDraft((previous) => {
+      if (!previous) return previous;
+      const nextDraft = {
+        ...previous,
+        additionalNames: [...(previous.additionalNames ?? []), createEmptyAdditionalName()],
+      };
+      catalogDetailDraftRef.current = nextDraft;
+      return nextDraft;
+    });
+  }
+
+  function handleCatalogDetailAdditionalNameChange(id, value) {
+    if (isLockedSelectedBusinessUnit) return;
+    setCatalogDetailDraft((previous) => {
+      if (!previous) return previous;
+      const nextDraft = {
+        ...previous,
+        additionalNames: (previous.additionalNames ?? []).map((entry) =>
+          entry.id === id ? { ...entry, value } : entry
+        ),
+      };
+      catalogDetailDraftRef.current = nextDraft;
+      return nextDraft;
+    });
+  }
+
+  function handleRemoveCatalogDetailAdditionalName(id) {
+    if (isLockedSelectedBusinessUnit) return;
+    setCatalogDetailDraft((previous) => {
+      if (!previous) return previous;
+      const nextDraft = {
+        ...previous,
+        additionalNames: (previous.additionalNames ?? []).filter(
+          (entry) => entry.id !== id
+        ),
+      };
+      catalogDetailDraftRef.current = nextDraft;
+      return nextDraft;
+    });
+  }
 
   function handleRemoveCatalogDetailPackageItem(itemId) {
     if (isLockedSelectedBusinessUnit) return;
@@ -20650,6 +20762,11 @@ export default function App() {
       nextErrors.selectionCount = selectionCountError;
     }
 
+    const defaultSelectionError = getModifierDefaultSelectionError(modifierDraft);
+    if (defaultSelectionError) {
+      nextErrors.defaultSelection = defaultSelectionError;
+    }
+
     if (Object.keys(nextErrors).length) {
       setModifierDraftErrors(nextErrors);
       return;
@@ -20923,6 +21040,30 @@ export default function App() {
     });
   }
 
+  function handleAddAdditionalName() {
+    setCatalogDraft((previous) => ({
+      ...previous,
+      additionalNames: [...(previous.additionalNames ?? []), createEmptyAdditionalName()],
+    }));
+  }
+
+  function handleAdditionalNameChange(id, value) {
+    setCatalogDraft((previous) => ({
+      ...previous,
+      additionalNames: (previous.additionalNames ?? []).map((entry) =>
+        entry.id === id ? { ...entry, value } : entry
+      ),
+    }));
+  }
+
+  function handleRemoveAdditionalName(id) {
+    setCatalogDraft((previous) => ({
+      ...previous,
+      additionalNames: (previous.additionalNames ?? []).filter(
+        (entry) => entry.id !== id
+      ),
+    }));
+  }
 
   function openUnitAssignmentModal(target = "create") {
     if (isLockedSelectedBusinessUnit) return;
@@ -21307,6 +21448,7 @@ export default function App() {
               <ModifierOptionsTable
                 options={modifierDraft.options}
                 isEditing={true}
+                minimumSelection={modifierDraft.minimumSelection}
                 dragOverOptionId={modifierDragOverOptionId}
                 optionNameErrors={modifierDraftErrors.optionNames ?? []}
                 optionIngredientQtyErrors={
@@ -21324,6 +21466,11 @@ export default function App() {
               {modifierDraftErrors.selectionCount && (
                 <p className="modifier-option-table__field-error type-body" style={{ marginTop: "4px" }}>
                   {modifierDraftErrors.selectionCount}
+                </p>
+              )}
+              {modifierDraftErrors.defaultSelection && (
+                <p className="modifier-option-table__field-error type-body" style={{ marginTop: "4px" }}>
+                  {modifierDraftErrors.defaultSelection}
                 </p>
               )}
 
@@ -22080,16 +22227,43 @@ export default function App() {
                   ) : null}
                 </div>
                 <div className="catalog-general-row">
-                  <DetailField
-                    label="Catalog Name"
-                    required
-                    value={catalogDraft.name}
-                    placeholder="Enter Catalog Name"
-                    onChange={(value) =>
-                      handleCatalogDraftChange("name", value)
-                    }
-                    error={catalogDraftErrors.name}
-                  />
+                  <div className="catalog-name-stack">
+                    <DetailField
+                      label="Catalog Name"
+                      required
+                      value={catalogDraft.name}
+                      placeholder="Enter Catalog Name"
+                      onChange={(value) =>
+                        handleCatalogDraftChange("name", value)
+                      }
+                      error={catalogDraftErrors.name}
+                    />
+                    {catalogDraft.additionalNames.map((entry, index) => (
+                      <div key={entry.id} className="catalog-additional-name-row">
+                        <DetailField
+                          label={`Catalog Name #${index + 2}`}
+                          value={entry.value}
+                          placeholder="Enter Catalog Name"
+                          onChange={(value) => handleAdditionalNameChange(entry.id, value)}
+                        />
+                        <button
+                          type="button"
+                          className="catalog-additional-name-remove"
+                          onClick={() => handleRemoveAdditionalName(entry.id)}
+                          aria-label="Remove additional name"
+                        >
+                          <Icon name="delete" className="lab-icon lab-icon--20" alt="Remove" />
+                        </button>
+                      </div>
+                    ))}
+                    <button
+                      type="button"
+                      className="catalog-add-name-text"
+                      onClick={handleAddAdditionalName}
+                    >
+                      + Add Another Name
+                    </button>
+                  </div>
                   <DetailSelectField
                     label="Category"
                     required
@@ -22675,6 +22849,7 @@ export default function App() {
               <ModifierOptionsTable
                 options={modifierDraft.options}
                 isEditing={true}
+                minimumSelection={modifierDraft.minimumSelection}
                 dragOverOptionId={modifierDragOverOptionId}
                 optionNameErrors={modifierDraftErrors.optionNames ?? []}
                 optionIngredientQtyErrors={
@@ -22692,6 +22867,11 @@ export default function App() {
               {modifierDraftErrors.selectionCount && (
                 <p className="modifier-option-table__field-error type-body" style={{ marginTop: "4px" }}>
                   {modifierDraftErrors.selectionCount}
+                </p>
+              )}
+              {modifierDraftErrors.defaultSelection && (
+                <p className="modifier-option-table__field-error type-body" style={{ marginTop: "4px" }}>
+                  {modifierDraftErrors.defaultSelection}
                 </p>
               )}
             </DetailSection>
@@ -23393,7 +23573,7 @@ export default function App() {
                         placeholder="Select Unit"
                       />
                     ) : null}
-                    <div className="catalog-panel-info-list--single-column">
+                    <div className="catalog-panel-info-list--single-column catalog-name-stack">
                       <DetailField
                         label="Catalog Name"
                         required
@@ -23404,6 +23584,31 @@ export default function App() {
                         }
                         error={catalogDraftErrors.name}
                       />
+                      {catalogDraft.additionalNames.map((entry, index) => (
+                        <div key={entry.id} className="catalog-additional-name-row">
+                          <DetailField
+                            label={`Catalog Name #${index + 2}`}
+                            value={entry.value}
+                            placeholder="Enter Catalog Name"
+                            onChange={(value) => handleAdditionalNameChange(entry.id, value)}
+                          />
+                          <button
+                            type="button"
+                            className="catalog-additional-name-remove"
+                            onClick={() => handleRemoveAdditionalName(entry.id)}
+                            aria-label="Remove additional name"
+                          >
+                            <Icon name="delete" className="lab-icon lab-icon--20" alt="Remove" />
+                          </button>
+                        </div>
+                      ))}
+                      <button
+                        type="button"
+                        className="catalog-add-name-text"
+                        onClick={handleAddAdditionalName}
+                      >
+                        + Add Another Name
+                      </button>
                     </div>
                     {catalogDraft.type === "single" ? (
                       <DetailSelectField
@@ -24077,7 +24282,7 @@ export default function App() {
                     />
                   </>
                 )}
-                <div className="catalog-panel-info-list--single-column">
+                <div className="catalog-panel-info-list--single-column catalog-name-stack">
                   <DetailField
                     label="Catalog Name"
                     required
@@ -24086,6 +24291,33 @@ export default function App() {
                     onChange={(value) => handleCatalogDetailChange("name", value)}
                     error={catalogDetailDraftErrors.name}
                   />
+                  {(catalogDetailDraft.additionalNames ?? []).map((entry, index) => (
+                    <div key={entry.id} className="catalog-additional-name-row">
+                      <DetailField
+                        label={`Catalog Name #${index + 2}`}
+                        value={entry.value}
+                        placeholder="Enter Catalog Name"
+                        onChange={(value) =>
+                          handleCatalogDetailAdditionalNameChange(entry.id, value)
+                        }
+                      />
+                      <button
+                        type="button"
+                        className="catalog-additional-name-remove"
+                        onClick={() => handleRemoveCatalogDetailAdditionalName(entry.id)}
+                        aria-label="Remove additional name"
+                      >
+                        <Icon name="delete" className="lab-icon lab-icon--20" alt="Remove" />
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    className="catalog-add-name-text"
+                    onClick={handleAddCatalogDetailAdditionalName}
+                  >
+                    + Add Another Name
+                  </button>
                 </div>
                 {catalogDetailDraft.type === "single" ? (
                   <DetailSelectField
@@ -24161,6 +24393,17 @@ export default function App() {
                     value={catalogDetailDraft.name}
                   />
                 </div>
+                {(catalogDetailDraft.additionalNames ?? []).filter((e) => e.value).length > 0 ? (
+                  <div className="catalog-panel-info-list--single-column">
+                    {catalogDetailDraft.additionalNames.filter((e) => e.value).map((entry) => (
+                      <CatalogPanelInfoRow
+                        key={entry.id}
+                        label="Additional Name"
+                        value={entry.value}
+                      />
+                    ))}
+                  </div>
+                ) : null}
                 {catalogDetailDraft.type === "single" ? (
                   <CatalogPanelInfoRow
                     label="Category"
@@ -26689,6 +26932,7 @@ export default function App() {
                 <ModifierOptionsTable
                   options={visibleModifierOptions}
                   isEditing={isEditing}
+                  minimumSelection={modifierDetailDraft.minimumSelection}
                   dragOverOptionId={modifierDragOverOptionId}
                   optionNameErrors={modifierDetailErrors.optionNames ?? []}
                   optionIngredientQtyErrors={
@@ -26727,6 +26971,11 @@ export default function App() {
                 {modifierDetailErrors.selectionCount && (
                   <p className="modifier-option-table__field-error type-body" style={{ marginTop: "4px" }}>
                     {modifierDetailErrors.selectionCount}
+                  </p>
+                )}
+                {modifierDetailErrors.defaultSelection && (
+                  <p className="modifier-option-table__field-error type-body" style={{ marginTop: "4px" }}>
+                    {modifierDetailErrors.defaultSelection}
                   </p>
                 )}
               </DetailSection>
