@@ -7829,9 +7829,6 @@ function ModifierOptionsTable({
     return emptyReadonlyContent;
   }
 
-  const minSel = Number(minimumSelection) || 0;
-  const defaultCheckedCount = options.filter((opt) => Boolean(opt.isDefault)).length;
-
   return (
     <div className="modifier-option-table-shell">
       <div className="modifier-option-table__scroll">
@@ -7843,23 +7840,6 @@ function ModifierOptionsTable({
         >
           <div className="modifier-option-table__row modifier-option-table__row--header">
             <div className="modifier-option-table__header-cell modifier-option-table__header-cell--handle" />
-            <div className="modifier-option-table__header-cell modifier-option-table__header-cell--default">
-              <span className="modifier-option-table__default-header">
-                <p className="type-title-3">Default</p>
-                <span
-                  className="modifier-option-table__default-tooltip-trigger"
-                  tabIndex={0}
-                  role="button"
-                  aria-label="Default column help"
-                >
-                  <Icon name="infoBlue" className="lab-icon lab-icon--14" alt="" />
-                  <span className="modifier-option-table__default-tooltip-bubble type-body" aria-hidden="true">
-                    Default option will be automatically selected in POS when this modifier group is shown.
-                    {" "}If Minimum Selection is greater than 0, the number of default options must match the Minimum Selection value.
-                  </span>
-                </span>
-              </span>
-            </div>
             <div className="modifier-option-table__header-cell modifier-option-table__header-cell--name">
               <p className="type-title-3">Option Name</p>
             </div>
@@ -7924,23 +7904,6 @@ function ModifierOptionsTable({
                         : undefined
                     }
                     onDragEnd={isEditing ? onDragEnd : undefined}
-                  />
-                </div>
-                <div className="modifier-option-table__cell modifier-option-table__cell--default">
-                  <input
-                    type="checkbox"
-                    className="modifier-option-table__default-checkbox"
-                    checked={Boolean(option.isDefault)}
-                    disabled={
-                      !isEditing ||
-                      (minSel > 0 && !option.isDefault && defaultCheckedCount >= minSel)
-                    }
-                    onChange={
-                      isEditing
-                        ? () => onOptionChange?.(option.id, "isDefault", !option.isDefault)
-                        : undefined
-                    }
-                    aria-label={`Default for ${option.name || `Option ${index + 1}`}`}
                   />
                 </div>
                 <div className="modifier-option-table__cell modifier-option-table__cell--name">
