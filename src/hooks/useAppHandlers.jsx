@@ -9132,7 +9132,7 @@ export function useAppHandlers(state) {
                         </button>
                       </div>
                     ))}
-                    {catalogDraft.additionalNames.length < 3 ? (
+                    {catalogDraft.additionalNames.length < 2 ? (
                       <button
                         type="button"
                         className="catalog-add-name-text"
@@ -10485,7 +10485,7 @@ export function useAppHandlers(state) {
                           </button>
                         </div>
                       ))}
-                      {catalogDraft.additionalNames.length < 3 ? (
+                      {catalogDraft.additionalNames.length < 2 ? (
                         <button
                           type="button"
                           className="catalog-add-name-text"
@@ -11198,7 +11198,7 @@ export function useAppHandlers(state) {
                       </button>
                     </div>
                   ))}
-                  {(catalogDetailDraft.additionalNames ?? []).length < 3 ? (
+                  {(catalogDetailDraft.additionalNames ?? []).length < 2 ? (
                     <button
                       type="button"
                       className="catalog-add-name-text"
