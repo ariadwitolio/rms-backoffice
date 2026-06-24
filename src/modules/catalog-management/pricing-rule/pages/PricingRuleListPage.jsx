@@ -209,8 +209,8 @@ export default function PricingRuleListPage({
                     <tr>
                       <td colSpan="4">
                         <EmptyState
-                          title="No special rules match the current search"
-                          copy="Use another search term to restore the full special-rule table."
+                          title="No pricing rule matches your search"
+                          copy="Try using different keywords or adjusting your filters"
                         />
                       </td>
                     </tr>

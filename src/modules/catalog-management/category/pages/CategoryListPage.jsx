@@ -18,6 +18,7 @@ export default function CategoryListPage({
   sortDirectionByPage,
   onSort,
   handleDelete,
+  searchValue,
 }) {
   const [collapsedParents, setCollapsedParents] = useState({});
 
@@ -153,8 +154,14 @@ export default function CategoryListPage({
           <tr>
             <td colSpan={config.columns.length + 1}>
               <EmptyState
-                title="No category matches the current search"
-                copy="Try using different keywords or adjusting your filters"
+                title={searchValue?.trim()
+                  ? "No category matches your search"
+                  : "No category matches the current filters"
+                }
+                copy={searchValue?.trim()
+                  ? "Try using different keywords or adjusting your filters"
+                  : "Try adjusting or clearing the filters"
+                }
               />
             </td>
           </tr>

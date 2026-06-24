@@ -63,7 +63,7 @@ function buildPermissionEntry(module, level, additionalAccess = {}) {
   };
 }
 
-export function RolePermissionSelect({ value, onChange, permittedLevels }) {
+export function RolePermissionSelect({ value, onChange, permittedLevels, levelLabels }) {
   const [isOpen, setIsOpen] = useState(false);
   const rootRef = useRef(null);
   const levels = permittedLevels
@@ -71,6 +71,7 @@ export function RolePermissionSelect({ value, onChange, permittedLevels }) {
     : ROLE_ACCESS_LEVELS;
   const selectedLevel =
     levels.find((level) => level.id === value) ?? levels[0];
+  const getLabel = (level) => levelLabels?.[level.id] ?? level.label;
 
   useEffect(() => {
     if (!isOpen) return undefined;
@@ -109,7 +110,7 @@ export function RolePermissionSelect({ value, onChange, permittedLevels }) {
           onClick={() => setIsOpen((previous) => !previous)}
         >
           <p className="catalog-detail-field__value type-subtitle-2 catalog-detail-field__input--ellipsis">
-            {selectedLevel.label}
+            {getLabel(selectedLevel)}
           </p>
           <span className="catalog-detail-field__chevron">
             <ChevronIcon
@@ -138,7 +139,7 @@ export function RolePermissionSelect({ value, onChange, permittedLevels }) {
                     <p
                       className={`catalog-detail-field__option-label ${isSelected ? "type-title-3" : "type-subtitle-2"}`}
                     >
-                      {level.label}
+                      {getLabel(level)}
                     </p>
                   </span>
                   {isSelected ? (
@@ -270,9 +271,10 @@ export function RolePermissionRow({
   isChild = false,
 }) {
   const normalizedPermission = normalizePermission(module, permission);
-  const label =
+  const baseLabel =
     ROLE_ACCESS_LEVELS.find((level) => level.id === normalizedPermission.level)
       ?.label ?? "No Access";
+  const label = module.levelLabels?.[normalizedPermission.level] ?? baseLabel;
   const iconName = ROLE_PERMISSION_ICON_BY_MODULE[module.id] ?? "roleManagement";
 
   return (
@@ -341,6 +343,7 @@ export function RolePermissionRow({
           <RolePermissionSelect
             value={normalizedPermission.level}
             permittedLevels={module.permittedLevels}
+            levelLabels={module.levelLabels}
             onChange={(nextLevel) =>
               onChange(
                 buildPermissionEntry(

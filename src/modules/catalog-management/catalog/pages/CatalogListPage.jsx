@@ -226,8 +226,14 @@ export default function CatalogListPage({
                 <tr>
                   <td colSpan="6">
                     <EmptyState
-                      title="No catalog matches the current filters"
-                      copy="Try using different keywords or adjusting your filters"
+                      title={searchValue?.trim()
+                        ? "No catalog matches your search"
+                        : "No catalog matches the current filters"
+                      }
+                      copy={searchValue?.trim()
+                        ? "Try using different keywords or adjusting your filters"
+                        : "Try adjusting or clearing the filters"
+                      }
                     />
                   </td>
                 </tr>

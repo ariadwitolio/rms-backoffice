@@ -238,6 +238,7 @@ const ENTITY_APP_ROLE_PERMISSION_MODULES = [
     id: "cashier",
     label: "Point of Sales",
     permittedLevels: ["none", "view", "edit"],
+    levelLabels: { edit: "Full Access (Create + Edit)" },
     additionalAccess: [
       { id: "approveVoid", label: "Approve VOID Request" },
     ],

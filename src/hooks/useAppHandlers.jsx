@@ -2043,11 +2043,27 @@ export function useAppHandlers(state) {
       resetCategoryDetailState();
     }
     if (pageId !== currentPage) {
-      setSearchByPage((prev) => ({ ...prev, [currentPage]: "" }));
-      setFiltersByPage((prev) => ({
-        ...prev,
-        [currentPage]: createInitialFiltersState()[currentPage] ?? {},
-      }));
+      const isLeavingRoleManagement =
+        currentPage === "role-management" ||
+        currentPage === "role-management-create" ||
+        currentPage === "role-access" ||
+        currentPage === "role-access-create";
+      setSearchByPage((prev) => {
+        const next = { ...prev, [currentPage]: "" };
+        if (isLeavingRoleManagement) next["role-access"] = "";
+        return next;
+      });
+      setFiltersByPage((prev) => {
+        const initialFilters = createInitialFiltersState();
+        const next = {
+          ...prev,
+          [currentPage]: initialFilters[currentPage] ?? {},
+        };
+        if (isLeavingRoleManagement) {
+          next["role-access"] = initialFilters["role-access"] ?? {};
+        }
+        return next;
+      });
       setSortByPage({});
       setSortDirectionByPage({});
     }
@@ -2135,6 +2151,18 @@ export function useAppHandlers(state) {
     resetPricingRuleDetailState();
     if (fallbackPage === "dashboard") {
       setDashboardReportTab("sales-report");
+    }
+    const isLeavingRoleManagement =
+      currentPage === "role-management" ||
+      currentPage === "role-management-create" ||
+      currentPage === "role-access" ||
+      currentPage === "role-access-create";
+    if (isLeavingRoleManagement) {
+      setSearchByPage((prev) => ({ ...prev, "role-access": "" }));
+      setFiltersByPage((prev) => {
+        const initialFilters = createInitialFiltersState();
+        return { ...prev, "role-access": initialFilters["role-access"] ?? {} };
+      });
     }
     resetDashboardSortState();
     startTransition(() => setCurrentPage(fallbackPage));
@@ -15013,8 +15041,14 @@ export function useAppHandlers(state) {
                         <tr>
                           <td colSpan={config.columns.length + 1}>
                             <EmptyState
-                              title={`No ${config.title.toLowerCase()} match your search`}
-                              copy="Try using different keywords or adjusting your filters"
+                              title={Boolean(searchByPage[pageId]?.trim())
+                                ? `No ${config.title.toLowerCase()} matches your search`
+                                : `No ${config.title.toLowerCase()} matches the current filters`
+                              }
+                              copy={Boolean(searchByPage[pageId]?.trim())
+                                ? "Try using different keywords or adjusting your filters"
+                                : "Try adjusting or clearing the filters"
+                              }
                             />
                           </td>
                         </tr>
@@ -19732,6 +19766,7 @@ export function useAppHandlers(state) {
           }
           categoryRows={filteredCategoryRows}
           totalCategoryRows={categoryRows.length}
+          searchValue={searchByPage.category}
           selectedRows={selectedRows.category}
           onToggleSelectedRow={(rowId) =>
             handleToggleSelectedRow("category", rowId)
