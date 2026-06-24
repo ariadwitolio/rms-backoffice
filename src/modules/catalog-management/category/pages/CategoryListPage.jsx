@@ -1,10 +1,12 @@
+import { useState } from "react";
 import { ChevronIcon, Icon } from "../../../../components/icons/Icon";
-import { LabCheckbox } from "../../../../components/ui/Primitives";
+import { EmptyDataState, EmptyState, LabCheckbox } from "../../../../components/ui/Primitives";
 import { TableActionButton } from "../../../../components/lists/Presentational";
 
 export default function CategoryListPage({
   renderListPage,
   categoryRows,
+  totalCategoryRows,
   selectedRows,
   onToggleSelectedRow,
   onRowClick,
@@ -17,6 +19,13 @@ export default function CategoryListPage({
   onSort,
   handleDelete,
 }) {
+  const [collapsedParents, setCollapsedParents] = useState({});
+
+  const toggleParent = (name, e) => {
+    e.stopPropagation();
+    setCollapsedParents((prev) => ({ ...prev, [name]: !prev[name] }));
+  };
+
   // Group category rows by parent
   const rowsByParent = {};
   categoryRows.forEach(row => {
@@ -31,6 +40,7 @@ export default function CategoryListPage({
       const isSelected = selectedRows.includes(row.id);
       const isDetailOpen = categoryDetailId === row.id;
       const hasChildren = !!rowsByParent[row.name];
+      const isExpanded = !collapsedParents[row.name];
 
       const tr = (
         <tr
@@ -50,6 +60,21 @@ export default function CategoryListPage({
                 <td key={col.key} className="lab-table__title-cell">
                   <div style={{ display: "flex", alignItems: "center", paddingLeft: `${depth * 24}px` }}>
                     <p className="type-subtitle-2" style={{ color: "var(--feature-brand-primary)" }}>{row[col.key]}</p>
+                    {hasChildren && (
+                      <button
+                        type="button"
+                        onClick={(e) => toggleParent(row.name, e)}
+                        style={{ background: "none", border: "none", cursor: "pointer", padding: "0 4px", display: "flex", alignItems: "center" }}
+                        aria-label={isExpanded ? "Collapse children" : "Expand children"}
+                      >
+                        <ChevronIcon
+                          name="filterChevron"
+                          size={16}
+                          color="var(--feature-brand-primary)"
+                          direction={isExpanded ? "up" : "down"}
+                        />
+                      </button>
+                    )}
                   </div>
                 </td>
               );
@@ -81,7 +106,7 @@ export default function CategoryListPage({
       );
 
       return hasChildren
-        ? [tr, ...renderTreeRows(row.name, depth + 1)]
+        ? [tr, ...(isExpanded ? renderTreeRows(row.name, depth + 1) : [])]
         : [tr];
     });
   };
@@ -118,12 +143,19 @@ export default function CategoryListPage({
         </tr>
       </thead>
       <tbody>
-        {categoryRows?.length > 0 ? renderTreeRows() : (
+        {categoryRows?.length > 0 ? renderTreeRows() : totalCategoryRows === 0 ? (
           <tr>
             <td colSpan={config.columns.length + 1}>
-              <div style={{ padding: "32px", textAlign: "center" }}>
-                <p className="type-title-3">No categories found</p>
-              </div>
+              <EmptyDataState menuName="Category" />
+            </td>
+          </tr>
+        ) : (
+          <tr>
+            <td colSpan={config.columns.length + 1}>
+              <EmptyState
+                title="No category matches the current search"
+                copy="Try using different keywords or adjusting your filters"
+              />
             </td>
           </tr>
         )}

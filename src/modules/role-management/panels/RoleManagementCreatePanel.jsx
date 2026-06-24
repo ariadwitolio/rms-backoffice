@@ -174,6 +174,7 @@ export function RoleManagementCreatePanel({
                   error={errors?.name}
                   placeholder="Enter Role Name"
                   onChange={(val) => onChange("name", val)}
+                  maxLength={40}
                   autoFocus
                 />
                 <DetailField
@@ -211,7 +212,7 @@ export function RoleManagementCreatePanel({
             </DetailSection>
           </>
         ) : (
-          <DetailSection title="RMS Apps Permission">
+          <DetailSection title="POS Apps Permissions">
             <RolePermissionsList
               permissions={draft.permissions}
               sectionStates={draft.permissionSections}

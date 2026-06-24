@@ -169,8 +169,19 @@ function TablePagination({ page, totalPages, onPrev, onNext, onSelectPage }) {
 function EmptyState({ title, copy }) {
   return (
     <div className="empty-state">
+      <img src="/img/not-found.svg" width="180" height="180" alt="" aria-hidden="true" />
       <p className="type-title-2">{title}</p>
       <p className="type-body text-secondary">{copy}</p>
+    </div>
+  );
+}
+
+function EmptyDataState({ menuName }) {
+  return (
+    <div className="empty-state">
+      <img src="/img/empty-state.svg" width="180" height="180" alt="" aria-hidden="true" />
+      <p className="type-title-2">No {menuName} yet</p>
+      <p className="type-body text-secondary">Add a {menuName} to get started</p>
     </div>
   );
 }
@@ -279,6 +290,7 @@ function Snackbar({ snackbar, onDismiss, topOffset = "60px" }) {
 }
 export {
   DetailSection,
+  EmptyDataState,
   EmptyState,
   Field,
   LabButton,

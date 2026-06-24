@@ -5,6 +5,7 @@ import {
   TableFooterBar,
 } from "../../../../components/lists/Presentational.jsx";
 import {
+  EmptyDataState,
   EmptyState,
   LabCheckbox,
   Toggle,
@@ -12,6 +13,7 @@ import {
 
 export default function CatalogListPage({
   totalRows,
+  displayTotal,
   filters,
   searchValue,
   onSearch,
@@ -44,7 +46,8 @@ export default function CatalogListPage({
       <section className="table-card catalog-table-card list-page-table-card">
         <ListPageToolbar
           totalRows={totalRows}
-          totalLabel={totalRows === 1 ? "Catalog" : "Catalogs"}
+          displayTotal={displayTotal}
+          totalLabel={(displayTotal ?? totalRows) === 1 ? "Catalog" : "Catalogs"}
           filters={filters}
           searchPlaceholder="Search catalog"
           searchValue={searchValue}
@@ -177,6 +180,9 @@ export default function CatalogListPage({
                     </td>
                     <td>
                       <p className="type-subtitle-2">{row.category || "Uncategorized"}</p>
+                      {row.categoryParentPath && (
+                        <p className="type-body text-secondary">{row.categoryParentPath}</p>
+                      )}
                     </td>
                     <td>
                       <p className="type-subtitle-2">
@@ -210,12 +216,18 @@ export default function CatalogListPage({
                     </td>
                   </tr>
                 ))
+              ) : (displayTotal ?? totalRows) === 0 ? (
+                <tr>
+                  <td colSpan="6">
+                    <EmptyDataState menuName="Catalog" />
+                  </td>
+                </tr>
               ) : (
                 <tr>
                   <td colSpan="6">
                     <EmptyState
                       title="No catalog matches the current filters"
-                      copy="Adjust the search or chip filters to restore the full table."
+                      copy="Try using different keywords or adjusting your filters"
                     />
                   </td>
                 </tr>

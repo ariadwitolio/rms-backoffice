@@ -62,12 +62,14 @@ function buildPermissionEntry(module, level, additionalAccess = {}) {
   };
 }
 
-export function RolePermissionSelect({ value, onChange }) {
+export function RolePermissionSelect({ value, onChange, permittedLevels }) {
   const [isOpen, setIsOpen] = useState(false);
   const rootRef = useRef(null);
+  const levels = permittedLevels
+    ? ROLE_ACCESS_LEVELS.filter((l) => permittedLevels.includes(l.id))
+    : ROLE_ACCESS_LEVELS;
   const selectedLevel =
-    ROLE_ACCESS_LEVELS.find((level) => level.id === value) ??
-    ROLE_ACCESS_LEVELS[0];
+    levels.find((level) => level.id === value) ?? levels[0];
 
   useEffect(() => {
     if (!isOpen) return undefined;
@@ -118,7 +120,7 @@ export function RolePermissionSelect({ value, onChange }) {
         </button>
         {isOpen ? (
           <div className="catalog-detail-field__menu">
-            {ROLE_ACCESS_LEVELS.map((level) => {
+            {levels.map((level) => {
               const isSelected = level.id === value;
 
               return (
@@ -337,6 +339,7 @@ export function RolePermissionRow({
         {isEditing ? (
           <RolePermissionSelect
             value={normalizedPermission.level}
+            permittedLevels={module.permittedLevels}
             onChange={(nextLevel) =>
               onChange(
                 buildPermissionEntry(

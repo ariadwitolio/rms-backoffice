@@ -231,6 +231,7 @@ export function RoleManagementDetailPanel({
                       error={errors?.name}
                       placeholder="Enter Role Name"
                       onChange={(val) => onChange("name", val)}
+                      maxLength={40}
                       autoFocus
                     />
                     <div className="catalog-panel-info-list--single-column">
@@ -283,7 +284,7 @@ export function RoleManagementDetailPanel({
             </DetailSection>
           </>
         ) : resolvedActiveTab === "rms-module" ? (
-          <DetailSection title="RMS Apps Permission">
+          <DetailSection title="POS Apps Permission">
             <RolePermissionsList
               permissions={draft.permissions}
               sectionStates={draft.permissionSections}

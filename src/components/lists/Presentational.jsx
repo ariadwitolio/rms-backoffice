@@ -49,6 +49,7 @@ export function TableToolbar({ filters, searchPlaceholder, searchValue, onSearch
 
 export function ListPageToolbar({
   totalRows,
+  displayTotal,
   totalLabel,
   filters = [],
   searchPlaceholder,
@@ -63,6 +64,7 @@ export function ListPageToolbar({
     : filters
       ? [filters]
       : [];
+  const shownTotal = displayTotal ?? totalRows;
 
   return (
     <div className="table-toolbar">
@@ -70,7 +72,7 @@ export function ListPageToolbar({
         <p className="catalog-table-toolbar__summary type-subtitle-2">
           <span className="catalog-table-toolbar__summary-label">Total:</span>{" "}
           <span className="catalog-table-toolbar__summary-count type-title-3">
-            {totalRows}
+            {shownTotal}
           </span>{" "}
           <span className="catalog-table-toolbar__summary-label">
             {totalLabel}

@@ -321,7 +321,7 @@ function Icon({ name, className = "lab-icon lab-icon--20", alt = "", color }) {
     .filter(Boolean)
     .join(" ");
 
-  const iconColor = color || (name === "filterChevron" ? "#C2C2C2" : undefined);
+  const iconColor = color;
 
   if (ASSETS[name] && !assetFailed && !iconColor) {
     return (

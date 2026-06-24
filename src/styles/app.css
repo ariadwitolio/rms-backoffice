@@ -1073,6 +1073,15 @@ img {
   opacity: 1;
 }
 
+.table-toolbar .lab-filter-chip.is-active .lab-filter-chip__chevron {
+  color: var(--feature-brand-primary);
+}
+
+.table-toolbar .lab-filter-chip.is-active .lab-filter-chip__chevron .lab-chevron__glyph {
+  filter: none;
+  opacity: 1;
+}
+
 .lab-filter-chip__badge {
   align-items: center;
   background: var(--feature-brand-primary);
@@ -2421,6 +2430,10 @@ img {
 
 .lab-table tbody tr:hover td {
   background: var(--feature-brand-container-lighter);
+}
+
+.lab-table tbody tr:has(.empty-state):hover td {
+  background: transparent;
 }
 
 .lab-table__checkbox {
@@ -5452,7 +5465,6 @@ img {
 .empty-state {
   align-items: center;
   background: var(--neutral-surface-primary);
-  border: 1px dashed var(--neutral-line-outline);
   border-radius: var(--radius-xl);
   display: flex;
   flex-direction: column;
@@ -7017,7 +7029,7 @@ img {
 
 .modifier-option-table__row {
   display: grid;
-  min-height: 36px;
+  min-height: 56px;
   min-width: 860px;
   width: 100%;
 }
@@ -7034,12 +7046,16 @@ img {
 
 .modifier-option-table--readonly .modifier-option-table__row {
   grid-template-columns:
-    40px
     minmax(176px, 1.15fr)
     minmax(156px, 0.9fr)
     minmax(192px, 1fr)
     minmax(108px, 0.7fr)
     100px;
+}
+
+.modifier-option-table--readonly .modifier-option-table__cell--handle,
+.modifier-option-table--readonly .modifier-option-table__header-cell--handle {
+  display: none;
 }
 
 .modifier-option-table__row.is-drag-over .modifier-option-table__cell,
@@ -7167,6 +7183,45 @@ img {
   z-index: 2;
 }
 
+.modifier-option-table__header-cell--handle::after,
+.modifier-option-table__cell--handle::after {
+  background: linear-gradient(to right, rgba(17, 24, 39, 0.1), rgba(17, 24, 39, 0));
+  content: "";
+  height: 100%;
+  opacity: 0;
+  pointer-events: none;
+  position: absolute;
+  right: -16px;
+  top: 0;
+  transition: opacity 140ms ease;
+  width: 16px;
+}
+
+.modifier-option-table__header-cell--action::before,
+.modifier-option-table__cell--action::before,
+.modifier-option-table__header-cell--availability::before,
+.modifier-option-table__cell--availability::before {
+  background: linear-gradient(to left, rgba(17, 24, 39, 0.1), rgba(17, 24, 39, 0));
+  content: "";
+  height: 100%;
+  left: -16px;
+  opacity: 0;
+  pointer-events: none;
+  position: absolute;
+  top: 0;
+  transition: opacity 140ms ease;
+  width: 16px;
+}
+
+.modifier-option-table__scroll[data-scroll-left="true"] .modifier-option-table__cell--handle::after {
+  opacity: 1;
+}
+
+.modifier-option-table__scroll[data-scroll-right="true"] .modifier-option-table__cell--action::before,
+.modifier-option-table__scroll[data-scroll-right="true"] .modifier-option-table__cell--availability::before {
+  opacity: 1;
+}
+
 .modifier-option-table__header-cell--default,
 .modifier-option-table__cell--default {
   align-items: center;
@@ -7247,6 +7302,13 @@ img {
   padding: 3px 6px;
   transition: border-color 140ms ease;
   width: 100%;
+}
+
+.modifier-option-table--editable .modifier-option-table__cell--name .modifier-option-table__field-shell,
+.modifier-option-table--editable .modifier-option-table__cell--price .modifier-option-table__field-shell,
+.modifier-option-table--editable .modifier-option-table__cell--ingredient .modifier-option-table__field-shell,
+.modifier-option-table--editable .modifier-option-table__cell--qty .modifier-option-table__field-shell {
+  height: 36px;
 }
 
 .modifier-option-table__field-shell.is-error {
@@ -7862,6 +7924,10 @@ img {
   gap: 20px;
 }
 
+.catalog-create-side-panel .catalog-panel-info-list .catalog-name-stack {
+  gap: 16px;
+}
+
 .catalog-add-name-text {
   background: none;
   border: none;
@@ -7937,6 +8003,24 @@ img {
   align-items: center;
   display: inline-flex;
   gap: 2px;
+}
+
+.catalog-detail-field__label--has-counter {
+  display: flex;
+  width: 100%;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.catalog-detail-field__label-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.catalog-detail-field__char-counter {
+  color: var(--neutral-on-surface-secondary, #757575);
+  flex-shrink: 0;
 }
 
 .catalog-detail-field__required {
@@ -8295,7 +8379,7 @@ textarea::placeholder,
 }
 
 .modifier-catalog-select__item {
-  align-items: center;
+  align-items: flex-start;
   background: transparent;
   border: none;
   border-radius: var(--radius-sm);
@@ -8308,14 +8392,141 @@ textarea::placeholder,
   width: 100%;
 }
 
+.modifier-catalog-select__item .catalog-detail-field__option-indicator {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
 .modifier-catalog-select__item.is-selected .modifier-catalog-select__item-label {
   font-weight: 700;
+}
+
+.modifier-catalog-select__item.is-at-limit {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.modifier-catalog-select__item-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.modifier-catalog-select__item-error {
+  color: var(--status-red-primary, #D92D20);
+  font-size: 12px;
+  margin: 0;
 }
 
 .modifier-catalog-select__empty {
   color: var(--neutral-on-surface-secondary);
   margin: 0;
   padding: 12px 8px;
+}
+
+/* Catalog modifier modal */
+.catalog-modifier-modal {
+  width: min(600px, 100%);
+  max-height: min(720px, calc(100vh - 40px));
+}
+
+.catalog-modifier-modal .unit-assignment-modal__search {
+  margin-top: 16px;
+}
+
+.catalog-modifier-modal__infobox {
+  align-items: center;
+  background: var(--status-blue-surface, #EBF3FF);
+  border-radius: 8px;
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 10px 12px;
+}
+
+.catalog-modifier-modal__infobox p {
+  color: var(--status-blue-primary, #1D6FD8);
+  margin: 0;
+}
+
+.catalog-modifier-modal__body {
+  margin-top: 0;
+  overflow-y: auto;
+}
+
+
+.catalog-modifier-modal__grid {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: 1fr 1fr;
+}
+
+.catalog-modifier-modal__option {
+  align-items: flex-start;
+  background: var(--neutral-surface-primary, #fff);
+  border: 1.5px solid var(--neutral-line-outline, #E4E4E4);
+  border-radius: 10px;
+  cursor: pointer;
+  display: flex;
+  gap: 10px;
+  min-width: 0;
+  padding: 12px 14px;
+  text-align: left;
+  transition: border-color 0.1s;
+  width: 100%;
+}
+
+.catalog-modifier-modal__option .catalog-detail-field__option-indicator {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.catalog-modifier-modal__option:hover:not(:disabled) {
+  border-color: var(--feature-brand-primary, #2F6FED);
+}
+
+.catalog-modifier-modal__option.is-selected {
+  background: var(--feature-brand-surface, #EEF4FF);
+  border-color: var(--feature-brand-primary, #2F6FED);
+}
+
+.catalog-modifier-modal__option.is-disabled,
+.catalog-modifier-modal__option:disabled {
+  background: var(--neutral-surface-secondary, #F5F5F5);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.catalog-modifier-modal__option-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.catalog-modifier-modal__option-title {
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.catalog-modifier-modal__option-subtitle {
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.catalog-modifier-modal__footer {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+}
+
+.catalog-modifier-modal__footer .lab-button {
+  flex: 1;
 }
 
 .catalog-detail-field__option-check {
@@ -8768,6 +8979,15 @@ textarea::placeholder,
 
 .catalog-create-side-panel .modifier-create-field__label-row {
   gap: 8px;
+}
+
+.catalog-create-side-panel .catalog-detail-field__label--has-counter {
+  justify-content: space-between;
+  width: 100%;
+}
+
+.catalog-create-side-panel .modifier-create-field__label-row--has-counter {
+  justify-content: space-between;
 }
 
 .catalog-create-side-panel .catalog-detail-field__shell,
