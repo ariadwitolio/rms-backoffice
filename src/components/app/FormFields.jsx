@@ -82,6 +82,7 @@ export function DetailTextAreaField({
   error = false,
   rows = 3,
   disabled = false,
+  maxLength,
 }) {
   const errorMessage =
     typeof error === "string"
@@ -90,14 +91,22 @@ export function DetailTextAreaField({
         ? "Field cannot be empty"
         : "";
   const hasError = Boolean(errorMessage);
+  const charCount = maxLength ? String(value ?? "").length : null;
 
   return (
     <label className={`catalog-detail-field${disabled ? " is-disabled" : ""}`}>
-      <span className="catalog-detail-field__label type-body">
-        {required ? (
-          <span className="catalog-detail-field__required">*</span>
+      <span className={`catalog-detail-field__label type-body${maxLength ? " catalog-detail-field__label--has-counter" : ""}`}>
+        <span className="catalog-detail-field__label-text">
+          {required ? (
+            <span className="catalog-detail-field__required">*</span>
+          ) : null}
+          {label}
+        </span>
+        {maxLength ? (
+          <span className="catalog-detail-field__char-counter type-body">
+            {charCount}/{maxLength}
+          </span>
         ) : null}
-        {label}
       </span>
       <span
         className={`catalog-detail-field__shell catalog-detail-field__shell--multiline${hasError ? " is-error" : ""}${disabled ? " is-disabled" : ""}`}
@@ -107,7 +116,8 @@ export function DetailTextAreaField({
           value={value}
           rows={rows}
           placeholder={placeholder}
-          onChange={(event) => onChange?.(event.target.value)}
+          maxLength={maxLength}
+          onChange={(event) => onChange?.(maxLength ? event.target.value.slice(0, maxLength) : event.target.value)}
           disabled={disabled}
         />
       </span>

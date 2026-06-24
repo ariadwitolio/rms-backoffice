@@ -44,7 +44,7 @@ export function RoleManagementDetailPanel({
     (group) => group.id === "rms-back-office"
   );
   const rmsAppsGroups = permissionsStructure.filter(
-    (group) => group.id === "rms-apps"
+    (group) => group.id === "rms-apps" || group.id === "payment-app"
   );
   const getScopedSectionErrors = (groupIds) =>
     Object.fromEntries(
@@ -284,19 +284,34 @@ export function RoleManagementDetailPanel({
             </DetailSection>
           </>
         ) : resolvedActiveTab === "rms-module" ? (
-          <DetailSection title="POS Apps Permission">
-            <RolePermissionsList
-              permissions={draft.permissions}
-              sectionStates={draft.permissionSections}
-              sectionErrors={getScopedSectionErrors(["rms-apps"])}
-              isEditing={isEditing}
-              onChange={(modId, val) =>
-                onChange("permissions", { ...draft.permissions, [modId]: val })
-              }
-              onSectionToggle={handleRmsAppsSectionToggle}
-              structure={rmsAppsGroups}
-            />
-          </DetailSection>
+          <>
+            <DetailSection title="POS Apps Permission">
+              <RolePermissionsList
+                permissions={draft.permissions}
+                sectionStates={draft.permissionSections}
+                sectionErrors={getScopedSectionErrors(["rms-apps"])}
+                isEditing={isEditing}
+                onChange={(modId, val) =>
+                  onChange("permissions", { ...draft.permissions, [modId]: val })
+                }
+                onSectionToggle={handleRmsAppsSectionToggle}
+                structure={rmsAppsGroups.filter((g) => g.id === "rms-apps")}
+              />
+            </DetailSection>
+            <DetailSection title="Payment App Permissions">
+              <RolePermissionsList
+                permissions={draft.permissions}
+                sectionStates={draft.permissionSections}
+                sectionErrors={getScopedSectionErrors(["payment-app"])}
+                isEditing={isEditing}
+                onChange={(modId, val) =>
+                  onChange("permissions", { ...draft.permissions, [modId]: val })
+                }
+                onSectionToggle={handleRmsAppsSectionToggle}
+                structure={rmsAppsGroups.filter((g) => g.id === "payment-app")}
+              />
+            </DetailSection>
+          </>
         ) : (
           <DetailSection title="Assigned Member" meta={memberCountLabel}>
             {members.length ? (

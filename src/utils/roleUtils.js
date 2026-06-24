@@ -79,6 +79,7 @@ export function createInitialRoleAccessDraft(isEntitySide = false) {
       "account-module": true,
       "rms-back-office": true,
       "rms-apps": false,
+      "payment-app": false,
     }
     : {
       "account-module": true,
@@ -132,6 +133,7 @@ export function getRoleAccessValidationGroups(structure = ROLE_PERMISSION_GROUPS
   const accountGroup = groupsById.get("account-module");
   const backOfficeGroup = groupsById.get("rms-back-office");
   const rmsAppsGroup = groupsById.get("rms-apps");
+  const paymentAppGroup = groupsById.get("payment-app");
 
   if (accountGroup && backOfficeGroup) {
     validationGroups.push({
@@ -162,6 +164,14 @@ export function getRoleAccessValidationGroups(structure = ROLE_PERMISSION_GROUPS
       id: rmsAppsGroup.id,
       sectionIds: [rmsAppsGroup.id],
       modules: rmsAppsGroup.modules,
+    });
+  }
+
+  if (paymentAppGroup) {
+    validationGroups.push({
+      id: paymentAppGroup.id,
+      sectionIds: [paymentAppGroup.id],
+      modules: paymentAppGroup.modules,
     });
   }
 

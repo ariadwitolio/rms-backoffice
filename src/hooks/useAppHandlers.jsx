@@ -1457,7 +1457,7 @@ export function useAppHandlers(state) {
       return "general";
     }
 
-    if (isEntitySide && permissionSectionIds.includes("rms-apps")) {
+    if (isEntitySide && permissionSectionIds.some((id) => id === "rms-apps" || id === "payment-app")) {
       return "rms-module";
     }
 
@@ -9132,13 +9132,15 @@ export function useAppHandlers(state) {
                         </button>
                       </div>
                     ))}
-                    <button
-                      type="button"
-                      className="catalog-add-name-text"
-                      onClick={handleAddAdditionalName}
-                    >
-                      + Add Another Name
-                    </button>
+                    {catalogDraft.additionalNames.length < 3 ? (
+                      <button
+                        type="button"
+                        className="catalog-add-name-text"
+                        onClick={handleAddAdditionalName}
+                      >
+                        + Add Another Name
+                      </button>
+                    ) : null}
                   </div>
                   <DetailSelectField
                     label="Category"
@@ -10483,13 +10485,15 @@ export function useAppHandlers(state) {
                           </button>
                         </div>
                       ))}
-                      <button
-                        type="button"
-                        className="catalog-add-name-text"
-                        onClick={handleAddAdditionalName}
-                      >
-                        + Add Another Name
-                      </button>
+                      {catalogDraft.additionalNames.length < 3 ? (
+                        <button
+                          type="button"
+                          className="catalog-add-name-text"
+                          onClick={handleAddAdditionalName}
+                        >
+                          + Add Another Name
+                        </button>
+                      ) : null}
                     </div>
                     {catalogDraft.type === "single" ? (
                       <DetailSelectField
@@ -10525,6 +10529,7 @@ export function useAppHandlers(state) {
                         onChange={(value) =>
                           handleCatalogDraftChange("description", value)
                         }
+                        maxLength={500}
                       />
                     </div>
                   </div>
@@ -11193,13 +11198,15 @@ export function useAppHandlers(state) {
                       </button>
                     </div>
                   ))}
-                  <button
-                    type="button"
-                    className="catalog-add-name-text"
-                    onClick={handleAddCatalogDetailAdditionalName}
-                  >
-                    + Add Another Name
-                  </button>
+                  {(catalogDetailDraft.additionalNames ?? []).length < 3 ? (
+                    <button
+                      type="button"
+                      className="catalog-add-name-text"
+                      onClick={handleAddCatalogDetailAdditionalName}
+                    >
+                      + Add Another Name
+                    </button>
+                  ) : null}
                 </div>
                 {catalogDetailDraft.type === "single" ? (
                   <DetailSelectField
@@ -11235,6 +11242,7 @@ export function useAppHandlers(state) {
                     onChange={(value) =>
                       handleCatalogDetailChange("description", value)
                     }
+                    maxLength={500}
                   />
                 </div>
               </>

@@ -23,6 +23,7 @@ const ROLE_PERMISSION_ICON_BY_MODULE = {
   "device-management": "roleManagement",
   cashier: "deviceManagement",
   "kitchen-display-system": "deviceManagement",
+  payment: "deviceManagement",
   "printer-settings": "deviceManagement",
 };
 

@@ -245,6 +245,18 @@ const ENTITY_APP_ROLE_PERMISSION_MODULES = [
   { id: "printer-settings", label: "Printer Settings" },
 ];
 
+const PAYMENT_APP_ROLE_PERMISSION_MODULES = [
+  {
+    id: "payment",
+    label: "Payment",
+    additionalAccess: [
+      { id: "inputManualTransaction", label: "Input Manual Transaction" },
+      { id: "addOrderItem", label: "Add Order Item" },
+    ],
+  },
+  { id: "printer-settings", label: "Printer Settings" },
+];
+
 export const ROLE_PERMISSION_GROUPS = [
   {
     id: "account-module",
@@ -262,6 +274,11 @@ export const ROLE_PERMISSION_GROUPS = [
     group: "POS Apps Permissions",
     modules: ENTITY_APP_ROLE_PERMISSION_MODULES,
   },
+  {
+    id: "payment-app",
+    group: "Payment App Permissions",
+    modules: PAYMENT_APP_ROLE_PERMISSION_MODULES,
+  },
 ];
 
 export const ALL_ROLE_PERMISSION_MODULES = ROLE_PERMISSION_GROUPS.flatMap(
@@ -272,5 +289,6 @@ export const ENTITY_ROLE_PERMISSION_GROUP_IDS = [
   "account-module",
   "rms-back-office",
   "rms-apps",
+  "payment-app",
 ];
 

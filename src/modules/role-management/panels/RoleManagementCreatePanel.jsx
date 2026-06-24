@@ -25,7 +25,7 @@ export function RoleManagementCreatePanel({
     (group) => group.id === "rms-back-office"
   );
   const rmsAppsGroups = permissionsStructure.filter(
-    (group) => group.id === "rms-apps"
+    (group) => group.id === "rms-apps" || group.id === "payment-app"
   );
   const generalPermissionGroup = {
     id: "general-permissions",
@@ -212,19 +212,34 @@ export function RoleManagementCreatePanel({
             </DetailSection>
           </>
         ) : (
-          <DetailSection title="POS Apps Permissions">
-            <RolePermissionsList
-              permissions={draft.permissions}
-              sectionStates={draft.permissionSections}
-              sectionErrors={getScopedSectionErrors(["rms-apps"])}
-              isEditing={true}
-              onChange={(modId, val) =>
-                onChange("permissions", { ...draft.permissions, [modId]: val })
-              }
-              onSectionToggle={handleRmsAppsSectionToggle}
-              structure={rmsAppsGroups}
-            />
-          </DetailSection>
+          <>
+            <DetailSection title="POS Apps Permissions">
+              <RolePermissionsList
+                permissions={draft.permissions}
+                sectionStates={draft.permissionSections}
+                sectionErrors={getScopedSectionErrors(["rms-apps"])}
+                isEditing={true}
+                onChange={(modId, val) =>
+                  onChange("permissions", { ...draft.permissions, [modId]: val })
+                }
+                onSectionToggle={handleRmsAppsSectionToggle}
+                structure={rmsAppsGroups.filter((g) => g.id === "rms-apps")}
+              />
+            </DetailSection>
+            <DetailSection title="Payment App Permissions">
+              <RolePermissionsList
+                permissions={draft.permissions}
+                sectionStates={draft.permissionSections}
+                sectionErrors={getScopedSectionErrors(["payment-app"])}
+                isEditing={true}
+                onChange={(modId, val) =>
+                  onChange("permissions", { ...draft.permissions, [modId]: val })
+                }
+                onSectionToggle={handleRmsAppsSectionToggle}
+                structure={rmsAppsGroups.filter((g) => g.id === "payment-app")}
+              />
+            </DetailSection>
+          </>
         )}
       </div>
       <div
