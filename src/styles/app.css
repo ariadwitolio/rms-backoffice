@@ -7097,6 +7097,11 @@ img {
   padding: 6px 10px;
 }
 
+.modifier-option-table--editable .modifier-option-table__cell {
+  align-items: flex-start;
+  padding-top: 10px;
+}
+
 .modifier-option-table__row--header .modifier-option-table__header-cell--availability,
 .modifier-option-table__cell--availability {
   padding-left: 20px;

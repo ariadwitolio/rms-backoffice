@@ -10,7 +10,6 @@ export function createEmptyModifierOption() {
     additionalPrice: "",
     overrideAdditionalPrice: "",
     isAvailable: true,
-    isDefault: false,
     ingredientId: "",
     selectedIngredient: "",
     ingredientQty: "",
@@ -135,16 +134,6 @@ export function getModifierSelectionCountError(draft) {
   }
   if (maxSel > 0 && optionCount < maxSel) {
     return `Add at least ${maxSel} option${maxSel === 1 ? "" : "s"} to meet the maximum selection of ${maxSel}`;
-  }
-  return null;
-}
-
-export function getModifierDefaultSelectionError(draft) {
-  const minSel = Number(draft.minimumSelection) || 0;
-  if (minSel === 0) return null;
-  const defaultCount = (draft.options || []).filter((opt) => Boolean(opt.isDefault)).length;
-  if (defaultCount !== minSel) {
-    return "Default selections must match the Minimum Selection value";
   }
   return null;
 }

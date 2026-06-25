@@ -98,7 +98,7 @@ export function createInitialDataStore() {
           },
           3
         ),
-        modifier: ["Extra Cheese", "Cooking Level"],
+        modifier: ["Extra Cheese", "Cooking Level", "Sugar Level", "Ice Preference", "Combo Upsize", "Spice Level", "Sauce", "Add-on Protein", "Portion Size", "Cooking Method", "Noodle Type", "Temperature", "Bread Type", "Milk Option", "Extra Toppings"],
         allowOverridePrice: true,
         assignedUnits: syncAssignedUnitsWithPricingSections(
           createCatalogAssignedUnits(["unit-central-jakarta"], {

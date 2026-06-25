@@ -178,9 +178,7 @@ export const PAGE_CONFIGS = {
         mode: "multi",
         options: [
           "Point of Sales (POS)",
-          "Point of Sales (POS)",
           "Kitchen Display System (KDS)",
-          "Point of Sales (POS)",
           "Kiosk",
           "Printer",
         ],

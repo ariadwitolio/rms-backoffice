@@ -43,8 +43,6 @@ export function ModifierOptionsTable({
     <div className="modifier-option-table-shell">
       <div
         className="modifier-option-table__scroll"
-        data-scroll-left="false"
-        data-scroll-right="false"
         onScroll={handleScroll}
       >
         <section

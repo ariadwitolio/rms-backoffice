@@ -27,7 +27,7 @@ import { DEFAULT_PRICING_OVERRIDE_MAXIMUMS, PRICING_OVERRIDE_GROUPS, PRICING_RUL
 import { INITIAL_SETTINGS_FORM } from "../constants/settings.js";
 import { normalizePricingOverrideMaximumValue, formatPricingOverrideMaximumValue, createPricingOverrideSections, createDefaultPricingOverrideSections, resolvePricingOverrideMaximumForUnitFromSections, syncAssignedUnitsWithPricingSections, clonePricingOverrideSections, createInitialSpecialPricingRuleDraft, parsePricingRuleDisplayValue, getPricingRuleDateDisplayParts, createPricingRuleTimeWindowDisplay, applyPricingRuleMaximums, getSelectedPricingOverrideIdsFromSections, createSpecialPricingRuleRecord, createPricingRuleDetailDraftFromRecord, clonePricingRuleDetailDraftState, getPricingRuleDetailValidationMessage, isSamePricingRuleDetailEditing, normalizeSpecialPricingRuleOverridesForStorage, normalizePricingOverrideEditInput, formatPricingRuleDateDisplay, formatPricingRuleDatePickerValue, findPricingOverrideItem } from "../utils/pricingUtils.js";
 import { normalizeUnitPrecisionOption, nextCatalogBuilderId, createEmptyPackageItem, createEmptyIngredientItem, createEmptyAdditionalName, normalizePackageItems, normalizeCatalogIngredients, updatePackageItems, buildAssignedUnitRecord, normalizeCatalogAssignedUnits, createAssignedUnitsFromIds, createSellingTimeSlot, cloneSellingTimeSlots, getSellingTimeSlotErrorKey, getSellingTimeDayErrorPrefix, createSellingTimeDaySchedule, createInitialSellingTimeDraft, createInitialCatalogDraft, getCatalogCategoryForType, getCatalogModifierSummaryValue, getCatalogModifierDetailValue, MODIFIER_INGREDIENT_OPTION_LABELS } from "../utils/catalogDraftUtils.js";
-import { createEmptyModifierOption, formatModifierIngredientUnitLabel, getModifierIngredientSelection, normalizeModifierIngredientQtyInput, hasModifierOptionIngredient, isModifierOptionIngredientQtyValid, getModifierOptionNameErrorIds, getModifierOptionDuplicateNameIds, getModifierOptionIngredientQtyErrorIds, getModifierOptionErrors, getModifierSelectionCountError, getModifierDefaultSelectionError, clearModifierOptionErrorId, buildModifierOptionDraft, buildModifierOptionRecordForStorage, normalizeModifierOptions, createInitialModifierDraft, createModifierDetailDraftFromRecord, cloneModifierDetailDraftState, createInitialCategoryDraft } from "../utils/modifierUtils.js";
+import { createEmptyModifierOption, formatModifierIngredientUnitLabel, getModifierIngredientSelection, normalizeModifierIngredientQtyInput, hasModifierOptionIngredient, isModifierOptionIngredientQtyValid, getModifierOptionNameErrorIds, getModifierOptionDuplicateNameIds, getModifierOptionIngredientQtyErrorIds, getModifierOptionErrors, getModifierSelectionCountError, clearModifierOptionErrorId, buildModifierOptionDraft, buildModifierOptionRecordForStorage, normalizeModifierOptions, createInitialModifierDraft, createModifierDetailDraftFromRecord, cloneModifierDetailDraftState, createInitialCategoryDraft } from "../utils/modifierUtils.js";
 import { createInitialGroupedDeviceDraft, getGroupedDeviceListSummary, findDeviceManagementRecordByValue, getGroupedDeviceDeviceRows, getNormalizedGroupedDeviceTabletRows, getGroupedDeviceCatalogNames, getNormalizedGroupedDeviceCatalogIds, buildGroupedDeviceSelectionOptions, buildGroupedDeviceCatalogSelectionGroups, buildGroupedDeviceDetailRows } from "../utils/deviceGroupUtils.js";
 import { getRolePermissionLevel, hasRolePermissionAccess, createRolePermissions, createRolePermissionSections, getRolePermissionGroupIdsForContext, getRolePermissionsStructure, normalizeRoleAccessPermissionSections, createInitialRoleAccessDraft, createRoleAccessDraftFromRecord, getRoleAccessValidationGroups, sortRoleAccessRows, getRoleAccessPermissionSectionErrors, hasAnyVisibleRoleAccessPermission } from "../utils/roleUtils.js";
 import { createInitialDeviceManagementDraft, createInitialUnitDraft, createCategoryDetailDraftFromRecord, createUnitDetailDraftFromRecord, cloneCategoryDetailDraftState, cloneUnitDetailDraftState, getCategoryDetailValidationMessage, getUnitDetailValidationMessage, isSameCategoryDetailEditing, isSameUnitDetailEditing, getConnectedCatalogNamesForUnit, getModifierDetailValidationMessage, isSameModifierDetailEditing, getSellingTimeDaysFromRecord, getSellingTimeDayDisplay, getDefaultSellingTimeSlotsForRecord, getSellingTimeDetailSchedule, createSellingTimeDetailDraftFromRecord, cloneSellingTimeDetailDraftState, getSellingTimeDetailValidationMessage, getSellingTimeDetailValidationErrors, isSameSellingTimeDetailEditing, CATEGORY_HIERARCHY_SEPARATOR, MAX_CATEGORY_NESTING_LEVEL, DUPLICATE_CATALOG_SNACKBAR_MESSAGE, DUPLICATE_CATALOG_NAME_ERROR_MESSAGE, DUPLICATE_CATEGORY_ERROR_MESSAGE, DUPLICATE_UNIT_ERROR_MESSAGE, DUPLICATE_MODIFIER_ERROR_MESSAGE, DUPLICATE_PRICING_RULE_ERROR_MESSAGE, DUPLICATE_DEVICE_ERROR_MESSAGE, DUPLICATE_KDS_GROUP_ERROR_MESSAGE, DUPLICATE_ROLE_ACCESS_ERROR_MESSAGE } from "../utils/detailDraftUtils.js";
@@ -4746,11 +4746,6 @@ export function useAppHandlers(state) {
         return { ok: false, nextDraft: detailDraft };
       }
 
-      const defaultSelectionError = getModifierDefaultSelectionError(detailDraft);
-      if (defaultSelectionError) {
-        setModifierDetailErrors({ defaultSelection: defaultSelectionError });
-        return { ok: false, nextDraft: detailDraft };
-      }
     }
 
     const nextDraft = persistModifierDetailDraft(
@@ -7607,11 +7602,6 @@ export function useAppHandlers(state) {
       nextErrors.selectionCount = selectionCountError;
     }
 
-    const defaultSelectionError = getModifierDefaultSelectionError(modifierDraft);
-    if (defaultSelectionError) {
-      nextErrors.defaultSelection = defaultSelectionError;
-    }
-
     if (Object.keys(nextErrors).length) {
       setModifierDraftErrors(nextErrors);
       return;
@@ -8366,11 +8356,6 @@ export function useAppHandlers(state) {
               {modifierDraftErrors.selectionCount && (
                 <p className="modifier-option-table__field-error type-body" style={{ marginTop: "4px" }}>
                   {modifierDraftErrors.selectionCount}
-                </p>
-              )}
-              {modifierDraftErrors.defaultSelection && (
-                <p className="modifier-option-table__field-error type-body" style={{ marginTop: "4px" }}>
-                  {modifierDraftErrors.defaultSelection}
                 </p>
               )}
 
@@ -9775,11 +9760,6 @@ export function useAppHandlers(state) {
               {modifierDraftErrors.selectionCount && (
                 <p className="modifier-option-table__field-error type-body" style={{ marginTop: "4px" }}>
                   {modifierDraftErrors.selectionCount}
-                </p>
-              )}
-              {modifierDraftErrors.defaultSelection && (
-                <p className="modifier-option-table__field-error type-body" style={{ marginTop: "4px" }}>
-                  {modifierDraftErrors.defaultSelection}
                 </p>
               )}
             </DetailSection>
