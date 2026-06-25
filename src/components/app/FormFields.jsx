@@ -232,6 +232,7 @@ export function DetailSelectField({
   disabled = false,
   hideChevron = false,
   valueColor = null,
+  emptyCopy = "No options available",
 }) {
   const errorMessage =
     typeof error === "string"
@@ -370,7 +371,11 @@ export function DetailSelectField({
         </button>
         {isOpen ? (
           <div className="catalog-detail-field__menu">
-            {normalizedOptions.map((option) => {
+            {normalizedOptions.length === 0 ? (
+              <p className="catalog-detail-field__empty type-subtitle-2">
+                {emptyCopy}
+              </p>
+            ) : normalizedOptions.map((option) => {
               const isSelected = multiple
                 ? normalizedValue.includes(option.value)
                 : normalizedValue === option.value;

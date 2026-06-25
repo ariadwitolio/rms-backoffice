@@ -7102,6 +7102,10 @@ img {
   padding-top: 10px;
 }
 
+.modifier-option-table--editable .modifier-option-table__cell--handle .modifier-option-table__handle {
+  height: 36px;
+}
+
 .modifier-option-table__row--header .modifier-option-table__header-cell--availability,
 .modifier-option-table__cell--availability {
   padding-left: 20px;
@@ -8196,6 +8200,12 @@ textarea::placeholder,
   top: calc(100% + 8px);
   width: 100%;
   z-index: 80;
+}
+
+.catalog-detail-field__empty {
+  color: var(--neutral-on-surface-secondary);
+  padding: 8px;
+  text-align: center;
 }
 
 .catalog-detail-field__option {
