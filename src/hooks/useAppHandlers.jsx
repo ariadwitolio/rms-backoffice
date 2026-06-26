@@ -966,7 +966,7 @@ export function useAppHandlers(state) {
     });
 
     return () => window.cancelAnimationFrame(frameId);
-  }, [currentPage, modifierDetailDraft, modifierDetailEditing]);
+  }, [currentPage, modifierDetailEditing]);
 
   useEffect(() => {
     const detailSurfaceOpen =
@@ -4843,9 +4843,9 @@ export function useAppHandlers(state) {
             ? value
             : []
           : key === "minimumSelection"
-            ? String(value ?? "").replace(/[^\d]/g, "")
+            ? (() => { const n = Number(String(value ?? "").replace(/[^\d]/g, "")) || 0; return n > 0 ? String(n) : ""; })()
             : key === "maximumSelection"
-              ? (() => { const d = String(value ?? "").replace(/[^\d]/g, ""); return d === "" ? "" : String(Math.min(Number(d), 15)); })()
+              ? (() => { const n = Math.min(Number(String(value ?? "").replace(/[^\d]/g, "")) || 0, 15); return n > 0 ? String(n) : ""; })()
               : key === "availability"
                 ? Boolean(value)
                 : value;
@@ -7047,9 +7047,9 @@ export function useAppHandlers(state) {
             ? value
             : []
           : key === "minimumSelection"
-            ? String(value ?? "").replace(/[^\d]/g, "")
+            ? (() => { const n = Number(String(value ?? "").replace(/[^\d]/g, "")) || 0; return n > 0 ? String(n) : ""; })()
             : key === "maximumSelection"
-              ? (() => { const d = String(value ?? "").replace(/[^\d]/g, ""); return d === "" ? "" : String(Math.min(Number(d), 15)); })()
+              ? (() => { const n = Math.min(Number(String(value ?? "").replace(/[^\d]/g, "")) || 0, 15); return n > 0 ? String(n) : ""; })()
               : key === "availability"
                 ? Boolean(value)
                 : value;

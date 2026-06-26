@@ -229,8 +229,8 @@ export function createModifierDetailDraftFromRecord(record) {
   return {
     id: record?.id ?? "",
     name: record?.name ?? "",
-    minimumSelection: record?.minimumSelection ?? "0",
-    maximumSelection: record?.maximumSelection ?? "0",
+    minimumSelection: Number(record?.minimumSelection) > 0 ? String(Number(record.minimumSelection)) : "",
+    maximumSelection: Number(record?.maximumSelection) > 0 ? String(Number(record.maximumSelection)) : "",
     allowOverridePrice: Boolean(record?.allowOverridePrice),
     availability: record?.availability !== false,
     connectedCatalog: Array.isArray(record?.connectedCatalogItems)
