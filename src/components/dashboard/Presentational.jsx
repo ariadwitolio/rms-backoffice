@@ -1,4 +1,5 @@
-import { Fragment } from "react";
+import { Fragment, useState, useRef, useEffect, useLayoutEffect } from "react";
+import { createPortal } from "react-dom";
 import { ChevronIcon, Icon } from "../icons/Icon.jsx";
 import { LabButton } from "../ui/Primitives.jsx";
 
@@ -507,27 +508,159 @@ export function DashboardViewModeTabs({ value, onChange }) {
 }
 
 export function DashboardInlineSelect({ value, options, onChange, ariaLabel }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [popoverStyle, setPopoverStyle] = useState(null);
+  const rootRef = useRef(null);
+  const triggerRef = useRef(null);
+  const popoverRef = useRef(null);
+  const selectedLabel =
+    options.find((o) => (o.id ?? o.value) === value)?.label ?? value;
+
+  useEffect(() => {
+    if (!isOpen) return undefined;
+
+    function handlePointerDown(event) {
+      const target = event.target;
+      if (!(target instanceof Node)) return;
+      if (
+        rootRef.current?.contains(target) ||
+        popoverRef.current?.contains(target)
+      )
+        return;
+      setIsOpen(false);
+    }
+
+    window.addEventListener("mousedown", handlePointerDown);
+    return () => window.removeEventListener("mousedown", handlePointerDown);
+  }, [isOpen]);
+
+  useLayoutEffect(() => {
+    if (!isOpen) return undefined;
+
+    function updatePosition() {
+      const trigger = triggerRef.current;
+      const popover = popoverRef.current;
+      if (!trigger) return;
+
+      const rect = trigger.getBoundingClientRect();
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+      const gutter = 12;
+      const spacing = 8;
+      const width = Math.min(
+        Math.max(rect.width, 200),
+        viewportWidth - gutter * 2
+      );
+      const naturalHeight = Math.min(popover?.scrollHeight ?? 240, 360);
+      const availableBelow = viewportHeight - rect.bottom - gutter;
+      const availableAbove = rect.top - gutter;
+      const openUpward =
+        availableBelow < Math.min(naturalHeight, 180) &&
+        availableAbove > availableBelow;
+      const maxHeight = Math.max(
+        120,
+        Math.min(
+          360,
+          openUpward ? availableAbove - spacing : availableBelow - spacing
+        )
+      );
+      const left = Math.min(
+        Math.max(gutter, rect.left),
+        viewportWidth - width - gutter
+      );
+      const top = openUpward
+        ? Math.max(
+          gutter,
+          rect.top - Math.min(naturalHeight, maxHeight) - spacing
+        )
+        : Math.min(
+          rect.bottom + spacing,
+          viewportHeight - Math.min(naturalHeight, maxHeight) - gutter
+        );
+
+      setPopoverStyle({ left, maxHeight, openUpward, top, width });
+    }
+
+    updatePosition();
+    window.addEventListener("resize", updatePosition);
+    window.addEventListener("scroll", updatePosition, true);
+    return () => {
+      window.removeEventListener("resize", updatePosition);
+      window.removeEventListener("scroll", updatePosition, true);
+    };
+  }, [isOpen]);
+
   return (
-    <label className="dashboard-inline-select">
-      <select
-        className="type-subtitle-2"
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
+    <div
+      ref={rootRef}
+      className={`lab-filter-chip${isOpen || value ? " is-active" : ""}`}
+    >
+      <button
+        ref={triggerRef}
+        type="button"
+        className="lab-filter-chip__button"
+        aria-expanded={isOpen}
         aria-label={ariaLabel}
+        onClick={() => setIsOpen((prev) => !prev)}
       >
-        {options.map((option) => (
-          <option
-            key={option.id ?? option.value}
-            value={option.id ?? option.value}
+        <span className="lab-filter-chip__content">
+          <p className="lab-filter-chip__label type-body">{selectedLabel}</p>
+        </span>
+        <span className="lab-filter-chip__chevron">
+          <ChevronIcon
+            name="filterChevron"
+            size={16}
+            direction={isOpen ? "up" : "down"}
+          />
+        </span>
+      </button>
+      {isOpen && popoverStyle
+        ? createPortal(
+          <div
+            ref={popoverRef}
+            className={`lab-filter-popover lab-filter-popover--floating${popoverStyle.openUpward ? " is-open-upward" : ""}`}
+            style={{
+              left: popoverStyle.left,
+              maxHeight: popoverStyle.maxHeight,
+              overflowY: "auto",
+              top: popoverStyle.top,
+              width: popoverStyle.width,
+            }}
           >
-            {option.label}
-          </option>
-        ))}
-      </select>
-      <span className="dashboard-inline-select__chevron" aria-hidden="true">
-        <ChevronIcon name="selectChevron" size={16} direction="down" />
-      </span>
-    </label>
+            <div className="lab-filter-popover__options">
+              {options.map((option) => {
+                const optionValue = option.id ?? option.value;
+                const isSelected = optionValue === value;
+                return (
+                  <button
+                    key={optionValue}
+                    type="button"
+                    className="lab-filter-option"
+                    onClick={() => {
+                      onChange(optionValue);
+                      setIsOpen(false);
+                    }}
+                  >
+                    <span
+                      className="lab-filter-option__control"
+                      aria-hidden="true"
+                    >
+                      <span
+                        className={`lab-radio-indicator${isSelected ? " is-selected" : ""}`}
+                      />
+                    </span>
+                    <p className="lab-filter-option__label type-body text-primary">
+                      {option.label}
+                    </p>
+                  </button>
+                );
+              })}
+            </div>
+          </div>,
+          document.body
+        )
+        : null}
+    </div>
   );
 }
 

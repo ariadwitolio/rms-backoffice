@@ -121,7 +121,19 @@ export function getModifierOptionErrors(options = []) {
   return nextErrors;
 }
 
+export function getModifierSelectionRangeError(draft) {
+  const minSel = Number(draft.minimumSelection) || 0;
+  const maxSel = Number(draft.maximumSelection) || 0;
+  if (minSel > 0 && maxSel > 0 && maxSel < minSel) {
+    return "Maximum selection cannot be less than minimum selection";
+  }
+  return null;
+}
+
 export function getModifierSelectionCountError(draft) {
+  const rangeError = getModifierSelectionRangeError(draft);
+  if (rangeError) return rangeError;
+
   const namedOptions = (draft.options || []).filter((opt) =>
     String(opt.name || "").trim()
   );

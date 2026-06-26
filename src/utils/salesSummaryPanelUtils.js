@@ -1,5 +1,5 @@
 import { SALES_SUMMARY_RANGE_TABS, createInitialSalesSummaryNavigationState, createInitialSalesSummaryComparisonSelectionState, formatDayMonth, formatMonthYear, shiftDateByDays, shiftDateByMonths, getDaysInMonth } from "../constants/dashboard.js";
-import { formatDashboardReportDate, formatDashboardReportDateValue, parseDashboardReportDateValue, normalizeDashboardReportDateRange } from "./dashboardDateUtils.js";
+import { formatDashboardReportDate, formatDashboardReportDateValue, parseDashboardReportDateValue, normalizeDashboardReportDateRange, formatIdr } from "./dashboardDateUtils.js";
 import { buildMetricSeries, normalizeChartSeries, getSalesSummaryStats, getSalesSummaryMetricMeta, getSalesSummaryVisibleDayCount, formatSalesSummaryMetricValue, getSalesSummaryComparisonOptions , createSalesSummaryShiftSource, createSalesSummaryComparisonMonthSource, createSalesSummaryWeeklyAggregation} from "./salesSummaryUtils.js";
 
 export function createSalesSummaryComparisonPanel(
