@@ -2533,14 +2533,19 @@ img {
   padding: 14px 0;
   border-bottom: 1px solid var(--neutral-line-outline);
 }
+.catalog-detail-panel__connected-device:last-child {
+  border-bottom: none;
+}
 .catalog-detail-panel__connected-device-row {
   display: flex;
   justify-content: space-between;
   gap: 16px;
-  align-items: flex-start;
+  align-items: baseline;
 }
-.catalog-detail-panel__connected-device-row > div:first-child {
+.catalog-detail-panel__connected-device-row > p:first-child {
   min-width: 0;
+  flex: 1;
+  margin: 0;
 }
 .catalog-detail-panel__connected-device-row p {
   margin: 0;

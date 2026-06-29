@@ -2089,7 +2089,11 @@ export function useAppHandlers(state) {
     if (pageId !== "role-management" && pageId !== "role-access") {
       resetRoleAccessDetailState();
     }
-    if (pageId === "device-management") {
+    if (
+      pageId === "device-management" &&
+      currentPage !== "device-management" &&
+      currentPage !== "device-management-create"
+    ) {
       setDeviceManagementDetailId(null);
       setDeviceManagementDetailEditing(null);
     }
@@ -3492,6 +3496,29 @@ export function useAppHandlers(state) {
               return { ...group, deviceList: remainingDeviceList };
             })
             .filter(Boolean),
+        }
+        : {}),
+      ...(deletedDeviceRecord
+        ? {
+          "device-management": previous["device-management"]
+            .filter((row) => row.id !== rowId)
+            .map((row) => {
+              if (!Array.isArray(row.connectedDevices) || !row.connectedDevices.length) return row;
+              const deletedIdx = row.connectedDevices.findIndex(
+                (v) => v === rowId || v === deletedDeviceRecord.deviceName
+              );
+              if (deletedIdx === -1) return row;
+              const nextConnectedDevices = row.connectedDevices.filter((_, i) => i !== deletedIdx);
+              let nextDeviceConnected = row.deviceConnected;
+              if (row.deviceType === "Printer" && row.deviceConnected) {
+                const hwNames = String(row.deviceConnected).split(",").map((s) => s.trim());
+                hwNames.splice(deletedIdx, 1);
+                nextDeviceConnected = hwNames.filter(Boolean).join(", ") || null;
+              } else if (!nextConnectedDevices.length) {
+                nextDeviceConnected = null;
+              }
+              return { ...row, connectedDevices: nextConnectedDevices, deviceConnected: nextDeviceConnected };
+            }),
         }
         : {}),
     }));
@@ -15879,23 +15906,54 @@ export function useAppHandlers(state) {
     ].includes(row.deviceType);
     const detailActionsDisabled = isPrinterDevice;
     const showTabs = isPrinterDevice || isTabletOrKiosk;
-    const connectedDeviceDetails = Array.isArray(row.connectedDevices)
-      ? row.connectedDevices.map((connectedDeviceName, index) => {
-        const connectedRow = records["device-management"].find(
-          (item) => item.deviceName === connectedDeviceName
-        );
-        const hardwareNames = (row.deviceConnected || "").split(",").map((s) => s.trim());
-        const hardwareName = hardwareNames[index] || "-";
-
-        return {
-          name: connectedDeviceName,
-          connectedLabel: isPrinterDevice
-            ? `${hardwareName} • ${connectedRow?.deviceOs ?? "-"}`
-            : hardwareName,
-          lastActive: connectedRow?.lastActive ?? "-",
-        };
+    const allDeviceRecords = records["device-management"] || [];
+    const ownConnectedNames = Array.isArray(row.connectedDevices) ? row.connectedDevices : [];
+    const ownConnectedSet = new Set(ownConnectedNames);
+    const reverseConnectedNames = allDeviceRecords
+      .filter((d) => {
+        if (d.id === row.id || ownConnectedSet.has(d.deviceName)) return false;
+        if (!Array.isArray(d.connectedDevices)) return false;
+        return d.connectedDevices.includes(row.deviceName) || d.connectedDevices.includes(row.id);
       })
-      : [];
+      .map((d) => d.deviceName);
+    const allConnectedNames = [...ownConnectedNames, ...reverseConnectedNames];
+
+    const connectedDeviceDetails = allConnectedNames.map((connectedDeviceName) => {
+      const connectedRow = allDeviceRecords.find((item) => item.deviceName === connectedDeviceName);
+      const forwardIndex = ownConnectedNames.indexOf(connectedDeviceName);
+      let hardwareName;
+
+      if (forwardIndex !== -1) {
+        const hardwareNames = (row.deviceConnected || "").split(",").map((s) => s.trim());
+        hardwareName = hardwareNames[forwardIndex] || "-";
+      } else if (isPrinterDevice) {
+        // Reverse lookup: tablet's hardware name via display value (derived from printer's record)
+        const displayVal = getDeviceConnectedDisplayValue(connectedRow);
+        hardwareName =
+          displayVal && displayVal !== "-" && displayVal !== connectedRow?.deviceName
+            ? displayVal
+            : "-";
+      } else {
+        // Reverse lookup: printer's hardware name is stored in other tablets' deviceConnected
+        hardwareName =
+          allDeviceRecords.find(
+            (d) =>
+              d.id !== row.id &&
+              d.deviceType !== "Printer" &&
+              Array.isArray(d.connectedDevices) &&
+              d.connectedDevices.includes(connectedDeviceName) &&
+              d.deviceConnected
+          )?.deviceConnected ?? "-";
+      }
+
+      return {
+        name: connectedDeviceName,
+        connectedLabel: isPrinterDevice
+          ? `${hardwareName} • ${connectedRow?.deviceOs ?? "-"}`
+          : hardwareName,
+        lastActive: connectedRow?.lastActive ?? "-",
+      };
+    });
     const activeDeviceManagementDetailTab = showTabs
       ? deviceManagementDetailPanelTab
       : "general";
@@ -16155,18 +16213,16 @@ export function useAppHandlers(state) {
                       className="catalog-detail-panel__list-item catalog-detail-panel__connected-device"
                     >
                       <div className="catalog-detail-panel__connected-device-row">
-                        <div style={{ minWidth: 0 }}>
-                          <p className="type-subtitle-2" style={{ margin: 0 }}>
-                            {device.name}
-                          </p>
-                          <p className="type-body text-secondary" style={{ margin: 0 }}>
-                            {device.connectedLabel}
-                          </p>
-                        </div>
-                        <div className="type-body text-secondary" style={{ margin: 0, whiteSpace: "nowrap" }}>
+                        <p className="type-subtitle-2">
+                          {device.name}
+                        </p>
+                        <p className="type-body text-secondary" style={{ whiteSpace: "nowrap" }}>
                           {device.lastActive}
-                        </div>
+                        </p>
                       </div>
+                      <p className="type-body text-secondary" style={{ margin: 0 }}>
+                        {device.connectedLabel}
+                      </p>
                     </div>
                   ))}
                 </div>

@@ -32,7 +32,7 @@ export function DeleteBlockedModal({ open, title, message, onClose }) {
         <div className="discard-changes-modal__actions discard-changes-modal__actions--single">
           <LabButton
             label="Okay"
-            variant="secondary"
+            variant="primary"
             size="medium"
             onClick={onClose}
             fullWidth
