@@ -1282,7 +1282,7 @@ export function useAppHandlers(state) {
   }));
   const baseGroupedDeviceCatalogGroups = buildModifierCatalogGroups(
     categoryRows,
-    records.catalog || []
+    (records.catalog || []).filter((row) => row.type !== "package")
   );
   const groupedDeviceGroups = records["grouped-device"] || [];
   const groupedDeviceCatalogValues = new Set(
@@ -1300,6 +1300,9 @@ export function useAppHandlers(state) {
   const groupedDeviceUnassignedCatalogCount =
     groupedDeviceUnassignedCatalogList.length;
   const hasGroupedDeviceGroups = groupedDeviceGroups.length > 0;
+  const hasKdsDevices = (records["device-management"] || []).some(
+    (row) => row.deviceType === "Kitchen Display System (KDS)"
+  );
   const catalogModifierOptions = (() => {
     const seen = new Set();
     return (records.modifier || []).reduce((acc, row) => {
@@ -1939,7 +1942,7 @@ export function useAppHandlers(state) {
                 ? sortRoleAccessRows(records["role-access"] ?? [])
                 : pageId === "grouped-device"
                   ? (records["grouped-device"] ?? []).map((row) => {
-                    const devices = getGroupedDeviceDeviceRows(
+                    const devices = getNormalizedGroupedDeviceTabletRows(
                       records["device-management"] || [],
                       row.deviceList || []
                     )
@@ -2089,6 +2092,14 @@ export function useAppHandlers(state) {
     if (pageId === "device-management") {
       setDeviceManagementDetailId(null);
       setDeviceManagementDetailEditing(null);
+    }
+    if (
+      pageId === "grouped-device" &&
+      currentPage !== "grouped-device" &&
+      currentPage !== "grouped-device-create"
+    ) {
+      setGroupedDeviceDetailId(null);
+      setGroupedDeviceDetailEditing(null);
     }
     if (pageId !== currentPage) {
       setInventoryReportSort({ key: "currentStockValue", direction: "asc" });
@@ -3429,6 +3440,12 @@ export function useAppHandlers(state) {
         : null;
     const deletedCategoryRecord =
       pageId === "category" ? (records.category || []).find((row) => row.id === rowId) : null;
+    const deletedDeviceRecord =
+      pageId === "device-management"
+        ? (records["device-management"] || []).find((row) => row.id === rowId)
+        : null;
+    const isKdsDevice =
+      deletedDeviceRecord?.deviceType === "Kitchen Display System (KDS)";
     setRecords((previous) => ({
       ...previous,
       [pageId]: previous[pageId].filter((row) => row.id !== rowId),
@@ -3455,6 +3472,26 @@ export function useAppHandlers(state) {
               ? { ...row, category: "" }
               : row
           ),
+        }
+        : {}),
+      ...(isKdsDevice
+        ? {
+          "grouped-device": (previous["grouped-device"] || [])
+            .map((group) => {
+              const remainingDeviceRows = (previous["device-management"] || []).filter(
+                (d) => d.id !== rowId
+              );
+              const remainingDeviceList = (group.deviceList || []).filter(
+                (v) => v !== rowId && v !== deletedDeviceRecord.deviceName
+              );
+              const remainingKdsDevices = getNormalizedGroupedDeviceTabletRows(
+                remainingDeviceRows,
+                remainingDeviceList
+              );
+              if (remainingKdsDevices.length === 0) return null;
+              return { ...group, deviceList: remainingDeviceList };
+            })
+            .filter(Boolean),
         }
         : {}),
     }));
@@ -4730,22 +4767,26 @@ export function useAppHandlers(state) {
       return { ok: false, nextDraft: detailDraft };
     }
 
+    const nextDetailErrors = {};
+
     const duplicateNameError = getDuplicateModifierNameError(
       detailDraft.name,
       detailDraft.id
     );
     if (duplicateNameError) {
-      setModifierDetailErrors({ name: duplicateNameError });
-      return { ok: false, nextDraft: detailDraft };
+      nextDetailErrors.name = duplicateNameError;
     }
 
     if (detailEditing.kind === "all") {
       const selectionCountError = getModifierSelectionCountError(detailDraft);
       if (selectionCountError) {
-        setModifierDetailErrors({ selectionCount: selectionCountError });
-        return { ok: false, nextDraft: detailDraft };
+        nextDetailErrors.selectionCount = selectionCountError;
       }
+    }
 
+    if (Object.keys(nextDetailErrors).length) {
+      setModifierDetailErrors(nextDetailErrors);
+      return { ok: false, nextDraft: detailDraft };
     }
 
     const nextDraft = persistModifierDetailDraft(
@@ -5573,10 +5614,11 @@ export function useAppHandlers(state) {
       return { ok: false, nextDraft: detailDraft };
     }
 
+    const nextCatalogErrors = {};
+
     const catalogNameDuplicateError = getDuplicateCatalogNameError(detailDraft.name?.trim(), detailDraft.id);
     if (catalogNameDuplicateError) {
-      setCatalogDetailDraftErrors({ name: catalogNameDuplicateError });
-      return { ok: false, nextDraft: detailDraft };
+      nextCatalogErrors.name = catalogNameDuplicateError;
     }
 
     const additionalNameDetailErrors = {};
@@ -5601,25 +5643,27 @@ export function useAppHandlers(state) {
       }
     });
     if (Object.keys(additionalNameDetailErrors).length) {
-      setCatalogDetailDraftErrors((prev) => ({ ...prev, additionalNames: additionalNameDetailErrors }));
-      return { ok: false, nextDraft: detailDraft };
+      nextCatalogErrors.additionalNames = additionalNameDetailErrors;
     }
 
+    let showDupRecordSnackbar = false;
     if (isDuplicateCatalogRecord(detailDraft, records.catalog)) {
-      setCatalogDetailDraftErrors({
-        name: true,
-        unit: true,
-        category: true,
-      });
-      showSnackbar(DUPLICATE_CATALOG_SNACKBAR_MESSAGE, "red");
-      return { ok: false, nextDraft: detailDraft };
+      if (!nextCatalogErrors.name) nextCatalogErrors.name = true;
+      nextCatalogErrors.unit = true;
+      nextCatalogErrors.category = true;
+      showDupRecordSnackbar = true;
     }
 
     if (
       detailDraft.trackStock &&
       !(detailDraft.ingredients ?? []).some((item) => item.name)
     ) {
-      setCatalogDetailDraftErrors({ ingredients: true });
+      nextCatalogErrors.ingredients = true;
+    }
+
+    if (Object.keys(nextCatalogErrors).length) {
+      setCatalogDetailDraftErrors(nextCatalogErrors);
+      if (showDupRecordSnackbar) showSnackbar(DUPLICATE_CATALOG_SNACKBAR_MESSAGE, "red");
       return { ok: false, nextDraft: detailDraft };
     }
 
@@ -8207,20 +8251,18 @@ export function useAppHandlers(state) {
   function handleSaveCatalogDraft() {
     const nextErrors = getCatalogCreateStepErrors(0);
 
-    if (Object.keys(nextErrors).length) {
-      setCatalogDraftErrors(nextErrors);
-      return;
-    }
-
     const catalogNameDuplicateError = getDuplicateCatalogNameError(catalogDraft.name.trim());
     if (catalogNameDuplicateError) {
-      setCatalogDraftErrors((previous) => ({ ...previous, name: catalogNameDuplicateError }));
-      return;
+      nextErrors.name = catalogNameDuplicateError;
     }
 
     const additionalNameErrors = getAdditionalNameDuplicateErrors();
     if (Object.keys(additionalNameErrors).length) {
-      setCatalogDraftErrors((previous) => ({ ...previous, additionalNames: additionalNameErrors }));
+      nextErrors.additionalNames = additionalNameErrors;
+    }
+
+    if (Object.keys(nextErrors).length) {
+      setCatalogDraftErrors(nextErrors);
       return;
     }
 
@@ -14592,7 +14634,27 @@ export function useAppHandlers(state) {
               />
               {isGroupedDevicePage ? (
                 <div className="grouped-device-info-banner">
-                  {!hasGroupedDeviceGroups ? (
+                  {!hasKdsDevices ? (
+                    <div className="lab-infobox lab-infobox--orange">
+                      <Icon
+                        name="infoBlue"
+                        className="lab-icon lab-icon--20 grouped-device-info-banner__icon"
+                        alt=""
+                        color="var(--status-orange-primary)"
+                      />
+                      <div className="lab-infobox__copy grouped-device-empty-banner__copy">
+                        <p className="type-body grouped-device-empty-banner__message">
+                          <span className="grouped-device-empty-banner__title">
+                            No KDS device available.
+                          </span>{" "}
+                          <span>
+                            All catalog items cannot be sent to any kitchen display because no
+                            Kitchen Display System (KDS) device exists.
+                          </span>
+                        </p>
+                      </div>
+                    </div>
+                  ) : !hasGroupedDeviceGroups ? (
                     <div className="lab-infobox lab-infobox--blue">
                       <Icon
                         name="infoBlue"
@@ -15278,7 +15340,8 @@ export function useAppHandlers(state) {
 
     if (Object.keys(errors).length) {
       setGroupedDeviceDraftErrors(errors);
-      if (!errors.name || typeof errors.name !== "string") {
+      const isOnlyDuplicateName = Object.keys(errors).length === 1 && typeof errors.name === "string";
+      if (!isOnlyDuplicateName) {
         showSnackbar("Please fill in all required fields", "red");
       }
       return;
@@ -15640,7 +15703,8 @@ export function useAppHandlers(state) {
 
     if (Object.keys(errors).length) {
       setGroupedDeviceDetailDraftErrors(errors);
-      if (!errors.name || typeof errors.name !== "string") {
+      const isOnlyDuplicateName = Object.keys(errors).length === 1 && typeof errors.name === "string";
+      if (!isOnlyDuplicateName) {
         showSnackbar("Please fill in all required fields", "red");
       }
       return;
@@ -15779,6 +15843,7 @@ export function useAppHandlers(state) {
                   }}
                   placeholder="Select Device Type"
                   error={deviceManagementDraftErrors.deviceType}
+                  ellipsis
                 />
               </div>
             </DetailSection>
@@ -15953,7 +16018,7 @@ export function useAppHandlers(state) {
                       {isPrinterDevice && (
                         <DetailField label="Device Connected" value={deviceConnectedValue.split(",")[0].trim()} disabled />
                       )}
-                      <DetailField label="Device Type" value={row.deviceType} disabled />
+                      <DetailField label="Device Type" value={row.deviceType} disabled ellipsis />
                       {isPending && !isPrinterDevice && row.pairingCode && (
                         <DetailField label="Pairing Code" value={row.pairingCode} disabled />
                       )}
@@ -15973,7 +16038,7 @@ export function useAppHandlers(state) {
                           value={deviceConnectedValue.split(",")[0].trim()}
                         />
                       )}
-                      <CatalogPanelInfoRow label="Device Type" value={row.deviceType} />
+                      <CatalogPanelInfoRow label="Device Type" value={row.deviceType} ellipsis />
                       {isPending && !isPrinterDevice && row.pairingCode && (
                         <CatalogPanelInfoRow
                           label="Pairing Code"

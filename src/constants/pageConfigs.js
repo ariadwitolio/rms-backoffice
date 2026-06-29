@@ -201,6 +201,7 @@ export const PAGE_CONFIGS = {
         key: "deviceType",
         label: "Device Type",
         type: "text",
+        contentClassName: "lab-table__ellipsis-copy",
       },
       {
         key: "deviceConnected",
