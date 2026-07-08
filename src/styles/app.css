@@ -9188,6 +9188,47 @@ textarea::placeholder,
   margin-bottom: 0;
 }
 
+.grouped-device-detail-list__row {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.grouped-device-status-item {
+  align-items: center;
+  display: inline-flex;
+  gap: 6px;
+}
+
+.device-status-dot {
+  background: var(--status-red-primary);
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+  height: 6px;
+  width: 6px;
+}
+
+.device-status-dot.is-connected {
+  background: var(--status-green-primary);
+}
+
+.device-status-indicator {
+  align-items: center;
+  display: inline-flex;
+  flex-shrink: 0;
+  gap: 6px;
+}
+
+.device-status-indicator__label {
+  color: var(--status-red-primary);
+}
+
+.device-status-indicator.is-connected .device-status-indicator__label {
+  color: var(--status-green-primary);
+}
+
 .catalog-photo-grid {
   align-items: start;
   display: grid;

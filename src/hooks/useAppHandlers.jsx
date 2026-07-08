@@ -4,7 +4,7 @@ import { CatalogPanelInfoRow, DetailReadField } from "../components/catalog/Pres
 import { ChevronIcon, Icon } from "../components/icons/Icon.jsx";
 import { DetailPageHeader, DetailPanelDeleteAction, InlineEditActions, InlineSelect, ListPageToolbar, TableActionButton, TableFooterBar, TableToolbar } from "../components/lists/Presentational.jsx";
 import { DashboardDetailTabButton, DashboardDoughnutSummaryCard, DashboardFinancialSummaryCard, DashboardIngredientStockAlertCard, DashboardInlineSelect, DashboardInventoryProgressCard, DashboardKpiCard, DashboardKpiSummaryPrimaryCard, DashboardPerformanceCard, DashboardRankedTable, DashboardReportTabButton, DashboardStackedMetricCard, DashboardSubTabButton, DashboardViewModeTabs, MetricCard, MetricFilterCard } from "../components/dashboard/Presentational.jsx";
-import { DetailSection, EmptyDataState, EmptyState, Field, LabButton, LabCheckbox, SelectShell, StatusPill, TablePagination, Toggle } from "../components/ui/Primitives.jsx";
+import { DetailSection, DeviceStatusDot, DeviceStatusIndicator, EmptyDataState, EmptyState, Field, LabButton, LabCheckbox, SelectShell, StatusPill, TablePagination, Toggle } from "../components/ui/Primitives.jsx";
 import CatalogModule from "../modules/catalog-management/catalog/CatalogModule.jsx";
 import CatalogListPage from "../modules/catalog-management/catalog/pages/CatalogListPage.jsx";
 import CategoryListPage from "../modules/catalog-management/category/pages/CategoryListPage.jsx";
@@ -1942,10 +1942,11 @@ export function useAppHandlers(state) {
                 ? sortRoleAccessRows(records["role-access"] ?? [])
                 : pageId === "grouped-device"
                   ? (records["grouped-device"] ?? []).map((row) => {
-                    const devices = getNormalizedGroupedDeviceTabletRows(
+                    const deviceRowsForGroup = getNormalizedGroupedDeviceTabletRows(
                       records["device-management"] || [],
                       row.deviceList || []
-                    )
+                    );
+                    const devices = deviceRowsForGroup
                       .map((device) => device.deviceName)
                       .join(", ");
                     const catalogs = getGroupedDeviceCatalogNames(
@@ -1955,6 +1956,17 @@ export function useAppHandlers(state) {
                     return {
                       ...row,
                       deviceListDisplay: devices || "-",
+                      deviceListStatusDisplay: deviceRowsForGroup.length
+                        ? deviceRowsForGroup.map((device, index) => (
+                          <span key={device.id} className="grouped-device-status-item">
+                            <span>{device.deviceName}</span>
+                            <DeviceStatusDot status={device.status} />
+                            {index < deviceRowsForGroup.length - 1 ? (
+                              <span>,&nbsp;</span>
+                            ) : null}
+                          </span>
+                        ))
+                        : "-",
                       catalogListDisplay: catalogs || "-",
                     };
                   })
@@ -15639,7 +15651,10 @@ export function useAppHandlers(state) {
                                 key={device.tabletName}
                                 className="grouped-device-detail-list__item"
                               >
-                                <span>{device.tabletName}</span>
+                                <span className="grouped-device-detail-list__row">
+                                  <span>{device.tabletName}</span>
+                                  <DeviceStatusIndicator status={device.tabletStatus} />
+                                </span>
                                 {device.printers.length ? (
                                   <ul className="grouped-device-detail-list grouped-device-detail-list--nested">
                                     {device.printers.map((printer) => (

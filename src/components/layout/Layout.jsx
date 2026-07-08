@@ -36,6 +36,7 @@ export function Sidebar({
     .map((item) => {
       if (item.id === "user-management") return { ...item, isLocked: true };
       if (item.id === "business-unit") return { ...item, isLocked: true };
+      if (item.id === "role-management" && !isEntitySide) return { ...item, isLocked: true };
       return item;
     })
     .filter((item) => sideOrder.includes(item.id) && (!item.children || item.children.length))

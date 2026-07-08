@@ -237,7 +237,7 @@ export const PAGE_CONFIGS = {
     columns: [
       { key: "name", label: "KDS Group Name", type: "link", sortable: true },
       {
-        key: "deviceListDisplay",
+        key: "deviceListStatusDisplay",
         label: "Device List",
         type: "text",
         contentClassName: "lab-table__ellipsis-copy",

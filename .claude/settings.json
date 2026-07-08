@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(rtk git *)",
+      "Bash(git log *)",
+      "Bash(grep -rnE 'Rp[$\"'\"'\"'\\\\`+0-9]' src --include='*.js' --include='*.jsx' --include='*.json' --include='*.css')",
+      "Bash(grep -rn '`Rp' . --include='*.*')",
+      "Bash(rtk playwright *)",
+      "Bash(node nav.js)",
+      "Bash(node nav2.js)",
+      "Bash(node nav6.js)",
+      "Bash(node check.js)",
+      "Bash(mkdir -p /private/tmp/claude-501/-Users-aria-Project-Web-rms-backoffice/0b332aae-f951-4507-b2e4-09d4d0d1d8e8/scratchpad/pw6)",
+      "Bash(npm init *)"
+    ]
+  }
+}

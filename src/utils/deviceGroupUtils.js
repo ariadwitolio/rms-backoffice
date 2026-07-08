@@ -180,6 +180,7 @@ export function buildGroupedDeviceDetailRows(deviceRows = [], values = []) {
 
     return {
       tabletName: tablet.deviceName,
+      tabletStatus: tablet.status,
       printers: Array.from(printerNames),
     };
   });
@@ -190,7 +191,7 @@ const ACCOUNT_ROLE_PERMISSION_MODULES = [
     id: "user-management",
     label: "User Management",
     additionalAccess: [
-      { id: "suspendUser", label: "Suspend user" },
+      { id: "suspendUser", label: "Lock user" },
       { id: "regeneratePin", label: "Regenerate PIN" },
       { id: "assignOtherEntities", label: "Assign to other entities" },
     ],
@@ -241,6 +242,7 @@ const ENTITY_APP_ROLE_PERMISSION_MODULES = [
     levelLabels: { edit: "Full Access (Create + Edit)" },
     additionalAccess: [
       { id: "approveVoid", label: "Approve VOID Request" },
+      { id: "approveDiscount", label: "Approve Discount Request" },
     ],
   },
   { id: "printer-settings", label: "Printer Settings" },

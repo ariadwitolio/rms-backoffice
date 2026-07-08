@@ -1,7 +1,6 @@
 import { createDefaultPricingOverrideSections, createSpecialPricingRuleRecord, applyPricingRuleMaximums, createPricingOverrideSections, syncAssignedUnitsWithPricingSections } from "./pricingUtils.js";
 import { createCatalogSeedRecord, createCatalogPhotoSetForRecord, createCatalogAssignedUnits } from "./catalogBuildUtils.js";
 import { createRolePermissions } from "./roleUtils.js";
-import { ALL_ROLE_PERMISSION_MODULES } from "./deviceGroupUtils.js";
 import { ALL_SELLING_TIME_DAY_LABELS, SELLING_TIME_DAY_OPTIONS, UNIT_PRECISION_OPTIONS, BUSINESS_UNIT_ASSIGNMENT_GROUPS } from "../constants/catalog.js";
 import { DEFAULT_PRICING_OVERRIDE_MAXIMUMS, PRICING_OVERRIDE_GROUPS, PRICING_RULE_MONTH_LABELS } from "../constants/pricing.js";
 import { MENU, DETAIL_PAGE_PARENT } from "../constants/menu.js";
@@ -638,39 +637,61 @@ export function createInitialDataStore() {
     ],
     "role-access": [
       {
-        id: "rl-001",
+        id: "rl-009",
         type: "System",
-        name: "Holding Owner",
-        members: "1 member",
+        name: "Waitress",
+        members: "3 members",
         membersList: [
-          { id: "mbr-001", name: "John Manager", email: "john.manager@restaurant.com", status: "Active" },
+          { id: "mbr-027", name: "James Staff", email: "james.staff@restaurant.com", status: "Active" },
+          { id: "mbr-028", name: "Patricia Staff", email: "patricia.staff@restaurant.com", status: "Active" },
+          { id: "mbr-029", name: "Emma Invited", email: "emma.invited@restaurant.com", status: "Invited" },
         ],
-        description: "Full access across account controls and entity operations.",
+        description: "Full POS access with edit-level Payment and Printer access.",
         status: "Active",
         updated: "2 Apr 2026",
-        permissions: createRolePermissions(
-          Object.fromEntries(
-            ALL_ROLE_PERMISSION_MODULES.map((module) => [
-              module.id,
-              module.permittedLevels && !module.permittedLevels.includes("full")
-                ? module.permittedLevels[module.permittedLevels.length - 1]
-                : "full",
-            ])
-          )
-        ),
+        permissions: createRolePermissions({
+          cashier: "edit",
+          "printer-settings": "edit",
+          payment: {
+            level: "edit",
+            additionalAccess: { addOrderItem: true },
+          },
+        }),
       },
       {
-        id: "rl-002",
+        id: "rl-008",
         type: "System",
-        name: "Account Administrator",
+        name: "Cashier",
+        members: "3 members",
+        membersList: [
+          { id: "mbr-024", name: "Salsa Mahendra", email: "salsa.mahendra@restaurant.com", status: "Active" },
+          { id: "mbr-025", name: "Register Op", email: "register.op@restaurant.com", status: "Active" },
+          { id: "mbr-026", name: "New Cashier", email: "new.cashier@restaurant.com", status: "Invited" },
+        ],
+        description: "Full POS access with edit-level Payment and Printer access.",
+        status: "Active",
+        updated: "2 Apr 2026",
+        permissions: createRolePermissions({
+          cashier: "edit",
+          "printer-settings": "edit",
+          payment: {
+            level: "edit",
+            additionalAccess: { inputManualTransaction: true },
+          },
+        }),
+      },
+      {
+        id: "rl-007",
+        type: "System",
+        name: "Manager",
         members: "2 members",
         membersList: [
-          { id: "mbr-002", name: "Sarah Admin", email: "sarah.admin@restaurant.com", status: "Active" },
-          { id: "mbr-003", name: "Mike Invited", email: "mike.invited@restaurant.com", status: "Invited" },
+          { id: "mbr-022", name: "Dea Maheswari", email: "dea.maheswari@restaurant.com", status: "Active" },
+          { id: "mbr-023", name: "Rendy Saputra", email: "rendy.saputra@restaurant.com", status: "Active" },
         ],
-        description: "Manages user, role, and entity access for the main account.",
+        description: "Full access across Back Office, POS App, and Payment App modules.",
         status: "Active",
-        updated: "30 Mar 2026",
+        updated: "2 Apr 2026",
         permissions: createRolePermissions({
           "user-management": {
             level: "full",
@@ -680,12 +701,23 @@ export function createInitialDataStore() {
               assignOtherEntities: true,
             },
           },
+          "entity-management": "full",
           "role-management": "full",
-          "entity-management": {
+          device: "full",
+          "grouped-device": "full",
+          "table-management": "full",
+          catalog: "full",
+          category: "full",
+          unit: "full",
+          modifier: "full",
+          cashier: {
             level: "edit",
-            additionalAccess: {
-              suspendEntity: true,
-            },
+            additionalAccess: { approveVoid: true, approveDiscount: true },
+          },
+          "printer-settings": "full",
+          payment: {
+            level: "full",
+            additionalAccess: { inputManualTransaction: true, addOrderItem: true },
           },
         }),
       },

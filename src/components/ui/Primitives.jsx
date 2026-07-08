@@ -76,6 +76,30 @@ function StatusPill({ status }) {
   );
 }
 
+function DeviceStatusDot({ status }) {
+  return (
+    <span
+      className={`device-status-dot${status === "Connected" ? " is-connected" : ""}`}
+      aria-hidden="true"
+    />
+  );
+}
+
+function DeviceStatusIndicator({ status }) {
+  const isConnected = status === "Connected";
+
+  return (
+    <span
+      className={`device-status-indicator${isConnected ? " is-connected" : ""}`}
+    >
+      <DeviceStatusDot status={status} />
+      <span className="device-status-indicator__label">
+        {isConnected ? "Connected" : "Disconnected"}
+      </span>
+    </span>
+  );
+}
+
 function Toggle({ checked, onChange, ariaLabel, onClick }) {
   return (
     <button
@@ -290,6 +314,8 @@ function Snackbar({ snackbar, onDismiss, topOffset = "60px" }) {
 }
 export {
   DetailSection,
+  DeviceStatusDot,
+  DeviceStatusIndicator,
   EmptyDataState,
   EmptyState,
   Field,
