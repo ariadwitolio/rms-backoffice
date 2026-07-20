@@ -292,22 +292,23 @@ export function RolePermissionRow({
       <div
         style={{ display: "flex", alignItems: "center", gap: "10px", minWidth: 0 }}
       >
-        <div
-          style={{
-            width: "32px",
-            height: "32px",
-            borderRadius: "8px",
-            background: "var(--neutral-background)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: "var(--neutral-on-surface-secondary)",
-            flexShrink: 0,
-            opacity: isChild ? 0.7 : 1,
-          }}
-        >
-          <Icon name={iconName} className="lab-icon lab-icon--18" alt="" />
-        </div>
+        {isChild ? null : (
+          <div
+            style={{
+              width: "32px",
+              height: "32px",
+              borderRadius: "8px",
+              background: "var(--neutral-background)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "var(--neutral-on-surface-secondary)",
+              flexShrink: 0,
+            }}
+          >
+            <Icon name={iconName} className="lab-icon lab-icon--18" alt="" />
+          </div>
+        )}
         <div
           style={{ display: "flex", flexDirection: "column", gap: "2px", minWidth: 0 }}
         >
@@ -393,7 +394,7 @@ function ParentMenuRow({
         display: "flex",
         alignItems: "center",
         gap: "10px",
-        padding: "10px 0",
+        padding: isExpanded ? "10px 0 4px" : "10px 0",
         border: "none",
         background: "none",
         cursor: "pointer",
@@ -409,6 +410,7 @@ function ParentMenuRow({
           gap: "8px",
           flex: 1,
           minWidth: 0,
+          minHeight: "46px",
         }}
       >
         <div
@@ -586,8 +588,8 @@ function RolePermissionsGroup({
                             <div
                               key={childModule.id}
                               style={{
-                                paddingLeft: "24px",
-                                paddingTop: childIdx === 0 ? "6px" : "0",
+                                paddingLeft: "40px",
+                                paddingTop: childIdx === 0 ? "2px" : "0",
                                 paddingBottom:
                                   childIdx === menuItem.children.length - 1
                                     ? "6px"

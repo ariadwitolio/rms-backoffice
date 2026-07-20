@@ -34,7 +34,6 @@ export default function PricingRuleListPage({
   totalRows,
   searchValue,
   onSearch,
-  onAction,
   onTableScroll,
   allVisibleSelected,
   onToggleAllRows,
@@ -107,8 +106,6 @@ export default function PricingRuleListPage({
               searchPlaceholder="Search"
               searchValue={searchValue}
               onSearch={onSearch}
-              actionLabel="New Special Pricing Rule"
-              onAction={onAction}
             />
             <div
               className="table-scroll"

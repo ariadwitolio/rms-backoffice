@@ -2,6 +2,7 @@ export default function CatalogModule({
   isDetailOpen,
   isCreateOpen,
   lockedInfoBox,
+  pageHeader = null,
   children,
   sidePanel = null,
 }) {
@@ -11,6 +12,7 @@ export default function CatalogModule({
         }`}
     >
       <div className="catalog-page-main">
+        {pageHeader}
         <div className="page-body page-body--list">
           {lockedInfoBox}
           {children}

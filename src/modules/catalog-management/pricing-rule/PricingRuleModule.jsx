@@ -3,6 +3,7 @@ export default function PricingRuleModule({
   isDetailOpen,
   isCreateOpen,
   lockedInfoBox,
+  pageHeader = null,
   children,
   sidePanel = null,
 }) {
@@ -12,6 +13,7 @@ export default function PricingRuleModule({
         }`}
     >
       <div className={isSpecialRuleTab ? "catalog-page-main" : undefined}>
+        {pageHeader}
         <div className="page-body page-body--list">
           {lockedInfoBox}
           {children}

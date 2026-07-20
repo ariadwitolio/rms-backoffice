@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, startTransition, useDeferredValue, useCallb
 import { createPortal } from "react-dom";
 import { CatalogPanelInfoRow, DetailReadField } from "../components/catalog/Presentational.jsx";
 import { ChevronIcon, Icon } from "../components/icons/Icon.jsx";
+import { PageHeader } from "../components/layout/Layout.jsx";
 import { DetailPageHeader, DetailPanelDeleteAction, InlineEditActions, InlineSelect, ListPageToolbar, TableActionButton, TableFooterBar, TableToolbar } from "../components/lists/Presentational.jsx";
 import { DashboardDetailTabButton, DashboardDoughnutSummaryCard, DashboardFinancialSummaryCard, DashboardIngredientStockAlertCard, DashboardInlineSelect, DashboardInventoryProgressCard, DashboardKpiCard, DashboardKpiSummaryPrimaryCard, DashboardPerformanceCard, DashboardRankedTable, DashboardReportTabButton, DashboardStackedMetricCard, DashboardSubTabButton, DashboardViewModeTabs, MetricCard, MetricFilterCard } from "../components/dashboard/Presentational.jsx";
 import { DetailSection, DeviceStatusDot, DeviceStatusIndicator, EmptyDataState, EmptyState, Field, LabButton, LabCheckbox, SelectShell, StatusPill, TablePagination, Toggle } from "../components/ui/Primitives.jsx";
@@ -12971,6 +12972,13 @@ export function useAppHandlers(state) {
         isDetailOpen={isDetailPanelOpen}
         isCreateOpen={isCreatePanelOpen}
         lockedInfoBox={renderLockedBusinessUnitInfoBox()}
+        pageHeader={
+          <PageHeader
+            title={topNavbarContext?.title}
+            actionLabel={topNavbarContext?.actionLabel}
+            onAction={topNavbarContext?.onAction}
+          />
+        }
         sidePanel={
           isCreatePanelOpen
             ? renderCatalogCreateSidePanel()
@@ -12993,7 +13001,6 @@ export function useAppHandlers(state) {
           ]}
           searchValue={searchByPage.catalog}
           onSearch={(value) => handleSetSearch("catalog", value)}
-          onAction={openCatalogCreatePage}
           onTableScroll={handleTableCardScroll}
           allVisibleSelected={allVisibleSelected}
           onToggleAll={() => handleToggleAllRows("catalog", filteredRows)}
@@ -14434,6 +14441,13 @@ export function useAppHandlers(state) {
         isDetailOpen={isSpecialRuleDetailOpen}
         isCreateOpen={isCreatePanelOpen}
         lockedInfoBox={renderLockedBusinessUnitInfoBox()}
+        pageHeader={
+          <PageHeader
+            title={topNavbarContext?.title}
+            actionLabel={topNavbarContext?.actionLabel}
+            onAction={topNavbarContext?.onAction}
+          />
+        }
         sidePanel={
           isCreatePanelOpen
             ? renderPricingRuleCreateSidePanel()
@@ -14491,7 +14505,6 @@ export function useAppHandlers(state) {
           totalRows={filteredRows.length}
           searchValue={searchByPage["pricing-rule"]}
           onSearch={(value) => handleSetSearch("pricing-rule", value)}
-          onAction={openPricingRuleCreatePage}
           onTableScroll={handleTableCardScroll}
           allVisibleSelected={allVisibleSelected}
           onToggleAllRows={() =>
@@ -14591,48 +14604,6 @@ export function useAppHandlers(state) {
         />
       )
     );
-    const handlePageAction = () => {
-      if (pageId === "category") {
-        openCategoryCreatePage();
-        return;
-      }
-
-      if (pageId === "unit") {
-        openUnitCreatePage();
-        return;
-      }
-
-      if (pageId === "modifier") {
-        openModifierCreatePage();
-        return;
-      }
-
-      if (pageId === "selling-time") {
-        openSellingTimeCreatePage();
-        return;
-      }
-
-      if (pageId === "device-management") {
-        openDeviceManagementCreatePage();
-        return;
-      }
-
-      if (pageId === "grouped-device") {
-        openGroupedDeviceCreatePage();
-        return;
-      }
-
-      if (pageId === "role-access") {
-        openRoleAccessCreatePage();
-        return;
-      }
-
-      showSnackbar(
-        `${config.title} action is ready for backend wiring`,
-        "green"
-      );
-    };
-
     return (
       <section
         className={
@@ -14652,6 +14623,11 @@ export function useAppHandlers(state) {
         }
       >
         <div className={isSplitDetailPage ? "catalog-page-main" : undefined}>
+          <PageHeader
+            title={topNavbarContext?.title}
+            actionLabel={topNavbarContext?.actionLabel}
+            onAction={topNavbarContext?.onAction}
+          />
           <div className="page-body page-body--list">
             {renderLockedBusinessUnitInfoBox()}
             <section
@@ -14668,8 +14644,6 @@ export function useAppHandlers(state) {
                 searchPlaceholder={config.searchPlaceholder}
                 searchValue={searchByPage[pageId]}
                 onSearch={(value) => handleSetSearch(pageId, value)}
-                actionLabel={config.actionLabel}
-                onAction={handlePageAction}
               />
               {isGroupedDevicePage ? (
                 <div className="grouped-device-info-banner">
@@ -17491,6 +17465,7 @@ export function useAppHandlers(state) {
       return (
         <section className={dashboardPageClassName}>
           <div className="dashboard-page-sticky">
+            <PageHeader title="Dashboard" className="page-header--dashboard" />
             {isLockedSelectedBusinessUnit ? (
               <div className="dashboard-page-sticky__banner">
                 {renderLockedBusinessUnitInfoBox()}
@@ -17686,6 +17661,7 @@ export function useAppHandlers(state) {
       return (
         <section className={dashboardPageClassName}>
           <div className="dashboard-page-sticky">
+            <PageHeader title="Dashboard" className="page-header--dashboard" />
             {isLockedSelectedBusinessUnit ? (
               <div className="dashboard-page-sticky__banner">
                 {renderLockedBusinessUnitInfoBox()}
@@ -17952,6 +17928,7 @@ export function useAppHandlers(state) {
           className={`${dashboardPageClassName} dashboard-page--cash-management`}
         >
           <div className="dashboard-page-sticky">
+            <PageHeader title="Dashboard" className="page-header--dashboard" />
             {isLockedSelectedBusinessUnit ? (
               <div className="dashboard-page-sticky__banner">
                 {renderLockedBusinessUnitInfoBox()}
@@ -18064,6 +18041,7 @@ export function useAppHandlers(state) {
       return (
         <section className={dashboardPageClassName}>
           <div className="dashboard-page-sticky">
+            <PageHeader title="Dashboard" className="page-header--dashboard" />
             {isLockedSelectedBusinessUnit ? (
               <div className="dashboard-page-sticky__banner">
                 {renderLockedBusinessUnitInfoBox()}
@@ -18181,6 +18159,7 @@ export function useAppHandlers(state) {
       return (
         <section className={dashboardPageClassName}>
           <div className="dashboard-page-sticky">
+            <PageHeader title="Dashboard" className="page-header--dashboard" />
             {isLockedSelectedBusinessUnit ? (
               <div className="dashboard-page-sticky__banner">
                 {renderLockedBusinessUnitInfoBox()}
@@ -18308,6 +18287,7 @@ export function useAppHandlers(state) {
       return (
         <section className={dashboardPageClassName}>
           <div className="dashboard-page-sticky">
+            <PageHeader title="Dashboard" className="page-header--dashboard" />
             {isLockedSelectedBusinessUnit ? (
               <div className="dashboard-page-sticky__banner">
                 {renderLockedBusinessUnitInfoBox()}
@@ -18430,7 +18410,7 @@ export function useAppHandlers(state) {
     }
 
     return (
-      <DashboardModule>
+      <DashboardModule pageHeader={<PageHeader title="Dashboard" className="page-header--dashboard" />}>
         <DashboardOverviewPage
           FeatureCardComponent={FeatureCard}
           dashboardOrders={records.dashboardOrders || []}
@@ -18448,10 +18428,10 @@ export function useAppHandlers(state) {
     return (
       <section className="page-canvas">
         <PageHeader
-          title="Settings"
-          actionLabel="Save Changes"
-          actionIcon={null}
-          onAction={() => showSnackbar("Settings saved successfully", "green")}
+          title={topNavbarContext?.title}
+          actionLabel={topNavbarContext?.actionLabel}
+          actionIcon={topNavbarContext?.actionIcon}
+          onAction={topNavbarContext?.onAction}
         />
         <div className="page-body">
           {renderLockedBusinessUnitInfoBox()}
@@ -18730,6 +18710,12 @@ export function useAppHandlers(state) {
 
       return (
         <section className="page-canvas page-canvas--detail">
+          <PageHeader
+            title={topNavbarContext?.title}
+            breadcrumb={topNavbarContext?.breadcrumb}
+            onBack={topNavbarContext?.onBack}
+            backAriaLabel={topNavbarContext?.backAriaLabel}
+          />
           <div className="page-body page-body--report-detail dashboard-report-detail__page-body dashboard-report-detail__page-body--inventory">
             {renderLockedBusinessUnitInfoBox()}
             <div className="dashboard-report-detail__overview dashboard-report-detail__overview--inventory">
@@ -18979,6 +18965,12 @@ export function useAppHandlers(state) {
 
       return (
         <section className="page-canvas page-canvas--detail">
+          <PageHeader
+            title={topNavbarContext?.title}
+            breadcrumb={topNavbarContext?.breadcrumb}
+            onBack={topNavbarContext?.onBack}
+            backAriaLabel={topNavbarContext?.backAriaLabel}
+          />
           <div className="page-body page-body--report-detail">
             {renderLockedBusinessUnitInfoBox()}
             <div className="dashboard-discount-report">
@@ -19223,6 +19215,17 @@ export function useAppHandlers(state) {
       return (
         <section className="page-canvas page-canvas--detail">
           <div className="dashboard-page-sticky">
+            <PageHeader
+              title={topNavbarContext?.title}
+              breadcrumb={topNavbarContext?.breadcrumb}
+              onBack={topNavbarContext?.onBack}
+              backAriaLabel={topNavbarContext?.backAriaLabel}
+            />
+            {renderLockedBusinessUnitInfoBox() ? (
+              <div className="dashboard-page-sticky__banner">
+                {renderLockedBusinessUnitInfoBox()}
+              </div>
+            ) : null}
             <div className="dashboard-page-sticky__tabs">
               <div className="dashboard-report-detail__top-controls">
                 <div className="dashboard-report-tabs" role="tablist">
@@ -19320,7 +19323,6 @@ export function useAppHandlers(state) {
             </div>
           </div>
           <div className="page-body page-body--report-detail dashboard-report-detail__page-body">
-            {renderLockedBusinessUnitInfoBox()}
             {isDiscountUsageView ? (
               <div className="dashboard-report-detail__overview">
                 <div className="dashboard-report-detail__metric-grid dashboard-report-detail__metric-grid--sales-orders dashboard-report-detail__metric-grid--discount-usage">
@@ -19775,6 +19777,12 @@ export function useAppHandlers(state) {
 
     return (
       <section className="page-canvas page-canvas--detail">
+        <PageHeader
+          title={topNavbarContext?.title}
+          breadcrumb={topNavbarContext?.breadcrumb}
+          onBack={topNavbarContext?.onBack}
+          backAriaLabel={topNavbarContext?.backAriaLabel}
+        />
         <div className="page-body page-body--report-detail">
           {renderLockedBusinessUnitInfoBox()}
           <div className="dashboard-discount-report">
@@ -20031,24 +20039,58 @@ export function useAppHandlers(state) {
       case "catalog":
       case "catalog-detail":
       case "catalog-create":
-        return { title: "Catalog" };
+        return {
+          title: "Catalog",
+          actionLabel: "New Catalog",
+          onAction: openCatalogCreatePage,
+        };
       case "category":
       case "category-create":
-        return { title: "Category" };
+        return {
+          title: "Category",
+          actionLabel: PAGE_CONFIGS.category.actionLabel,
+          onAction: openCategoryCreatePage,
+        };
       case "unit":
       case "unit-create":
-        return { title: "Unit" };
+        return {
+          title: "Unit",
+          actionLabel: PAGE_CONFIGS.unit.actionLabel,
+          onAction: openUnitCreatePage,
+        };
       case "modifier":
       case "modifier-create":
-        return { title: "Modifier" };
+        return {
+          title: "Modifier",
+          actionLabel: PAGE_CONFIGS.modifier.actionLabel,
+          onAction: openModifierCreatePage,
+        };
       case "pricing-rule":
       case "pricing-rule-create":
-        return { title: "Pricing Rule" };
+        return {
+          title: "Pricing Rule",
+          actionLabel:
+            pricingRuleTab === "special"
+              ? PAGE_CONFIGS["pricing-rule"].actionLabel
+              : null,
+          onAction: openPricingRuleCreatePage,
+        };
       case "selling-time":
       case "selling-time-create":
-        return { title: "Selling Time" };
+        return {
+          title: "Selling Time",
+          actionLabel: PAGE_CONFIGS["selling-time"].actionLabel,
+          onAction: openSellingTimeCreatePage,
+        };
       case "dashboard":
         return { title: "Dashboard" };
+      case "settings":
+        return {
+          title: "Settings",
+          actionLabel: "Save Changes",
+          actionIcon: null,
+          onAction: () => showSnackbar("Settings saved successfully", "green"),
+        };
       case "dashboard-report-detail":
         return {
           title:
@@ -20074,15 +20116,27 @@ export function useAppHandlers(state) {
         };
       case "device-management":
       case "device-management-create":
-        return { title: "Device List" };
+        return {
+          title: "Device List",
+          actionLabel: PAGE_CONFIGS["device-management"].actionLabel,
+          onAction: openDeviceManagementCreatePage,
+        };
       case "grouped-device":
       case "grouped-device-create":
-        return { title: "KDS Group" };
+        return {
+          title: "KDS Group",
+          actionLabel: PAGE_CONFIGS["grouped-device"].actionLabel,
+          onAction: openGroupedDeviceCreatePage,
+        };
       case "role-management":
       case "role-management-create":
       case "role-access":
       case "role-access-create":
-        return { title: "Role Management" };
+        return {
+          title: "Role Management",
+          actionLabel: PAGE_CONFIGS["role-access"].actionLabel,
+          onAction: openRoleAccessCreatePage,
+        };
       default:
         return null;
     }
@@ -20471,7 +20525,6 @@ export function useAppHandlers(state) {
     deferredCurrentSearch,
     selectedSidebarBusinessUnit,
     isLockedSelectedBusinessUnit,
-    topNavbarContext,
     categoryRows,
     modifierRows,
     unitRows,

@@ -17,7 +17,6 @@ export default function CatalogListPage({
   filters,
   searchValue,
   onSearch,
-  onAction,
   onTableScroll,
   allVisibleSelected,
   onToggleAll,
@@ -52,8 +51,6 @@ export default function CatalogListPage({
           searchPlaceholder="Search catalog"
           searchValue={searchValue}
           onSearch={onSearch}
-          actionLabel="New Catalog"
-          onAction={onAction}
         />
         <div
           className="table-scroll"

@@ -168,10 +168,9 @@ export function TopNavbar({
   mobileMenuOpen,
   onToggleMobileMenu,
   onNotify,
-  pageContext = null,
 }) {
   return (
-    <header className={`top-navbar${pageContext ? " has-page-context" : ""}`}>
+    <header className="top-navbar">
       <div className="top-navbar__lead">
         {isMobile ? (
           <LabButton
@@ -180,28 +179,6 @@ export function TopNavbar({
             size="small"
             onClick={onToggleMobileMenu}
           />
-        ) : null}
-        {pageContext?.onBack ? (
-          <button
-            type="button"
-            className="top-navbar__back"
-            onClick={pageContext.onBack}
-            aria-label={pageContext.backAriaLabel ?? "Back"}
-          >
-            <ChevronIcon name="chevronLeft" size={24} direction="left" />
-          </button>
-        ) : null}
-        {pageContext ? (
-          <div className="top-navbar__page-copy">
-            <h1 className="top-navbar__page-title type-title-large">
-              {pageContext.title}
-            </h1>
-            {pageContext.breadcrumb ? (
-              <p className="top-navbar__page-breadcrumb type-body text-tertiary">
-                {pageContext.breadcrumb}
-              </p>
-            ) : null}
-          </div>
         ) : null}
       </div>
       <div className="top-navbar__actions">
@@ -228,11 +205,35 @@ export function TopNavbar({
   );
 }
 
-export function PageHeader({ title, actionLabel, actionIcon = "add", onAction }) {
+export function PageHeader({
+  title,
+  breadcrumb,
+  onBack,
+  backAriaLabel = "Back",
+  actionLabel,
+  actionIcon = "add",
+  onAction,
+  className = "",
+}) {
   return (
-    <div className="page-header">
+    <div className={`page-header${className ? ` ${className}` : ""}`}>
+      {onBack ? (
+        <button
+          type="button"
+          className="page-header__back"
+          onClick={onBack}
+          aria-label={backAriaLabel}
+        >
+          <ChevronIcon name="chevronLeft" size={24} direction="left" />
+        </button>
+      ) : null}
       <div className="page-header__title-wrap">
         <h1 className="page-header__title type-title-large">{title}</h1>
+        {breadcrumb ? (
+          <p className="page-header__breadcrumb type-body text-tertiary">
+            {breadcrumb}
+          </p>
+        ) : null}
       </div>
       {actionLabel ? (
         <LabButton

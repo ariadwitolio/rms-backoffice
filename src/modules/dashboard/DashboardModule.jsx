@@ -3,10 +3,12 @@ export default function DashboardModule({
   bodyClassName = "page-body",
   stickyContent = null,
   lockedInfoBox = null,
+  pageHeader = null,
   children,
 }) {
   return (
     <section className={className}>
+      {pageHeader}
       {stickyContent ? (
         <div className="dashboard-page-sticky">
           {lockedInfoBox ? (

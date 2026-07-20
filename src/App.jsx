@@ -51,7 +51,6 @@ export default function App() {
   const {
     selectedSidebarBusinessUnit,
     isLockedSelectedBusinessUnit,
-    topNavbarContext,
     renderCurrentPage,
     getNavigationPageId,
     handleToggleGroup,
@@ -90,7 +89,7 @@ export default function App() {
         className={`app-shell${sidebarCollapsed ? " is-sidebar-collapsed" : ""
           }`}
         style={{
-          "--top-navbar-height": topNavbarContext ? "84px" : "60px",
+          "--top-navbar-height": "60px",
         }}
       >
         <Sidebar
@@ -120,7 +119,6 @@ export default function App() {
               setMobileMenuOpen((previous) => !previous)
             }
             onNotify={() => showSnackbar("No unread notifications", "grey")}
-            pageContext={topNavbarContext}
           />
           <main className="page-area">{renderCurrentPage()}</main>
         </div>
@@ -270,7 +268,7 @@ export default function App() {
       <Snackbar
         snackbar={snackbar}
         onDismiss={() => setSnackbar(null)}
-        topOffset={topNavbarContext ? "84px" : "60px"}
+        topOffset="60px"
       />
     </>
   );
