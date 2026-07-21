@@ -15353,10 +15353,6 @@ export function useAppHandlers(state) {
 
     if (Object.keys(errors).length) {
       setGroupedDeviceDraftErrors(errors);
-      const isOnlyDuplicateName = Object.keys(errors).length === 1 && typeof errors.name === "string";
-      if (!isOnlyDuplicateName) {
-        showSnackbar("Please fill in all required fields", "red");
-      }
       return;
     }
     const newGroup = {
@@ -15723,10 +15719,6 @@ export function useAppHandlers(state) {
 
     if (Object.keys(errors).length) {
       setGroupedDeviceDetailDraftErrors(errors);
-      const isOnlyDuplicateName = Object.keys(errors).length === 1 && typeof errors.name === "string";
-      if (!isOnlyDuplicateName) {
-        showSnackbar("Please fill in all required fields", "red");
-      }
       return;
     }
 
