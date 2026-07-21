@@ -93,7 +93,7 @@ export function buildGroupedDeviceSelectionOptions(
       (row) => row.id
     )
   );
-  const assignedIds = new Set();
+  const routedGroupNameByDeviceId = new Map();
 
   groupedDeviceGroups.forEach((group) => {
     if (group.id === currentGroupId) return;
@@ -102,20 +102,26 @@ export function buildGroupedDeviceSelectionOptions(
       deviceRows,
       group.deviceList || []
     ).forEach((row) => {
-      assignedIds.add(row.id);
+      if (!routedGroupNameByDeviceId.has(row.id)) {
+        routedGroupNameByDeviceId.set(row.id, group.name);
+      }
     });
   });
 
   return deviceRows
-    .filter(
-      (row) =>
-        row.deviceType === "Kitchen Display System (KDS)" &&
-        (!assignedIds.has(row.id) || currentIds.has(row.id))
-    )
-    .map((row) => ({
-      value: row.id,
-      label: row.deviceName,
-    }));
+    .filter((row) => row.deviceType === "Kitchen Display System (KDS)")
+    .map((row) => {
+      const routedGroupName = currentIds.has(row.id)
+        ? null
+        : routedGroupNameByDeviceId.get(row.id) ?? null;
+
+      return {
+        value: row.id,
+        label: row.deviceName,
+        disabled: Boolean(routedGroupName),
+        subtitle: routedGroupName ? `Routed to ${routedGroupName}` : "",
+      };
+    });
 }
 
 export function buildGroupedDeviceCatalogSelectionGroups(
@@ -127,7 +133,7 @@ export function buildGroupedDeviceCatalogSelectionGroups(
   const currentIds = new Set(
     getNormalizedGroupedDeviceCatalogIds(catalogRows, currentValues)
   );
-  const assignedIds = new Set();
+  const routedGroupNameByCatalogId = new Map();
 
   groupedDeviceGroups.forEach((group) => {
     if (group.id === currentGroupId) return;
@@ -136,20 +142,25 @@ export function buildGroupedDeviceCatalogSelectionGroups(
       catalogRows,
       group.catalogList || []
     ).forEach((catalogId) => {
-      assignedIds.add(catalogId);
+      if (!routedGroupNameByCatalogId.has(catalogId)) {
+        routedGroupNameByCatalogId.set(catalogId, group.name);
+      }
     });
   });
 
   return baseGroups
     .map((group) => {
-      const items = (group.items || [])
-        .filter(
-          (item) => currentIds.has(item.id) || !assignedIds.has(item.id)
-        )
-        .map((item) => ({
+      const items = (group.items || []).map((item) => {
+        const routedGroupName = currentIds.has(item.id)
+          ? null
+          : routedGroupNameByCatalogId.get(item.id) ?? null;
+
+        return {
           ...item,
           value: item.id,
-        }));
+          routedGroupName,
+        };
+      });
 
       return items.length ? { ...group, items } : null;
     })
@@ -238,26 +249,40 @@ const ENTITY_APP_ROLE_PERMISSION_MODULES = [
   {
     id: "cashier",
     label: "Point of Sales",
-    permittedLevels: ["none", "view", "edit"],
-    levelLabels: { edit: "Full Access (Create + Edit)" },
+    permittedLevels: ["none", "full"],
+    levelLabels: { full: "Full Access" },
     additionalAccess: [
       { id: "approveVoid", label: "Approve VOID Request" },
       { id: "approveDiscount", label: "Approve Discount Request" },
     ],
   },
-  { id: "printer-settings", label: "Printer Settings" },
+  {
+    id: "printer-settings",
+    label: "Printer Settings",
+    permittedLevels: ["none", "view", "full"],
+    levelLabels: { full: "Full Access" },
+    dependsOnModuleId: "cashier",
+  },
 ];
 
 const PAYMENT_APP_ROLE_PERMISSION_MODULES = [
   {
     id: "payment",
     label: "Payment",
+    permittedLevels: ["none", "full"],
+    levelLabels: { full: "Full Access" },
     additionalAccess: [
       { id: "inputManualTransaction", label: "Input Manual Transaction" },
       { id: "addOrderItem", label: "Add Order Item" },
     ],
   },
-  { id: "printer-settings", label: "Printer Settings" },
+  {
+    id: "printer-settings-payment",
+    label: "Printer Settings",
+    permittedLevels: ["none", "view", "full"],
+    levelLabels: { full: "Full Access" },
+    dependsOnModuleId: "payment",
+  },
 ];
 
 export const ROLE_PERMISSION_GROUPS = [

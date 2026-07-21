@@ -242,15 +242,17 @@ export function DetailSelectField({
         : "";
   const hasError = Boolean(errorMessage);
   const [isOpen, setIsOpen] = useState(false);
+  const [search, setSearch] = useState("");
   const rootRef = useRef(null);
   const normalizedOptions = options.map((option) =>
     typeof option === "string"
-      ? { value: option, label: option, subtitle: "", indentLevel: 0 }
+      ? { value: option, label: option, subtitle: "", indentLevel: 0, disabled: false }
       : {
         value: option.value ?? option.label ?? "",
         label: option.label ?? option.value ?? "",
         subtitle: option.subtitle ?? "",
         indentLevel: Math.max(0, Number(option.indentLevel ?? 0) || 0),
+        disabled: Boolean(option.disabled),
       }
   );
   const normalizedValue = multiple
@@ -262,6 +264,12 @@ export function DetailSelectField({
   const getOptionLabel = (optionValue) =>
     normalizedOptions.find((option) => option.value === optionValue)?.label ??
     optionValue;
+  const showSearch = normalizedOptions.length > 5;
+  const filteredOptions = showSearch
+    ? normalizedOptions.filter((option) =>
+      option.label.toLowerCase().includes(search.trim().toLowerCase())
+    )
+    : normalizedOptions;
 
   useEffect(() => {
     if (!isOpen) return undefined;
@@ -269,12 +277,14 @@ export function DetailSelectField({
     function handlePointerDown(event) {
       if (rootRef.current && !rootRef.current.contains(event.target)) {
         setIsOpen(false);
+        setSearch("");
       }
     }
 
     function handleEscape(event) {
       if (event.key === "Escape") {
         setIsOpen(false);
+        setSearch("");
       }
     }
 
@@ -327,7 +337,11 @@ export function DetailSelectField({
             }`}
           aria-expanded={isOpen}
           disabled={disabled}
-          onClick={() => { if (!disabled) setIsOpen((previous) => !previous); }}
+          onClick={() => {
+            if (disabled) return;
+            setIsOpen((previous) => !previous);
+            setSearch("");
+          }}
         >
           {multiple && !isMultipleSummary ? (
             <span className="catalog-detail-field__value-stack">
@@ -371,11 +385,34 @@ export function DetailSelectField({
         </button>
         {isOpen ? (
           <div className="catalog-detail-field__menu">
+            {showSearch ? (
+              <div className="catalog-detail-field__search-wrap">
+                <label className="catalog-detail-field__search">
+                  <Icon
+                    name="search"
+                    className="lab-icon lab-icon--18"
+                    alt="Search"
+                  />
+                  <input
+                    type="search"
+                    className="type-body"
+                    placeholder="Search"
+                    value={search}
+                    onChange={(event) => setSearch(event.target.value)}
+                    onClick={(event) => event.stopPropagation()}
+                  />
+                </label>
+              </div>
+            ) : null}
             {normalizedOptions.length === 0 ? (
               <p className="catalog-detail-field__empty type-subtitle-2">
                 {emptyCopy}
               </p>
-            ) : normalizedOptions.map((option) => {
+            ) : filteredOptions.length === 0 ? (
+              <p className="catalog-detail-field__empty type-subtitle-2">
+                No options found
+              </p>
+            ) : filteredOptions.map((option) => {
               const isSelected = multiple
                 ? normalizedValue.includes(option.value)
                 : normalizedValue === option.value;
@@ -386,7 +423,7 @@ export function DetailSelectField({
                   type="button"
                   className={`catalog-detail-field__option${isSelected ? " is-selected" : ""
                     }${option.subtitle ? " has-subtitle" : ""}${multiple ? " is-multi" : ""
-                    }`}
+                    }${option.disabled ? " is-disabled" : ""}`}
                   style={
                     option.indentLevel
                       ? {
@@ -394,7 +431,10 @@ export function DetailSelectField({
                       }
                       : undefined
                   }
+                  disabled={option.disabled}
                   onClick={() => {
+                    if (option.disabled) return;
+
                     if (multiple) {
                       onChange(
                         isSelected
@@ -425,7 +465,10 @@ export function DetailSelectField({
                       {option.label}
                     </p>
                     {option.subtitle ? (
-                      <p className="catalog-detail-field__option-subtitle type-body text-secondary">
+                      <p
+                        className={`catalog-detail-field__option-subtitle type-body${option.disabled ? " text-warning" : " text-secondary"
+                          }`}
+                      >
                         {option.subtitle}
                       </p>
                     ) : null}

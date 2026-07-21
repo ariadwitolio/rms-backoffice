@@ -93,10 +93,12 @@ export function ModifierCatalogSelectionModal({
       .filter(Boolean)
     : groups;
   const allItems = filteredGroups.flatMap((group) => group.items ?? []);
-  const allItemValues = allItems.map((item) => item.value);
+  const selectableItemValues = allItems
+    .filter((item) => !item.routedGroupName)
+    .map((item) => item.value);
   const isAllSelected =
-    allItemValues.length > 0 &&
-    allItemValues.every((item) => normalizedValue.includes(item));
+    selectableItemValues.length > 0 &&
+    selectableItemValues.every((item) => normalizedValue.includes(item));
   const isAtLimit = normalizedValue.length >= MAX_CATALOG_SELECTION;
 
   useEffect(() => {
@@ -124,21 +126,25 @@ export function ModifierCatalogSelectionModal({
   }
 
   function toggleAllItems() {
-    onChange(isAllSelected ? [] : allItemValues);
+    onChange(isAllSelected ? [] : selectableItemValues);
   }
 
   function toggleGroup(group) {
-    const groupValues = group.items.map((item) => item.value);
-    const allSelected = groupValues.every((item) =>
-      normalizedValue.includes(item)
-    );
+    const selectableGroupValues = group.items
+      .filter((item) => !item.routedGroupName)
+      .map((item) => item.value);
+    const allSelected =
+      selectableGroupValues.length > 0 &&
+      selectableGroupValues.every((item) => normalizedValue.includes(item));
 
     if (allSelected) {
-      onChange(normalizedValue.filter((item) => !groupValues.includes(item)));
+      onChange(
+        normalizedValue.filter((item) => !selectableGroupValues.includes(item))
+      );
       return;
     }
 
-    onChange(Array.from(new Set([...normalizedValue, ...groupValues])));
+    onChange(Array.from(new Set([...normalizedValue, ...selectableGroupValues])));
   }
 
   return (
@@ -222,17 +228,22 @@ export function ModifierCatalogSelectionModal({
                   </p>
                 </button>
                 {filteredGroups.map((group) => {
-                  const groupValues = group.items.map((item) => item.value);
-                  const selectedCount = groupValues.filter((item) =>
+                  const selectableGroupValues = group.items
+                    .filter((item) => !item.routedGroupName)
+                    .map((item) => item.value);
+                  const selectedCount = selectableGroupValues.filter((item) =>
                     normalizedValue.includes(item)
                   ).length;
                   const indicatorClassName =
-                    selectedCount === groupValues.length
+                    selectableGroupValues.length > 0 &&
+                      selectedCount === selectableGroupValues.length
                       ? " is-selected"
                       : selectedCount > 0
                         ? " is-partial"
                         : "";
-                  const isGroupDisabled = isAtLimit && selectedCount < groupValues.length;
+                  const isGroupDisabled =
+                    selectableGroupValues.length === 0 ||
+                    (isAtLimit && selectedCount < selectableGroupValues.length);
 
                   return (
                     <div
@@ -263,13 +274,14 @@ export function ModifierCatalogSelectionModal({
                       {group.items.map((item) => {
                         const isSelected = normalizedValue.includes(item.value);
                         const isAtCatalogLimit = Boolean(item.atModifierLimit) && !isSelected;
-                        const isItemDisabled = (isAtLimit && !isSelected) || isAtCatalogLimit;
+                        const isRouted = Boolean(item.routedGroupName) && !isSelected;
+                        const isItemDisabled = (isAtLimit && !isSelected) || isAtCatalogLimit || isRouted;
 
                         return (
                           <button
                             key={item.id}
                             type="button"
-                            className={`modifier-catalog-select__item${isSelected ? " is-selected" : ""}${isAtCatalogLimit ? " is-at-limit" : ""}`}
+                            className={`modifier-catalog-select__item${isSelected ? " is-selected" : ""}${isAtCatalogLimit ? " is-at-limit" : ""}${isRouted ? " is-routed" : ""}`}
                             style={{
                               paddingLeft: `${16 + (item.indentLevel ?? group.indentLevel + 1) * 20}px`,
                             }}
@@ -286,8 +298,12 @@ export function ModifierCatalogSelectionModal({
                                 {item.label}
                               </p>
                               {isAtCatalogLimit ? (
-                                <p className="modifier-catalog-select__item-error type-body">
+                                <p className="modifier-catalog-select__item-note type-body">
                                   Already has 15 modifiers
+                                </p>
+                              ) : isRouted ? (
+                                <p className="modifier-catalog-select__item-note type-body">
+                                  Routed to {item.routedGroupName}
                                 </p>
                               ) : null}
                             </div>

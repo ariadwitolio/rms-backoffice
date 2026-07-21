@@ -157,10 +157,17 @@ export function PackageItemSelectField({
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [menuStyle, setMenuStyle] = useState(null);
+  const [search, setSearch] = useState("");
   const rootRef = useRef(null);
   const triggerRef = useRef(null);
   const menuRef = useRef(null);
   const displayValue = value || placeholder;
+  const showSearch = options.length > 5;
+  const filteredOptions = showSearch
+    ? options.filter((option) =>
+      option.toLowerCase().includes(search.trim().toLowerCase())
+    )
+    : options;
 
   useEffect(() => {
     if (!isOpen) return undefined;
@@ -174,11 +181,13 @@ export function PackageItemSelectField({
       )
         return;
       setIsOpen(false);
+      setSearch("");
     }
 
     function handleEscape(event) {
       if (event.key === "Escape") {
         setIsOpen(false);
+        setSearch("");
       }
     }
 
@@ -245,7 +254,7 @@ export function PackageItemSelectField({
       window.removeEventListener("resize", updateMenuPosition);
       window.removeEventListener("scroll", updateMenuPosition, true);
     };
-  }, [isOpen, options]);
+  }, [isOpen, options, filteredOptions.length]);
 
   return (
     <div
@@ -261,6 +270,7 @@ export function PackageItemSelectField({
         onClick={() => {
           if (disabled) return;
           setIsOpen((previous) => !previous);
+          setSearch("");
         }}
       >
         <p
@@ -283,7 +293,33 @@ export function PackageItemSelectField({
             data-catalog-detail-editor="true"
             style={menuStyle}
           >
-            {options.length ? (
+            {showSearch ? (
+              <div className="catalog-package-field__search-wrap">
+                <label className="catalog-package-field__search">
+                  <Icon
+                    name="search"
+                    className="lab-icon lab-icon--18"
+                    alt="Search"
+                  />
+                  <input
+                    type="search"
+                    className="type-body"
+                    placeholder="Search"
+                    value={search}
+                    onChange={(event) => setSearch(event.target.value)}
+                  />
+                </label>
+              </div>
+            ) : null}
+            {!options.length ? (
+              <p className="catalog-package-field__empty type-subtitle-2">
+                {emptyCopy}
+              </p>
+            ) : showSearch && !filteredOptions.length ? (
+              <p className="catalog-package-field__empty type-subtitle-2">
+                No options found
+              </p>
+            ) : (
               [
                 ...(allowClear
                   ? [
@@ -293,7 +329,7 @@ export function PackageItemSelectField({
                     },
                   ]
                   : []),
-                ...options.map((option) => ({
+                ...filteredOptions.map((option) => ({
                   value: option,
                   label: option,
                 })),
@@ -334,10 +370,6 @@ export function PackageItemSelectField({
                   </button>
                 );
               })
-            ) : (
-              <p className="catalog-package-field__empty type-subtitle-2">
-                {emptyCopy}
-              </p>
             )}
           </div>,
           document.body

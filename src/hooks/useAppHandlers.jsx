@@ -15445,7 +15445,9 @@ export function useAppHandlers(state) {
                       selectedValues,
                       selectedLabels,
                       placeholder,
-                      totalOptions: deviceSelectionOptions.length,
+                      totalOptions: deviceSelectionOptions.filter(
+                        (option) => !option.disabled
+                      ).length,
                     })
                   }
                 />
@@ -15589,7 +15591,9 @@ export function useAppHandlers(state) {
                           selectedValues,
                           selectedLabels,
                           placeholder,
-                          totalOptions: deviceSelectionOptions.length,
+                          totalOptions: deviceSelectionOptions.filter(
+                        (option) => !option.disabled
+                      ).length,
                         })
                       }
                     />

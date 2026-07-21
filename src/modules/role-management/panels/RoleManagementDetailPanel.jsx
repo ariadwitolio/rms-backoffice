@@ -1,6 +1,7 @@
 import React from "react";
 import { Icon } from "../../../components/icons/Icon.jsx";
 import { RolePermissionsList } from "../components/RolePermissionsList.jsx";
+import { applyRoleModuleDependencyCascade } from "../../../utils/roleUtils.js";
 
 export function RoleManagementDetailPanel({
   row,
@@ -292,7 +293,10 @@ export function RoleManagementDetailPanel({
                 sectionErrors={getScopedSectionErrors(["rms-apps"])}
                 isEditing={isEditing}
                 onChange={(modId, val) =>
-                  onChange("permissions", { ...draft.permissions, [modId]: val })
+                  onChange(
+                    "permissions",
+                    applyRoleModuleDependencyCascade({ ...draft.permissions, [modId]: val })
+                  )
                 }
                 onSectionToggle={handleRmsAppsSectionToggle}
                 structure={rmsAppsGroups.filter((g) => g.id === "rms-apps")}
@@ -305,7 +309,10 @@ export function RoleManagementDetailPanel({
                 sectionErrors={getScopedSectionErrors(["payment-app"])}
                 isEditing={isEditing}
                 onChange={(modId, val) =>
-                  onChange("permissions", { ...draft.permissions, [modId]: val })
+                  onChange(
+                    "permissions",
+                    applyRoleModuleDependencyCascade({ ...draft.permissions, [modId]: val })
+                  )
                 }
                 onSectionToggle={handleRmsAppsSectionToggle}
                 structure={rmsAppsGroups.filter((g) => g.id === "payment-app")}

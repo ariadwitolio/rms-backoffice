@@ -1,6 +1,11 @@
 import React, { useEffect, useRef, useState } from "react";
 import { ChevronIcon, Icon } from "../../../components/icons/Icon.jsx";
 import { LabCheckbox, Toggle } from "../../../components/ui/Primitives.jsx";
+import { isModuleDependencyEnabled } from "../../../utils/roleUtils.js";
+
+function getModuleDependencyDisabledState(module, permissions) {
+  return !isModuleDependencyEnabled(module, permissions);
+}
 
 const ROLE_ACCESS_LEVELS = [
   { id: "none", label: "No Access" },
@@ -25,6 +30,7 @@ const ROLE_PERMISSION_ICON_BY_MODULE = {
   "kitchen-display-system": "deviceManagement",
   payment: "deviceManagement",
   "printer-settings": "deviceManagement",
+  "printer-settings-payment": "deviceManagement",
 };
 
 function hasElevatedPermission(level) {
@@ -63,7 +69,13 @@ function buildPermissionEntry(module, level, additionalAccess = {}) {
   };
 }
 
-export function RolePermissionSelect({ value, onChange, permittedLevels, levelLabels }) {
+export function RolePermissionSelect({
+  value,
+  onChange,
+  permittedLevels,
+  levelLabels,
+  disabled = false,
+}) {
   const [isOpen, setIsOpen] = useState(false);
   const rootRef = useRef(null);
   const levels = permittedLevels
@@ -99,17 +111,20 @@ export function RolePermissionSelect({ value, onChange, permittedLevels, levelLa
   return (
     <div
       ref={rootRef}
-      className="catalog-detail-field"
+      className={`catalog-detail-field${disabled ? " is-disabled" : ""}`}
       style={{ width: "100%", maxWidth: "none" }}
     >
-      <span className="catalog-detail-field__shell">
+      <span className={`catalog-detail-field__shell${disabled ? " is-disabled" : ""}`}>
         <button
           type="button"
           className="catalog-detail-field__trigger"
           aria-expanded={isOpen}
-          onClick={() => setIsOpen((previous) => !previous)}
+          disabled={disabled}
+          onClick={() => { if (!disabled) setIsOpen((previous) => !previous); }}
         >
-          <p className="catalog-detail-field__value type-subtitle-2 catalog-detail-field__input--ellipsis">
+          <p
+            className={`catalog-detail-field__value type-subtitle-2 catalog-detail-field__input--ellipsis${disabled ? " text-tertiary" : ""}`}
+          >
             {getLabel(selectedLevel)}
           </p>
           <span className="catalog-detail-field__chevron">
@@ -269,8 +284,12 @@ export function RolePermissionRow({
   onChange,
   isEditing,
   isChild = false,
+  disabled = false,
 }) {
-  const normalizedPermission = normalizePermission(module, permission);
+  const normalizedPermission = normalizePermission(
+    module,
+    disabled ? "none" : permission
+  );
   const baseLabel =
     ROLE_ACCESS_LEVELS.find((level) => level.id === normalizedPermission.level)
       ?.label ?? "No Access";
@@ -345,6 +364,7 @@ export function RolePermissionRow({
             value={normalizedPermission.level}
             permittedLevels={module.permittedLevels}
             levelLabels={module.levelLabels}
+            disabled={disabled}
             onChange={(nextLevel) =>
               onChange(
                 buildPermissionEntry(
@@ -608,6 +628,10 @@ function RolePermissionsGroup({
                                 }
                                 isEditing={isEditing}
                                 isChild={true}
+                                disabled={getModuleDependencyDisabledState(
+                                  childModule,
+                                  permissions
+                                )}
                               />
                             </div>
                           );
@@ -642,6 +666,10 @@ function RolePermissionsGroup({
                         }
                         isEditing={isEditing}
                         isChild={false}
+                        disabled={getModuleDependencyDisabledState(
+                          standaloneModule,
+                          permissions
+                        )}
                       />
                     </div>
                   </div>
@@ -666,6 +694,7 @@ function RolePermissionsGroup({
                   onChange={(nextPermission) => onChange(module.id, nextPermission)}
                   isEditing={isEditing}
                   isChild={false}
+                  disabled={getModuleDependencyDisabledState(module, permissions)}
                 />
               </div>
             ))

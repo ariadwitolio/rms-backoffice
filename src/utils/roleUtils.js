@@ -9,14 +9,31 @@ export function hasRolePermissionAccess(permission) {
   return getRolePermissionLevel(permission) !== "none";
 }
 
+export function isModuleDependencyEnabled(module, permissions = {}) {
+  if (!module?.dependsOnModuleId) return true;
+  return getRolePermissionLevel(permissions[module.dependsOnModuleId]) === "full";
+}
+
+export function applyRoleModuleDependencyCascade(permissions = {}) {
+  return ALL_ROLE_PERMISSION_MODULES.reduce((nextPermissions, module) => {
+    if (isModuleDependencyEnabled(module, nextPermissions)) {
+      return nextPermissions;
+    }
+
+    return { ...nextPermissions, [module.id]: "none" };
+  }, permissions);
+}
+
 export function createRolePermissions(overrides = {}) {
-  return ALL_ROLE_PERMISSION_MODULES.reduce(
+  const permissions = ALL_ROLE_PERMISSION_MODULES.reduce(
     (permissions, module) => ({
       ...permissions,
       [module.id]: overrides[module.id] ?? "none",
     }),
     {}
   );
+
+  return applyRoleModuleDependencyCascade(permissions);
 }
 
 export function createRolePermissionSections(

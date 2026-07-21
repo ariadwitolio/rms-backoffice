@@ -650,12 +650,13 @@ export function createInitialDataStore() {
         status: "Active",
         updated: "2 Apr 2026",
         permissions: createRolePermissions({
-          cashier: "edit",
-          "printer-settings": "edit",
+          cashier: "full",
+          "printer-settings": "full",
           payment: {
-            level: "edit",
+            level: "full",
             additionalAccess: { addOrderItem: true },
           },
+          "printer-settings-payment": "full",
         }),
       },
       {
@@ -672,12 +673,13 @@ export function createInitialDataStore() {
         status: "Active",
         updated: "2 Apr 2026",
         permissions: createRolePermissions({
-          cashier: "edit",
-          "printer-settings": "edit",
+          cashier: "full",
+          "printer-settings": "full",
           payment: {
-            level: "edit",
+            level: "full",
             additionalAccess: { inputManualTransaction: true },
           },
+          "printer-settings-payment": "full",
         }),
       },
       {
@@ -711,7 +713,7 @@ export function createInitialDataStore() {
           unit: "full",
           modifier: "full",
           cashier: {
-            level: "edit",
+            level: "full",
             additionalAccess: { approveVoid: true, approveDiscount: true },
           },
           "printer-settings": "full",
@@ -719,6 +721,7 @@ export function createInitialDataStore() {
             level: "full",
             additionalAccess: { inputManualTransaction: true, addOrderItem: true },
           },
+          "printer-settings-payment": "full",
         }),
       },
       {
@@ -746,8 +749,8 @@ export function createInitialDataStore() {
           "grouped-device": "edit",
           "table-management": "full",
           "device-management": "full",
-          cashier: "edit",
-          "printer-settings": "edit",
+          cashier: "full",
+          "printer-settings": "full",
         }),
       },
       {
@@ -760,7 +763,7 @@ export function createInitialDataStore() {
           { id: "mbr-010", name: "Cook Alex", email: "alex.cook@restaurant.com", status: "Invited" },
           { id: "mbr-011", name: "Sous Chef Tom", email: "tom.sous@restaurant.com", status: "Locked" },
         ],
-        description: "Oversees kitchen display workflows and printer coordination.",
+        description: "Oversees kitchen display workflows and catalog visibility.",
         status: "Inactive",
         updated: "19 Mar 2026",
         permissions: createRolePermissions({
@@ -768,7 +771,6 @@ export function createInitialDataStore() {
           category: "view",
           modifier: "view",
           device: "view",
-          "printer-settings": "edit",
         }),
       },
       {
@@ -790,10 +792,10 @@ export function createInitialDataStore() {
           category: "view",
           unit: "view",
           cashier: {
-            level: "edit",
+            level: "full",
             additionalAccess: { approveVoid: true },
           },
-          "printer-settings": "edit",
+          "printer-settings": "full",
         }),
       },
       {
@@ -824,9 +826,7 @@ export function createInitialDataStore() {
           "grouped-device": "view",
           "table-management": "view",
           "device-management": "view",
-          cashier: "view",
           "kitchen-display-system": "view",
-          "printer-settings": "view",
         }),
       },
     ],
