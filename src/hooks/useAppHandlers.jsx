@@ -3496,6 +3496,23 @@ export function useAppHandlers(state) {
         : null;
     const isKdsDevice =
       deletedDeviceRecord?.deviceType === "Kitchen Display System (KDS)";
+    const activeCatalogDetailDraft = catalogDetailDraftRef.current;
+    const shouldSyncPackageDetailDraft =
+      Boolean(deletedCatalogRecord) &&
+      Boolean(activeCatalogDetailDraft) &&
+      activeCatalogDetailDraft.id !== rowId &&
+      activeCatalogDetailDraft.type === "package" &&
+      Array.isArray(activeCatalogDetailDraft.packageItems);
+    const nextCatalogDetailDraft = shouldSyncPackageDetailDraft
+      ? {
+        ...activeCatalogDetailDraft,
+        packageItems: normalizePackageItems(
+          activeCatalogDetailDraft.packageItems.filter(
+            (item) => item.catalogId !== deletedCatalogRecord.name
+          )
+        ),
+      }
+      : null;
     setRecords((previous) => ({
       ...previous,
       [pageId]: previous[pageId].filter((row) => row.id !== rowId),
@@ -3590,6 +3607,18 @@ export function useAppHandlers(state) {
       ...previous,
       [pageId]: previous[pageId].filter((id) => id !== rowId),
     }));
+    if (nextCatalogDetailDraft) {
+      setCatalogDetailDraft(nextCatalogDetailDraft);
+      catalogDetailDraftRef.current = nextCatalogDetailDraft;
+      if (catalogDetailSnapshotRef.current?.id === activeCatalogDetailDraft.id) {
+        const nextSnapshot = {
+          ...catalogDetailSnapshotRef.current,
+          packageItems: nextCatalogDetailDraft.packageItems,
+        };
+        setCatalogDetailSnapshot(nextSnapshot);
+        catalogDetailSnapshotRef.current = nextSnapshot;
+      }
+    }
     showSnackbar(itemLabel ? `${itemLabel} has been deleted` : "Data has been deleted", "black");
   }
 
