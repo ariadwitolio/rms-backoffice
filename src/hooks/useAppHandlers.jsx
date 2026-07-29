@@ -3166,12 +3166,36 @@ export function useAppHandlers(state) {
       const solePackages = assignedPackages.filter(
         (p) => (p.packageItems || []).filter((item) => item.catalogId).length === 1
       );
+      const assignedKdsGroups = (records["grouped-device"] || []).filter((group) => {
+        const assignedCatalogIds = getNormalizedGroupedDeviceCatalogIds(
+          records.catalog || [],
+          group.catalogList || []
+        );
+        return assignedCatalogIds.includes(catalogRecord?.id);
+      });
+      const emptyKdsGroups = assignedKdsGroups.filter((group) => {
+        const assignedCatalogIds = getNormalizedGroupedDeviceCatalogIds(
+          records.catalog || [],
+          group.catalogList || []
+        );
+        return assignedCatalogIds.filter((catalogId) => catalogId !== catalogRecord?.id).length === 0;
+      });
+
       if (solePackages.length > 0) {
         const solePackageNames = solePackages.map((p) => `"${p.name}"`).join(", ");
         setDeleteBlockedModal({
           open: true,
           title: `Cannot Delete Catalog "${catalogRecord?.name}"`,
           message: `"${catalogRecord?.name}" is the only catalog item in the package ${solePackageNames}. A package must have at least one catalog item, so this catalog item cannot be deleted while it's the sole item in that package.`,
+        });
+        return;
+      }
+      if (emptyKdsGroups.length > 0) {
+        const emptyGroupNames = emptyKdsGroups.map((group) => `"${group.name}"`).join(", ");
+        setDeleteBlockedModal({
+          open: true,
+          title: `Cannot Delete Catalog "${catalogRecord?.name}"`,
+          message: `"${catalogRecord?.name}" is the only catalog assigned to the KDS group ${emptyGroupNames}. A KDS group must have at least one catalog, so this catalog item cannot be deleted while it's the sole assigned catalog for that KDS group.`,
         });
         return;
       }
@@ -3557,6 +3581,16 @@ export function useAppHandlers(state) {
                 }
                 : row
             ),
+          "grouped-device": (previous["grouped-device"] || []).map((group) => ({
+            ...group,
+            catalogList: (group.catalogList || []).filter((value) => {
+              const normalizedValue = String(value ?? "");
+              return (
+                normalizedValue !== String(deletedCatalogRecord.id) &&
+                normalizedValue !== String(deletedCatalogRecord.name)
+              );
+            }),
+          })),
         }
         : {}),
       ...(isKdsDevice
