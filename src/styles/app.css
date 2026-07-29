@@ -10741,7 +10741,13 @@ textarea::placeholder,
   display: flex;
   justify-content: center;
   margin-bottom: 2px;
+  padding: 0 30px;
   position: relative;
+}
+
+.discard-changes-modal__header p {
+  max-width: 100%;
+  text-align: center;
 }
 
 .discard-changes-modal__close {
@@ -10753,8 +10759,7 @@ textarea::placeholder,
   padding: 0;
   position: absolute;
   right: 0;
-  top: 50%;
-  transform: translateY(-50%);
+  top: 3px;
 }
 
 .discard-changes-modal__copy {

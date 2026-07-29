@@ -224,6 +224,7 @@ export default function App() {
       <DeleteConfirmationModal
         open={deleteConfirmationOpen}
         itemLabel={deleteConfirmationTarget.itemLabel}
+        title={deleteConfirmationTarget.title}
         message={deleteConfirmationTarget.message}
         onClose={cancelDeleteRequest}
         onConfirm={confirmDeleteRow}

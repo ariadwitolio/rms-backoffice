@@ -3154,6 +3154,25 @@ export function useAppHandlers(state) {
         return;
       }
     }
+    if (pageId === "catalog") {
+      const catalogRecord = (records.catalog || []).find((r) => r.id === rowId);
+      const assignedPackages = (records.catalog || []).filter(
+        (c) =>
+          c.type === "package" &&
+          (c.packageItems || []).some(
+            (item) => item.catalogId === catalogRecord?.name
+          )
+      );
+      if (assignedPackages.length > 0) {
+        const packageNames = assignedPackages.map((p) => `"${p.name}"`).join(", ");
+        const isMultiple = assignedPackages.length > 1;
+        const title = `Delete Catalog "${catalogRecord?.name}" Included in ${isMultiple ? "Packages" : "a Package"}?`;
+        const msg = `"${catalogRecord?.name}" is currently included in the ${isMultiple ? "packages" : "package"} ${packageNames}. Deleting this catalog item will automatically remove it from the ${isMultiple ? "packages" : "package"}. This action cannot be undone.`;
+        setDeleteConfirmationTarget({ pageId, rowId, itemLabel, title, message: msg });
+        setDeleteConfirmationOpen(true);
+        return;
+      }
+    }
     setDeleteConfirmationTarget({ pageId, rowId, itemLabel, message: null });
     setDeleteConfirmationOpen(true);
   }
@@ -3457,6 +3476,8 @@ export function useAppHandlers(state) {
         : null;
     const deletedCategoryRecord =
       pageId === "category" ? (records.category || []).find((row) => row.id === rowId) : null;
+    const deletedCatalogRecord =
+      pageId === "catalog" ? (records.catalog || []).find((row) => row.id === rowId) : null;
     const deletedDeviceRecord =
       pageId === "device-management"
         ? (records["device-management"] || []).find((row) => row.id === rowId)
@@ -3489,6 +3510,24 @@ export function useAppHandlers(state) {
               ? { ...row, category: "" }
               : row
           ),
+        }
+        : {}),
+      ...(deletedCatalogRecord
+        ? {
+          catalog: previous.catalog
+            .filter((row) => row.id !== rowId)
+            .map((row) =>
+              row.type === "package" && Array.isArray(row.packageItems)
+                ? {
+                  ...row,
+                  packageItems: normalizePackageItems(
+                    row.packageItems.filter(
+                      (item) => item.catalogId !== deletedCatalogRecord.name
+                    )
+                  ),
+                }
+                : row
+            ),
         }
         : {}),
       ...(isKdsDevice

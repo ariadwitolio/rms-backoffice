@@ -442,7 +442,7 @@ export function DevicePairingRequestModal({
   return createPortal(content, document.body);
 }
 
-export function DeleteConfirmationModal({ open, itemLabel, message, onClose, onConfirm }) {
+export function DeleteConfirmationModal({ open, itemLabel, title, message, onClose, onConfirm }) {
   if (!open) return null;
 
   return (
@@ -456,7 +456,7 @@ export function DeleteConfirmationModal({ open, itemLabel, message, onClose, onC
       >
         <div className="discard-changes-modal__header">
           <p id="delete-confirmation-modal-title" className="type-title-1">
-            {itemLabel ? `Delete ${itemLabel}?` : "Delete Data?"}
+            {title ?? (itemLabel ? `Delete ${itemLabel}?` : "Delete Data?")}
           </p>
           <button
             type="button"
