@@ -3163,6 +3163,18 @@ export function useAppHandlers(state) {
             (item) => item.catalogId === catalogRecord?.name
           )
       );
+      const solePackages = assignedPackages.filter(
+        (p) => (p.packageItems || []).filter((item) => item.catalogId).length === 1
+      );
+      if (solePackages.length > 0) {
+        const solePackageNames = solePackages.map((p) => `"${p.name}"`).join(", ");
+        setDeleteBlockedModal({
+          open: true,
+          title: `Cannot Delete Catalog "${catalogRecord?.name}"`,
+          message: `"${catalogRecord?.name}" is the only catalog item in the package ${solePackageNames}. A package must have at least one catalog item, so this catalog item cannot be deleted while it's the sole item in that package.`,
+        });
+        return;
+      }
       if (assignedPackages.length > 0) {
         const packageNames = assignedPackages.map((p) => `"${p.name}"`).join(", ");
         const isMultiple = assignedPackages.length > 1;
