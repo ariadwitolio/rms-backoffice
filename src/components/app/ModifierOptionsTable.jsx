@@ -33,6 +33,11 @@ export function ModifierOptionsTable({
   }
 
   const showAvailabilityColumn = !isEditing || showAvailabilityInEditing;
+  // Availability + delete must live in a single sticky cell rather than two
+  // separate sticky cells: two independent `position: sticky` siblings pinned
+  // to the same edge trigger a Chromium repaint bug that leaves stale toggle
+  // pixels ghosted over the scrolled content during fast horizontal scroll.
+  const combineAvailabilityWithAction = isEditing && showAvailabilityColumn;
 
   function handleScroll(event) {
     const node = event.currentTarget;
@@ -69,14 +74,22 @@ export function ModifierOptionsTable({
             <div className="modifier-option-table__header-cell modifier-option-table__header-cell--qty">
               <p className="type-title-3">Qty</p>
             </div>
-            {showAvailabilityColumn ? (
-              <div className="modifier-option-table__header-cell modifier-option-table__header-cell--availability">
+            {combineAvailabilityWithAction ? (
+              <div className="modifier-option-table__header-cell modifier-option-table__header-cell--availability-action">
                 <p className="type-title-3">Availability</p>
               </div>
-            ) : null}
-            {isEditing ? (
-              <div className="modifier-option-table__header-cell modifier-option-table__header-cell--action" />
-            ) : null}
+            ) : (
+              <>
+                {showAvailabilityColumn ? (
+                  <div className="modifier-option-table__header-cell modifier-option-table__header-cell--availability">
+                    <p className="type-title-3">Availability</p>
+                  </div>
+                ) : null}
+                {isEditing ? (
+                  <div className="modifier-option-table__header-cell modifier-option-table__header-cell--action" />
+                ) : null}
+              </>
+            )}
           </div>
           {options.map((option, index) => {
             const optionNameError = optionNameErrors.includes(option.id);
@@ -212,8 +225,8 @@ export function ModifierOptionsTable({
                     </p>
                   )}
                 </div>
-                {showAvailabilityColumn ? (
-                  <div className="modifier-option-table__cell modifier-option-table__cell--availability">
+                {combineAvailabilityWithAction ? (
+                  <div className="modifier-option-table__cell modifier-option-table__cell--availability-action">
                     <Toggle
                       checked={option.isAvailable !== false}
                       onChange={() =>
@@ -225,10 +238,6 @@ export function ModifierOptionsTable({
                       }
                       ariaLabel={`Availability for ${option.name || "Option"}`}
                     />
-                  </div>
-                ) : null}
-                {isEditing ? (
-                  <div className="modifier-option-table__cell modifier-option-table__cell--action">
                     <TableActionButton
                       tooltip="Remove"
                       onClick={() => onRemoveOption?.(option.id)}
@@ -241,7 +250,40 @@ export function ModifierOptionsTable({
                       />
                     </TableActionButton>
                   </div>
-                ) : null}
+                ) : (
+                  <>
+                    {showAvailabilityColumn ? (
+                      <div className="modifier-option-table__cell modifier-option-table__cell--availability">
+                        <Toggle
+                          checked={option.isAvailable !== false}
+                          onChange={() =>
+                            onOptionChange?.(
+                              option.id,
+                              "isAvailable",
+                              option.isAvailable === false ? true : false
+                            )
+                          }
+                          ariaLabel={`Availability for ${option.name || "Option"}`}
+                        />
+                      </div>
+                    ) : null}
+                    {isEditing ? (
+                      <div className="modifier-option-table__cell modifier-option-table__cell--action">
+                        <TableActionButton
+                          tooltip="Remove"
+                          onClick={() => onRemoveOption?.(option.id)}
+                          ariaLabel={`Remove option ${index + 1}`}
+                        >
+                          <Icon
+                            name="delete"
+                            className="lab-icon lab-icon--16"
+                            alt="Delete"
+                          />
+                        </TableActionButton>
+                      </div>
+                    ) : null}
+                  </>
+                )}
               </div>
             );
           })}

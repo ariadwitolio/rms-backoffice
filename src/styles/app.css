@@ -7038,8 +7038,7 @@ img {
     minmax(156px, 0.9fr)
     minmax(192px, 1fr)
     minmax(108px, 0.7fr)
-    100px
-    48px;
+    148px;
 }
 
 .modifier-option-table--readonly .modifier-option-table__row {
@@ -7087,8 +7086,14 @@ img {
 }
 
 .modifier-option-table__header-cell--availability,
-.modifier-option-table__cell--availability {
+.modifier-option-table__cell--availability,
+.modifier-option-table__header-cell--availability-action,
+.modifier-option-table__cell--availability-action {
   justify-content: flex-start;
+}
+
+.modifier-option-table__cell--availability-action {
+  gap: 8px;
 }
 
 .modifier-option-table__cell {
@@ -7106,7 +7111,9 @@ img {
 }
 
 .modifier-option-table__row--header .modifier-option-table__header-cell--availability,
-.modifier-option-table__cell--availability {
+.modifier-option-table__cell--availability,
+.modifier-option-table__row--header .modifier-option-table__header-cell--availability-action,
+.modifier-option-table__cell--availability-action {
   padding-left: 20px;
 }
 
@@ -7182,25 +7189,22 @@ img {
   z-index: 2;
 }
 
+/* Only one sticky element is ever pinned to the right edge at a time.
+   Two independent `position: sticky; right: 0` siblings in the same row
+   (e.g. availability AND delete both sticky) trigger a Chromium repaint bug
+   that leaves stale toggle pixels ghosted over the scrolled-under content
+   during fast horizontal scroll. When editing with availability shown, the
+   toggle and delete button are combined into one `--availability-action`
+   cell instead, so there's still only one sticky element on that edge. */
 .modifier-option-table__header-cell--action,
 .modifier-option-table__cell--action,
 .modifier-option-table__header-cell--availability,
-.modifier-option-table__cell--availability {
+.modifier-option-table__cell--availability,
+.modifier-option-table__header-cell--availability-action,
+.modifier-option-table__cell--availability-action {
   position: sticky;
   right: 0;
   z-index: 2;
-}
-
-/* When both columns are visible (editing with availability shown), availability
-   sits to the left of the sticky action column instead of stacking on top of it. */
-.modifier-option-table--editable.modifier-option-table--with-availability .modifier-option-table__header-cell--availability,
-.modifier-option-table--editable.modifier-option-table--with-availability .modifier-option-table__cell--availability {
-  right: 48px;
-}
-
-.modifier-option-table--editable.modifier-option-table--with-availability .modifier-option-table__header-cell--action::before,
-.modifier-option-table--editable.modifier-option-table--with-availability .modifier-option-table__cell--action::before {
-  display: none;
 }
 
 .modifier-option-table__header-cell--handle::after,
@@ -7220,7 +7224,9 @@ img {
 .modifier-option-table__header-cell--action::before,
 .modifier-option-table__cell--action::before,
 .modifier-option-table__header-cell--availability::before,
-.modifier-option-table__cell--availability::before {
+.modifier-option-table__cell--availability::before,
+.modifier-option-table__header-cell--availability-action::before,
+.modifier-option-table__cell--availability-action::before {
   background: linear-gradient(to left, rgba(17, 24, 39, 0.1), rgba(17, 24, 39, 0));
   content: "";
   height: 100%;
@@ -7238,7 +7244,8 @@ img {
 }
 
 .modifier-option-table__scroll[data-scroll-right="true"] .modifier-option-table__cell--action::before,
-.modifier-option-table__scroll[data-scroll-right="true"] .modifier-option-table__cell--availability::before {
+.modifier-option-table__scroll[data-scroll-right="true"] .modifier-option-table__cell--availability::before,
+.modifier-option-table__scroll[data-scroll-right="true"] .modifier-option-table__cell--availability-action::before {
   opacity: 1;
 }
 
@@ -7307,7 +7314,8 @@ img {
 
 .modifier-option-table__row--header .modifier-option-table__header-cell--handle,
 .modifier-option-table__row--header .modifier-option-table__header-cell--action,
-.modifier-option-table__row--header .modifier-option-table__header-cell--availability {
+.modifier-option-table__row--header .modifier-option-table__header-cell--availability,
+.modifier-option-table__row--header .modifier-option-table__header-cell--availability-action {
   z-index: 3;
 }
 
