@@ -26,10 +26,13 @@ export function ModifierOptionsTable({
   addButtonDataAttribute,
   rowDataAttribute,
   emptyReadonlyContent = null,
+  showAvailabilityInEditing = false,
 }) {
   if (!isEditing && !options.length) {
     return emptyReadonlyContent;
   }
+
+  const showAvailabilityColumn = !isEditing || showAvailabilityInEditing;
 
   function handleScroll(event) {
     const node = event.currentTarget;
@@ -49,6 +52,7 @@ export function ModifierOptionsTable({
           className={`modifier-option-table ${isEditing
             ? "modifier-option-table--editable"
             : "modifier-option-table--readonly modifier-option-table--with-availability"
+            }${showAvailabilityInEditing ? " modifier-option-table--with-availability" : ""
             }`}
         >
           <div className="modifier-option-table__row modifier-option-table__row--header">
@@ -65,13 +69,14 @@ export function ModifierOptionsTable({
             <div className="modifier-option-table__header-cell modifier-option-table__header-cell--qty">
               <p className="type-title-3">Qty</p>
             </div>
-            {isEditing ? (
-              <div className="modifier-option-table__header-cell modifier-option-table__header-cell--action" />
-            ) : (
+            {showAvailabilityColumn ? (
               <div className="modifier-option-table__header-cell modifier-option-table__header-cell--availability">
                 <p className="type-title-3">Availability</p>
               </div>
-            )}
+            ) : null}
+            {isEditing ? (
+              <div className="modifier-option-table__header-cell modifier-option-table__header-cell--action" />
+            ) : null}
           </div>
           {options.map((option, index) => {
             const optionNameError = optionNameErrors.includes(option.id);
@@ -207,6 +212,21 @@ export function ModifierOptionsTable({
                     </p>
                   )}
                 </div>
+                {showAvailabilityColumn ? (
+                  <div className="modifier-option-table__cell modifier-option-table__cell--availability">
+                    <Toggle
+                      checked={option.isAvailable !== false}
+                      onChange={() =>
+                        onOptionChange?.(
+                          option.id,
+                          "isAvailable",
+                          option.isAvailable === false ? true : false
+                        )
+                      }
+                      ariaLabel={`Availability for ${option.name || "Option"}`}
+                    />
+                  </div>
+                ) : null}
                 {isEditing ? (
                   <div className="modifier-option-table__cell modifier-option-table__cell--action">
                     <TableActionButton
@@ -221,21 +241,7 @@ export function ModifierOptionsTable({
                       />
                     </TableActionButton>
                   </div>
-                ) : (
-                  <div className="modifier-option-table__cell modifier-option-table__cell--availability">
-                    <Toggle
-                      checked={option.isAvailable !== false}
-                      onChange={() =>
-                        onOptionChange?.(
-                          option.id,
-                          "isAvailable",
-                          option.isAvailable === false ? true : false
-                        )
-                      }
-                      ariaLabel={`Availability for ${option.name || "Option"}`}
-                    />
-                  </div>
-                )}
+                ) : null}
               </div>
             );
           })}

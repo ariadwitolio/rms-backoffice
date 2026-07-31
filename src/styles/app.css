@@ -7024,10 +7024,21 @@ img {
 .modifier-option-table--editable .modifier-option-table__row {
   grid-template-columns:
     40px
-    minmax(176px, 1.15fr)
+    minmax(150px, 1fr)
     minmax(156px, 0.9fr)
     minmax(192px, 1fr)
     minmax(108px, 0.7fr)
+    48px;
+}
+
+.modifier-option-table--editable.modifier-option-table--with-availability .modifier-option-table__row {
+  grid-template-columns:
+    40px
+    minmax(150px, 1fr)
+    minmax(156px, 0.9fr)
+    minmax(192px, 1fr)
+    minmax(108px, 0.7fr)
+    100px
     48px;
 }
 
@@ -7178,6 +7189,18 @@ img {
   position: sticky;
   right: 0;
   z-index: 2;
+}
+
+/* When both columns are visible (editing with availability shown), availability
+   sits to the left of the sticky action column instead of stacking on top of it. */
+.modifier-option-table--editable.modifier-option-table--with-availability .modifier-option-table__header-cell--availability,
+.modifier-option-table--editable.modifier-option-table--with-availability .modifier-option-table__cell--availability {
+  right: 48px;
+}
+
+.modifier-option-table--editable.modifier-option-table--with-availability .modifier-option-table__header-cell--action::before,
+.modifier-option-table--editable.modifier-option-table--with-availability .modifier-option-table__cell--action::before {
+  display: none;
 }
 
 .modifier-option-table__header-cell--handle::after,

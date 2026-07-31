@@ -14084,6 +14084,7 @@ export function useAppHandlers(state) {
                 <ModifierOptionsTable
                   options={visibleModifierOptions}
                   isEditing={isEditing}
+                  showAvailabilityInEditing
                   minimumSelection={modifierDetailDraft.minimumSelection}
                   dragOverOptionId={modifierDragOverOptionId}
                   optionNameErrors={modifierDetailErrors.optionNames ?? []}
