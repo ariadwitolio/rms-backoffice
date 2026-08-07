@@ -11,7 +11,9 @@
       "Bash(node nav6.js)",
       "Bash(node check.js)",
       "Bash(mkdir -p /private/tmp/claude-501/-Users-aria-Project-Web-rms-backoffice/0b332aae-f951-4507-b2e4-09d4d0d1d8e8/scratchpad/pw6)",
-      "Bash(npm init *)"
+      "Bash(npm init *)",
+      "Bash(node -e \"require\\('@babel/core'\\)\")",
+      "Bash(node --input-type=module --check)"
     ]
   }
 }

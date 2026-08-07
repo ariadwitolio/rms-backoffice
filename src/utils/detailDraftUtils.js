@@ -1,6 +1,6 @@
 import { ALL_SELLING_TIME_DAY_LABELS, SELLING_TIME_DAY_OPTIONS } from "../constants/catalog.js";
 import { createInitialCatalogDraft, createSellingTimeSlot, cloneSellingTimeSlots, normalizeUnitPrecisionOption, createSellingTimeDaySchedule, getSellingTimeSlotErrorKey } from "./catalogDraftUtils.js";
-import { createInitialModifierDraft, hasModifierOptionIngredient, isModifierOptionIngredientQtyValid, getModifierOptionIngredientQtyErrorIds } from "./modifierUtils.js";
+import { createInitialModifierDraft, hasModifierOptionIngredient, isModifierOptionIngredientQtyValid, getModifierOptionIngredientQtyErrorIds, getModifierOptionNameErrorIds, getModifierOptionDuplicateNameIds } from "./modifierUtils.js";
 
 export function createInitialDeviceManagementDraft() {
   return {
@@ -97,6 +97,14 @@ export function getModifierDetailValidationMessage(detailDraft, detailEditing) {
   if (!detailDraft || !detailEditing) return null;
 
   if (detailEditing.kind === "all" && !detailDraft.name.trim()) {
+    return "Field cannot be empty";
+  }
+
+  if (
+    detailEditing.kind === "all" &&
+    (getModifierOptionNameErrorIds(detailDraft.options ?? []).length ||
+      getModifierOptionDuplicateNameIds(detailDraft.options ?? []).length)
+  ) {
     return "Field cannot be empty";
   }
 
