@@ -3046,7 +3046,7 @@ export function useAppHandlers(state) {
     if (row) {
       showSnackbar(
         `${row.name} is now ${nextAvailability ? "active" : "inactive"}`,
-        "green"
+        "black"
       );
     }
   }
@@ -3110,7 +3110,7 @@ export function useAppHandlers(state) {
     if (row) {
       showSnackbar(
         `${row.name} is now ${nextAvailability ? "active" : "inactive"}`,
-        "green"
+        "black"
       );
     }
   }
@@ -3868,7 +3868,7 @@ export function useAppHandlers(state) {
 
   function handleSettingToggle(key) {
     setSettingsForm((previous) => ({ ...previous, [key]: !previous[key] }));
-    showSnackbar("Setting updated", "green");
+    showSnackbar("Setting updated", "black");
   }
 
   function buildCatalogRecordForStorage(detailRecord) {
@@ -3962,7 +3962,7 @@ export function useAppHandlers(state) {
     catalogDetailDraftRef.current = normalizedDraft;
 
     if (snackbarMessage) {
-      showSnackbar(snackbarMessage, "green");
+      showSnackbar(snackbarMessage, "black");
     }
 
     return normalizedDraft;
@@ -4055,7 +4055,7 @@ export function useAppHandlers(state) {
     categoryDetailDraftRef.current = normalizedDraft;
 
     if (snackbarMessage) {
-      showSnackbar(snackbarMessage, "green");
+      showSnackbar(snackbarMessage, "black");
     }
 
     return normalizedDraft;
@@ -4100,7 +4100,7 @@ export function useAppHandlers(state) {
     unitDetailDraftRef.current = normalizedDraft;
 
     if (snackbarMessage) {
-      showSnackbar(snackbarMessage, "green");
+      showSnackbar(snackbarMessage, "black");
     }
 
     return normalizedDraft;
@@ -4264,7 +4264,7 @@ export function useAppHandlers(state) {
     sellingTimeDetailDraftRef.current = normalizedDraft;
 
     if (snackbarMessage) {
-      showSnackbar(snackbarMessage, "green");
+      showSnackbar(snackbarMessage, "black");
     }
 
     return normalizedDraft;
@@ -4781,7 +4781,7 @@ export function useAppHandlers(state) {
     modifierDetailDraftRef.current = normalizedDraft;
 
     if (snackbarMessage) {
-      showSnackbar(snackbarMessage, "green");
+      showSnackbar(snackbarMessage, "black");
     }
 
     return normalizedDraft;
@@ -6744,7 +6744,7 @@ export function useAppHandlers(state) {
 
     setRoleAccessDetailEditing(null);
     setRoleAccessDetailErrors({});
-    showSnackbar("Role access updated", "green");
+    showSnackbar("Role access updated", "black");
   }
 
   function cancelRoleAccessDetailEdit() {
@@ -7042,7 +7042,7 @@ export function useAppHandlers(state) {
     pricingRuleDetailDraftRef.current = normalizedDraft;
 
     if (snackbarMessage) {
-      showSnackbar(snackbarMessage, "green");
+      showSnackbar(snackbarMessage, "black");
     }
 
     return normalizedDraft;
@@ -15363,7 +15363,7 @@ export function useAppHandlers(state) {
     }));
     setDeviceManagementDetailEditing(null);
     if (showSnackbarMessage) {
-      showSnackbar("Device name updated", "green");
+      showSnackbar("Device name updated", "black");
     }
     return true;
   }
@@ -15852,7 +15852,7 @@ export function useAppHandlers(state) {
     }));
     setGroupedDeviceDetailEditing(null);
     setGroupedDeviceDetailDraftErrors({});
-    showSnackbar("KDS group updated", "green");
+    showSnackbar("KDS group updated", "black");
   }
 
   function cancelGroupedDeviceDetailEdit() {
@@ -20200,7 +20200,7 @@ export function useAppHandlers(state) {
           title: "Settings",
           actionLabel: "Save Changes",
           actionIcon: null,
-          onAction: () => showSnackbar("Settings saved successfully", "green"),
+          onAction: () => showSnackbar("Settings saved successfully", "black"),
         };
       case "dashboard-report-detail":
         return {

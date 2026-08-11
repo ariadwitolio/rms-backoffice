@@ -13,7 +13,9 @@
       "Bash(mkdir -p /private/tmp/claude-501/-Users-aria-Project-Web-rms-backoffice/0b332aae-f951-4507-b2e4-09d4d0d1d8e8/scratchpad/pw6)",
       "Bash(npm init *)",
       "Bash(node -e \"require\\('@babel/core'\\)\")",
-      "Bash(node --input-type=module --check)"
+      "Bash(node --input-type=module --check)",
+      "Bash(awk '/\"green\"/{print NR\": \"$0}' /Users/aria/Project/Web/rms-backoffice/src/hooks/useAppHandlers.jsx)",
+      "Bash(awk 'NR<=3346 && /function /{name=$0; line=NR} END{print line\": \"name}' /Users/aria/Project/Web/rms-backoffice/src/hooks/useAppHandlers.jsx)"
     ]
   }
 }
