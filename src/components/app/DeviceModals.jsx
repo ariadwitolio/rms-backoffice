@@ -364,7 +364,7 @@ export function DevicePairingRequestModal({
   if (!open || !request) return null;
 
   const content = (
-    <div className="modal-overlay discard-changes-modal-overlay" onMouseDown={onClose}>
+    <div className="modal-overlay discard-changes-modal-overlay">
       <div
         className="discard-changes-modal device-pairing-request-modal"
         role="dialog"
@@ -379,14 +379,6 @@ export function DevicePairingRequestModal({
           >
             Confirm Device Connection
           </p>
-          <button
-            type="button"
-            className="discard-changes-modal__close"
-            onClick={onClose}
-            aria-label="Close device pairing request dialog"
-          >
-            <Icon name="modalClose" className="lab-icon lab-icon--20" alt="" />
-          </button>
         </div>
         <div className="device-pairing-request-modal__body">
           <div className="device-pairing-request-modal__identity">
