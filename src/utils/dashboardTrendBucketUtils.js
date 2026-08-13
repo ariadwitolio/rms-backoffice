@@ -3,6 +3,13 @@ import { formatDashboardReportDate, formatDashboardReportDateValue, parseDashboa
 import { getDashboardReportTrendWindow, getDashboardReportTrendAnchorDateForOffset, createDashboardCatalogPerformanceRows } from "./dashboardTrendUtils.js";
 import { getDashboardReportTrendAnchorDate, getDashboardReportTrendMeta } from "./dashboardPerformanceUtils.js";
 
+export function getShiftForHour(hour) {
+  if (hour >= 6 && hour <= 10) return "Breakfast";
+  if (hour >= 11 && hour <= 14) return "Lunch";
+  if (hour >= 15 && hour <= 17) return "Tea";
+  return "Dinner";
+}
+
 export function createDashboardReportTrendBuckets(
   rangeId,
   rows,
@@ -45,7 +52,10 @@ export function createDashboardReportTrendBuckets(
         labels: shiftLabels,
         getBucketId: (row) => {
           if (row.dateValue !== anchorValue) return null;
-          return shiftLabels.includes(row.shift) ? row.shift : null;
+          const hourValue = Number(String(row.time ?? "").slice(0, 2));
+          if (!Number.isFinite(hourValue)) return null;
+          const bucketIndex = shiftLabels.indexOf(getShiftForHour(hourValue));
+          return bucketIndex === -1 ? null : bucketIndex;
         },
       };
     }
@@ -163,6 +173,8 @@ export function createDashboardReportTrendPanel(
     "var(--feature-brand-primary)",
     "var(--feature-customer-primary)",
     "var(--status-orange-primary)",
+    "var(--feature-product-primary)",
+    "var(--feature-cashier-primary)",
   ];
   const byOrderColors = {
     Success: "var(--status-green-primary)",
@@ -183,7 +195,7 @@ export function createDashboardReportTrendPanel(
 
   const topGroups = Array.from(totals.entries())
     .sort((left, right) => right[1] - left[1])
-    .slice(0, 3)
+    .slice(0, detailView === "by-order-type" ? undefined : 3)
     .map(([groupKey]) => groupKey);
 
   const datasets = topGroups.map((groupKey, index) => ({
@@ -289,7 +301,6 @@ export function createDashboardSalesOrderRows(
       baseTotal: 52000,
     },
   ];
-  const shifts = ["Breakfast", "Lunch", "Tea", "Dinner"];
   const staffs = [
     "Natasha Smith",
     "Rendy Saputra",
@@ -384,7 +395,7 @@ export function createDashboardSalesOrderRows(
         modifier: modifiers[(dayOffset + orderIndex * 2) % modifiers.length],
         orderType,
         payment: payments[(dayOffset + orderIndex * 2) % payments.length],
-        shift: shifts[(dayOffset + orderIndex) % shifts.length],
+        shift: getShiftForHour(hourValue),
         staff: staffs[(dayOffset + orderIndex * 2) % staffs.length],
         table,
         status,

@@ -1,7 +1,7 @@
 import { formatShortMonth, formatDayMonth, shiftDateByDays, shiftDateByMonths, SALES_SUMMARY_RANGE_TABS } from "../constants/dashboard.js";
 
 export function formatIdr(amount) {
-  return `IDR ${new Intl.NumberFormat("id-ID").format(amount)}`;
+  return `IDR ${new Intl.NumberFormat("en-US").format(amount)}`;
 }
 
 export function createDashboardReportAnchorDate(anchorDate = new Date()) {

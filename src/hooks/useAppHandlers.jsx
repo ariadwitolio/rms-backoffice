@@ -2619,6 +2619,8 @@ export function useAppHandlers(state) {
 
   function handleSetDashboardReportDetailView(value) {
     setDashboardReportDetailView(value);
+    setDashboardReportTrendRange("hourly");
+    setDashboardReportTrendOffsets(createInitialDashboardReportTrendOffsets());
     resetDashboardSortState();
     resetPage("dashboard-report-detail");
   }

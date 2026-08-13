@@ -333,7 +333,7 @@ export function getNormalizedNominalDigits(value) {
 
 export function formatNominalInput(value) {
   const digits = getNormalizedNominalDigits(value);
-  return digits ? new Intl.NumberFormat("id-ID").format(Number(digits)) : "";
+  return digits ? new Intl.NumberFormat("en-US").format(Number(digits)) : "";
 }
 
 export function PriceField({ value, onChange, error = false }) {

@@ -114,10 +114,7 @@ export function getDashboardSalesBreakdownSummaryForTimeRange(
           ...row,
           valueValue: baseValue,
           scaledValue,
-          displayValue:
-            valueFormat === "qty"
-              ? new Intl.NumberFormat("en-US").format(scaledValue)
-              : new Intl.NumberFormat("id-ID").format(scaledValue),
+          displayValue: new Intl.NumberFormat("en-US").format(scaledValue),
         };
       }),
     })),

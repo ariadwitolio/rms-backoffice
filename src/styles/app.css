@@ -3414,9 +3414,12 @@ img {
   padding: var(--spacing-big) var(--spacing-big) var(--spacing-big);
 }
 
-.page-header + .dashboard-page-sticky__banner,
-.page-header + .dashboard-page-sticky__tabs {
+.page-header + .dashboard-page-sticky__banner {
   padding-top: 0;
+}
+
+.page-header + .dashboard-page-sticky__tabs {
+  padding-top: var(--spacing-sm);
 }
 
 .dashboard-page-sticky__tabs--with-control {
