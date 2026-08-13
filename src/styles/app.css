@@ -3415,7 +3415,7 @@ img {
 }
 
 .page-header + .dashboard-page-sticky__banner {
-  padding-top: 0;
+  padding-top: var(--spacing-sm);
 }
 
 .page-header + .dashboard-page-sticky__tabs {
