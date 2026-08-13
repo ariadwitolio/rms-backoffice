@@ -19201,11 +19201,24 @@ export function useAppHandlers(state) {
     const activeAggregateMeta = getDashboardReportAggregateMeta(
       dashboardReportDetailView
     );
+    const showEntityAggregateColumn =
+      ["by-item", "by-category", "by-modifier", "by-table"].includes(
+        dashboardReportDetailView
+      ) && !selectedSidebarBusinessUnit;
     const activeAggregateColumns =
       dashboardReportDetailView === "by-order"
         ? []
         : [
           { key: "groupLabel", label: activeAggregateMeta.label },
+          ...(showEntityAggregateColumn
+            ? [{ key: "businessUnit", label: "Entity", sortable: true }]
+            : []),
+          ...(dashboardReportDetailView === "by-table"
+            ? [
+              { key: "floor", label: "Floor", sortable: true },
+              { key: "section", label: "Section", sortable: true },
+            ]
+            : []),
           { key: "totalOrders", label: "Total Orders", align: "right", sortable: true, sortKey: "totalOrdersValue" },
           { key: "discountApplied", label: "Discount", align: "right", sortable: true, sortKey: "discountAppliedValue" },
           { key: "taxCollected", label: "Tax", align: "right", sortable: true, sortKey: "taxCollectedValue" },

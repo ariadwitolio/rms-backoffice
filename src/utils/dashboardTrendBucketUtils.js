@@ -319,13 +319,19 @@ export function createDashboardSalesOrderRows(
     "Oat Milk",
     "Extra Sambal",
   ];
-  const dineInTables = [
-    "Table 01",
-    "Table 03",
-    "Table 05",
-    "Table 08",
-    "Table 11",
-    "Table 14",
+  const tables = [
+    { name: "Table 01", floor: "Ground Floor", section: "Indoor" },
+    { name: "Table 02", floor: "Ground Floor", section: "Indoor" },
+    { name: "Table 03", floor: "Ground Floor", section: "Outdoor" },
+    { name: "Table 04", floor: "Ground Floor", section: "Outdoor" },
+    { name: "Table 05", floor: "1st Floor", section: "Indoor" },
+    { name: "Table 06", floor: "1st Floor", section: "Indoor" },
+    { name: "Table 07", floor: "1st Floor", section: "VIP" },
+    { name: "Table 08", floor: "1st Floor", section: "VIP" },
+    { name: "Table 09", floor: "2nd Floor", section: "Indoor" },
+    { name: "Table 10", floor: "2nd Floor", section: "Outdoor" },
+    { name: "Table 11", floor: "2nd Floor", section: "VIP" },
+    { name: "Table 12", floor: "2nd Floor", section: "VIP" },
   ];
 
   return Array.from({ length: 45 }, (_, dayOffset) => {
@@ -372,14 +378,7 @@ export function createDashboardSalesOrderRows(
         minuteValue
       ).padStart(2, "0")}`;
       const dateLabel = formatDashboardReportDate(date);
-      const table =
-        orderType === "Dine In"
-          ? dineInTables[(dayOffset + orderIndex) % dineInTables.length]
-          : orderType === "Take Away"
-            ? "Take Away Counter"
-            : orderType === "Delivery"
-              ? "Delivery Hub"
-              : "Pickup Shelf";
+      const tableInfo = tables[(dayOffset + orderIndex) % tables.length];
 
       return {
         id: `sales-order-${dateValue}-${catalog.id}-${orderIndex + 1}`,
@@ -397,7 +396,9 @@ export function createDashboardSalesOrderRows(
         payment: payments[(dayOffset + orderIndex * 2) % payments.length],
         shift: getShiftForHour(hourValue),
         staff: staffs[(dayOffset + orderIndex * 2) % staffs.length],
-        table,
+        table: tableInfo.name,
+        tableFloor: tableInfo.floor,
+        tableSection: tableInfo.section,
         status,
         time,
         totalGrossSales: formatIdr(grossSales),

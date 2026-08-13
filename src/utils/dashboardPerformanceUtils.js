@@ -181,17 +181,34 @@ export function getDashboardReportAggregateMeta(detailView) {
   }
 }
 
+const DASHBOARD_REPORT_ENTITY_BREAKDOWN_VIEWS = [
+  "by-item",
+  "by-category",
+  "by-modifier",
+  "by-table",
+];
+
 export function aggregateDashboardReportRows(rows, detailView, reportId) {
   const aggregateMeta = getDashboardReportAggregateMeta(detailView);
+  const groupByEntity =
+    DASHBOARD_REPORT_ENTITY_BREAKDOWN_VIEWS.includes(detailView);
   const groupedRows = new Map();
 
   rows.forEach((row) => {
     const groupValue = row[aggregateMeta.key] ?? "-";
-    const current = groupedRows.get(groupValue) ?? {
+    const businessUnit = row.businessUnit ?? "-";
+    const groupKey = groupByEntity
+      ? `${groupValue}||${businessUnit}`
+      : groupValue;
+    const current = groupedRows.get(groupKey) ?? {
       id: `${aggregateMeta.key}-${String(groupValue)
         .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")}`,
+        .replace(/[^a-z0-9]+/g, "-")}${groupByEntity ? `-${businessUnit.toLowerCase().replace(/[^a-z0-9]+/g, "-")}` : ""}`,
       groupLabel: groupValue,
+      ...(groupByEntity ? { businessUnit } : {}),
+      ...(detailView === "by-table"
+        ? { floor: row.tableFloor ?? "-", section: row.tableSection ?? "-" }
+        : {}),
       totalOrdersValue: 0,
       discountAppliedValue: 0,
       taxCollectedValue: 0,
@@ -204,7 +221,7 @@ export function aggregateDashboardReportRows(rows, detailView, reportId) {
     current.taxCollectedValue += row.taxCollectedValue ?? 0;
     current.totalGrossSalesValue += row.totalGrossSalesValue ?? 0;
     current.totalNetSalesValue += row.totalNetSalesValue ?? 0;
-    groupedRows.set(groupValue, current);
+    groupedRows.set(groupKey, current);
   });
 
   return Array.from(groupedRows.values())
