@@ -3310,6 +3310,13 @@ export function useAppHandlers(state) {
     return row.status === "Connected" ? row.deviceName : "-";
   }
 
+  function getPrinterConnectionDisplay(printerRow) {
+    if (printerRow?.connectionType === "Bluetooth") {
+      return { label: "Bluetooth ID", value: printerRow.bluetoothId ?? "-" };
+    }
+    return { label: "IP Address", value: printerRow?.ipAddress ?? "-" };
+  }
+
   function applyDeviceStatusChange(rowId, nextStatus, updates = {}) {
     setRecords((previous) => ({
       ...previous,
@@ -16018,41 +16025,46 @@ export function useAppHandlers(state) {
         return d.connectedDevices.includes(row.deviceName) || d.connectedDevices.includes(row.id);
       })
       .map((d) => d.deviceName);
-    const allConnectedNames = [...ownConnectedNames, ...reverseConnectedNames];
+    const allConnectedNamesRaw = [...ownConnectedNames, ...reverseConnectedNames];
+    // A printer's "Connected Device" tab should only ever list the tablets/POS/KDS/Kiosk
+    // devices attached to it, never another printer.
+    const allConnectedNames = isPrinterDevice
+      ? allConnectedNamesRaw.filter(
+          (name) => allDeviceRecords.find((item) => item.deviceName === name)?.deviceType !== "Printer"
+        )
+      : allConnectedNamesRaw;
 
     const connectedDeviceDetails = allConnectedNames.map((connectedDeviceName) => {
       const connectedRow = allDeviceRecords.find((item) => item.deviceName === connectedDeviceName);
+
+      if (!isPrinterDevice) {
+        // connectedDeviceName here is a printer; show its own IP Address (LAN) or Bluetooth ID (Bluetooth).
+        const { label, value } = getPrinterConnectionDisplay(connectedRow);
+        return {
+          name: connectedDeviceName,
+          connectedLabel: `${label}: ${value}`,
+          lastActive: connectedRow?.lastActive ?? "-",
+        };
+      }
+
       const forwardIndex = ownConnectedNames.indexOf(connectedDeviceName);
       let hardwareName;
 
       if (forwardIndex !== -1) {
         const hardwareNames = (row.deviceConnected || "").split(",").map((s) => s.trim());
         hardwareName = hardwareNames[forwardIndex] || "-";
-      } else if (isPrinterDevice) {
+      } else {
         // Reverse lookup: tablet's hardware name via display value (derived from printer's record)
         const displayVal = getDeviceConnectedDisplayValue(connectedRow);
         hardwareName =
           displayVal && displayVal !== "-" && displayVal !== connectedRow?.deviceName
             ? displayVal
             : "-";
-      } else {
-        // Reverse lookup: printer's hardware name is stored in other tablets' deviceConnected
-        hardwareName =
-          allDeviceRecords.find(
-            (d) =>
-              d.id !== row.id &&
-              d.deviceType !== "Printer" &&
-              Array.isArray(d.connectedDevices) &&
-              d.connectedDevices.includes(connectedDeviceName) &&
-              d.deviceConnected
-          )?.deviceConnected ?? "-";
       }
 
       return {
         name: connectedDeviceName,
-        connectedLabel: isPrinterDevice
-          ? `${hardwareName} • ${connectedRow?.deviceOs ?? "-"}`
-          : hardwareName,
+        connectedLabel: `${hardwareName} • ${connectedRow?.deviceOs ?? "-"}`,
         lastActive: connectedRow?.lastActive ?? "-",
       };
     });
@@ -16067,6 +16079,7 @@ export function useAppHandlers(state) {
           ? "Turn Off"
           : "Disconnect";
     const deviceConnectedValue = getDeviceConnectedDisplayValue(row);
+    const printerConnectionInfo = getPrinterConnectionDisplay(row);
     const deviceOsValue = row.status === "Connected" ? row.deviceOs ?? "-" : "-";
     const isConnectionActionDisabled = detailActionsDisabled;
 
@@ -16176,7 +16189,11 @@ export function useAppHandlers(state) {
                         maxLength={40}
                       />
                       {isPrinterDevice && (
-                        <DetailField label="Device Connected" value={deviceConnectedValue.split(",")[0].trim()} disabled />
+                        <DetailField
+                          label={printerConnectionInfo.label}
+                          value={printerConnectionInfo.value}
+                          disabled
+                        />
                       )}
                       <DetailField label="Device Type" value={row.deviceType} disabled ellipsis />
                       {isPending && !isPrinterDevice && row.pairingCode && (
@@ -16194,8 +16211,8 @@ export function useAppHandlers(state) {
                       />
                       {isPrinterDevice && (
                         <CatalogPanelInfoRow
-                          label="Device Connected"
-                          value={deviceConnectedValue.split(",")[0].trim()}
+                          label={printerConnectionInfo.label}
+                          value={printerConnectionInfo.value}
                         />
                       )}
                       <CatalogPanelInfoRow label="Device Type" value={row.deviceType} ellipsis />
