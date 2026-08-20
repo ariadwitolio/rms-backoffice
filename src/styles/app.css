@@ -2511,6 +2511,9 @@ img {
   width: min(320px, 100%);
 }
 .catalog-detail-panel__connected-device {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
   padding: 14px 0;
   border-bottom: 1px solid var(--neutral-line-outline);
 }
@@ -2520,16 +2523,22 @@ img {
 .catalog-detail-panel__connected-device-row {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   gap: 16px;
-  align-items: baseline;
-}
-.catalog-detail-panel__connected-device-row > p:first-child {
-  min-width: 0;
-  flex: 1;
-  margin: 0;
 }
 .catalog-detail-panel__connected-device-row p {
   margin: 0;
+}
+.catalog-detail-panel__connected-device-row > :first-child {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.catalog-detail-panel__connected-device-row > :last-child {
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .unit-connected-catalog-content {
@@ -9300,6 +9309,9 @@ textarea::placeholder,
 
 .device-status-indicator__label {
   color: var(--status-red-primary);
+  font-size: 14px;
+  letter-spacing: 0.1px;
+  line-height: 20px;
 }
 
 .device-status-indicator.is-connected .device-status-indicator__label {

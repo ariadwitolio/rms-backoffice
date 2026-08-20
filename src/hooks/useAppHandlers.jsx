@@ -16036,14 +16036,17 @@ export function useAppHandlers(state) {
 
     const connectedDeviceDetails = allConnectedNames.map((connectedDeviceName) => {
       const connectedRow = allDeviceRecords.find((item) => item.deviceName === connectedDeviceName);
+      const connectedDeviceStatus = connectedRow?.status ?? "Disconnected";
+      const isConnectedDeviceOffline = connectedDeviceStatus !== "Connected";
 
       if (!isPrinterDevice) {
         // connectedDeviceName here is a printer; show its own IP Address (LAN) or Bluetooth ID (Bluetooth).
         const { label, value } = getPrinterConnectionDisplay(connectedRow);
         return {
           name: connectedDeviceName,
-          connectedLabel: `${label}: ${value}`,
+          connectedLabel: isConnectedDeviceOffline ? "-" : `${label}: ${value}`,
           lastActive: connectedRow?.lastActive ?? "-",
+          status: connectedDeviceStatus,
         };
       }
 
@@ -16064,8 +16067,9 @@ export function useAppHandlers(state) {
 
       return {
         name: connectedDeviceName,
-        connectedLabel: `${hardwareName} • ${connectedRow?.deviceOs ?? "-"}`,
+        connectedLabel: isConnectedDeviceOffline ? "-" : `${hardwareName} • ${connectedRow?.deviceOs ?? "-"}`,
         lastActive: connectedRow?.lastActive ?? "-",
+        status: connectedDeviceStatus,
       };
     });
     const activeDeviceManagementDetailTab = showTabs
@@ -16332,16 +16336,13 @@ export function useAppHandlers(state) {
                       className="catalog-detail-panel__list-item catalog-detail-panel__connected-device"
                     >
                       <div className="catalog-detail-panel__connected-device-row">
-                        <p className="type-subtitle-2">
-                          {device.name}
-                        </p>
-                        <p className="type-body text-secondary" style={{ whiteSpace: "nowrap" }}>
-                          {device.lastActive}
-                        </p>
+                        <p className="type-subtitle-2">{device.name}</p>
+                        <DeviceStatusIndicator status={device.status} />
                       </div>
-                      <p className="type-body text-secondary" style={{ margin: 0 }}>
-                        {device.connectedLabel}
-                      </p>
+                      <div className="catalog-detail-panel__connected-device-row">
+                        <p className="type-body text-secondary">{device.connectedLabel}</p>
+                        <p className="type-body text-secondary">{device.lastActive}</p>
+                      </div>
                     </div>
                   ))}
                 </div>
