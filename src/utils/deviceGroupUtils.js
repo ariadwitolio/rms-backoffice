@@ -223,6 +223,7 @@ const ENTITY_BACK_OFFICE_ROLE_PERMISSION_MODULES = [
   { id: "device", label: "Device" },
   { id: "grouped-device", label: "KDS Group" },
   { id: "table-management", label: "Table Management" },
+  { id: "menu-settings", label: "Settings" },
 ];
 
 const ENTITY_BACK_OFFICE_MENU_HIERARCHY = [
@@ -241,6 +242,11 @@ const ENTITY_BACK_OFFICE_MENU_HIERARCHY = [
   {
     id: "table-management",
     label: "Table Management",
+    isParent: false,
+  },
+  {
+    id: "menu-settings",
+    label: "Settings",
     isParent: false,
   },
 ];
@@ -273,7 +279,6 @@ const PAYMENT_APP_ROLE_PERMISSION_MODULES = [
     levelLabels: { full: "Full Access" },
     additionalAccess: [
       { id: "inputManualTransaction", label: "Input Manual Transaction" },
-      { id: "addOrderItem", label: "Add Order Item" },
     ],
   },
   {

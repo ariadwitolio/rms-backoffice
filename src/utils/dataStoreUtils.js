@@ -708,6 +708,7 @@ export function createInitialDataStore() {
           device: "full",
           "grouped-device": "full",
           "table-management": "full",
+          "menu-settings": "full",
           catalog: "full",
           category: "full",
           unit: "full",

@@ -25,6 +25,7 @@ const ROLE_PERMISSION_ICON_BY_MODULE = {
   device: "deviceManagement",
   "grouped-device": "deviceManagement",
   "table-management": "businessUnit",
+  "menu-settings": "settings",
   "device-management": "roleManagement",
   cashier: "deviceManagement",
   "kitchen-display-system": "deviceManagement",
