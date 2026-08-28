@@ -3310,6 +3310,20 @@ export function useAppHandlers(state) {
     return row.status === "Connected" ? row.deviceName : "-";
   }
 
+  function getPrinterConnectedDeviceNamesDisplay(row) {
+    if (!row || row.status !== "Connected") {
+      return "-";
+    }
+
+    const allDeviceRecords = records["device-management"] || [];
+    const connectedNames = (row.connectedDevices || []).filter((deviceName) => {
+      const connectedRow = allDeviceRecords.find((item) => item.deviceName === deviceName);
+      return connectedRow?.status === "Connected";
+    });
+
+    return connectedNames.length ? connectedNames.join(", ") : "-";
+  }
+
   function getPrinterConnectionDisplay(printerRow) {
     if (printerRow?.connectionType === "Bluetooth") {
       return { label: "Bluetooth ID", value: printerRow.bluetoothId ?? "-" };
@@ -15011,8 +15025,10 @@ export function useAppHandlers(state) {
                                 column.width ? { width: column.width } : undefined;
                               const cellValue =
                                 isDeviceManagementPage && column.key === "deviceConnected"
-                                  ? (row.deviceType === "Printer" ? row.deviceConnected : getDeviceConnectedDisplayValue(row))
-                                  : row[column.key] || "-";
+                                  ? (row.deviceType === "Printer" ? getPrinterConnectedDeviceNamesDisplay(row) : getDeviceConnectedDisplayValue(row))
+                                  : isDeviceManagementPage && column.key === "lastActive" && row.deviceType === "Printer"
+                                    ? "-"
+                                    : row[column.key] || "-";
 
                               if (column.type === "delete") {
                                 const isPrinterDevice = row.deviceType === "Printer";
@@ -16135,7 +16151,7 @@ export function useAppHandlers(state) {
                   className={`catalog-detail-panel__tab${activeDeviceManagementDetailTab === "other-device-connected" ? " is-active" : ""}`}
                   onClick={() => setDeviceManagementDetailPanelTab("other-device-connected")}
                 >
-                  {isPrinterDevice ? "Connected Device" : "Other Connected Device"}
+                  Device Connection
                 </button>
               </div>
             </div>
@@ -16204,7 +16220,7 @@ export function useAppHandlers(state) {
                         <DetailField label="Pairing Code" value={row.pairingCode} disabled />
                       )}
                       <DetailField label="Status" value={row.status} disabled />
-                      <DetailField label="Last Active" value={row.lastActive} disabled />
+                      <DetailField label="Last Active" value={isPrinterDevice ? "-" : row.lastActive} disabled />
                       <DetailField label="Added By" value={`${row.addedByName ?? row.addedBy} - ${row.addedByRole ?? ""}`} disabled />
                     </>
                   ) : (
@@ -16281,7 +16297,7 @@ export function useAppHandlers(state) {
                           </span>
                         }
                       />
-                      <CatalogPanelInfoRow label="Last Active" value={row.lastActive} />
+                      <CatalogPanelInfoRow label="Last Active" value={isPrinterDevice ? "-" : row.lastActive} />
                       <CatalogPanelInfoRow label="Added By" value={
                         <span
                           style={{
@@ -16327,7 +16343,7 @@ export function useAppHandlers(state) {
               )}
             </>
           ) : (
-            <DetailSection title={isPrinterDevice ? "Connected Device" : "Other Connected Device"}>
+            <DetailSection title="Device Connection">
               {connectedDeviceDetails.length ? (
                 <div className="catalog-detail-panel__list">
                   {connectedDeviceDetails.map((device) => (
