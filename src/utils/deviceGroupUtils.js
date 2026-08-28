@@ -277,9 +277,6 @@ const PAYMENT_APP_ROLE_PERMISSION_MODULES = [
     label: "Payment",
     permittedLevels: ["none", "full"],
     levelLabels: { full: "Full Access" },
-    additionalAccess: [
-      { id: "inputManualTransaction", label: "Input Manual Transaction" },
-    ],
   },
   {
     id: "printer-settings-payment",
