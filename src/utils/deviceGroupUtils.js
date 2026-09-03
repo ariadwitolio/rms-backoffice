@@ -258,8 +258,11 @@ const ENTITY_APP_ROLE_PERMISSION_MODULES = [
     permittedLevels: ["none", "full"],
     levelLabels: { full: "Full Access" },
     additionalAccess: [
+      { id: "shiftCashOperations", label: "Grant Shift & Cash Operations" },
       { id: "approveVoid", label: "Approve VOID Request" },
       { id: "approveDiscount", label: "Approve Discount Request" },
+      { id: "approveServiceChargeRemoval", label: "Approve Service Charge Removal" },
+      { id: "report", label: "Grant Report Access" },
     ],
   },
   {
@@ -277,6 +280,10 @@ const PAYMENT_APP_ROLE_PERMISSION_MODULES = [
     label: "Payment",
     permittedLevels: ["none", "full"],
     levelLabels: { full: "Full Access" },
+    additionalAccess: [
+      { id: "approveDiscount", label: "Approve Discount Request" },
+      { id: "approveServiceChargeRemoval", label: "Approve Service Charge Removal" },
+    ],
   },
   {
     id: "printer-settings-payment",
