@@ -5,6 +5,7 @@ import { SidebarUnitSwitcher } from "./components/app/SidebarUnitSwitcher.jsx";
 import { UnitAssignmentModal, DiscardChangesModal, PairingCodeModal, DevicePairingRequestModal, DeleteConfirmationModal } from "./components/app/DeviceModals.jsx";
 import { DeleteBlockedModal, ModifierOptionDeactivateModal, DeviceStatusConfirmationModal } from "./components/app/ConfirmationModals.jsx";
 import { ModifierCatalogSelectionModal } from "./components/app/ModifierCatalogModal.jsx";
+import { RoleUserAssignmentModal } from "./modules/role-management/components/RoleUserAssignmentModal.jsx";
 import { useAppState } from "./hooks/useAppState.js";
 import { useAppHandlers } from "./hooks/useAppHandlers.jsx";
 
@@ -34,6 +35,9 @@ export default function App() {
     modifierCatalogModalTarget,
     isUnroutedCatalogModalOpen,
     setIsUnroutedCatalogModalOpen,
+    isRoleUserAssignModalOpen,
+    roleAccessDetailId,
+    roleAccessDraft,
     discardCreateModalOpen,
     discardEditModalOpen,
     deleteConfirmationOpen,
@@ -80,6 +84,9 @@ export default function App() {
     closeDevicePairingRequest,
     confirmDevicePairingRequest,
     declineDevicePairingRequest,
+    closeRoleUserAssignModal,
+    confirmRoleUserAssignment,
+    roleUserAssignAvailableUsers,
     showSnackbar,
   } = handlers;
 
@@ -164,6 +171,19 @@ export default function App() {
         onChange={setModifierCatalogModalValue}
         onClose={closeModifierCatalogModal}
         onConfirm={confirmModifierCatalogModal}
+      />
+      <RoleUserAssignmentModal
+        open={isRoleUserAssignModalOpen}
+        roleName={
+          roleAccessDetailId
+            ? ((records["role-access"] || []).find(
+                (r) => r.id === roleAccessDetailId
+              )?.name ?? "")
+            : roleAccessDraft?.name || ""
+        }
+        availableUsers={roleUserAssignAvailableUsers}
+        onClose={closeRoleUserAssignModal}
+        onConfirm={confirmRoleUserAssignment}
       />
       {isUnroutedCatalogModalOpen && (
         <div className="unit-assignment-modal-overlay" onMouseDown={() => setIsUnroutedCatalogModalOpen(false)}>

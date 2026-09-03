@@ -120,6 +120,7 @@ export function createInitialRoleAccessDraft(isEntitySide = false) {
       permissionSections,
       isEntitySide
     ),
+    membersList: [],
   };
 }
 
@@ -193,6 +194,54 @@ export function getRoleAccessValidationGroups(structure = ROLE_PERMISSION_GROUPS
   }
 
   return validationGroups;
+}
+
+export function formatUserCountLabel(count) {
+  return `${count} user${count === 1 ? "" : "s"}`;
+}
+
+export function buildRoleMemberEntries(users = []) {
+  return users.map((user) => ({
+    id: user.id,
+    name: user.name,
+    branch: user.branch,
+    lastSeen: user.lastSeen,
+    status: user.status,
+  }));
+}
+
+export function stripUsersFromRoleMembersLists(
+  roleAccessRows = [],
+  userIds = [],
+  excludeRoleId = null
+) {
+  if (!userIds.length) return roleAccessRows;
+
+  return roleAccessRows.map((role) => {
+    if (role.id === excludeRoleId) return role;
+
+    const filteredMembersList = (role.membersList || []).filter(
+      (member) => !userIds.includes(member.id)
+    );
+
+    if (filteredMembersList.length === (role.membersList || []).length) {
+      return role;
+    }
+
+    return {
+      ...role,
+      membersList: filteredMembersList,
+      members: formatUserCountLabel(filteredMembersList.length),
+    };
+  });
+}
+
+export function applyUserRoleName(userList = [], userIds = [], roleName) {
+  if (!userIds.length) return userList;
+
+  return userList.map((user) =>
+    userIds.includes(user.id) ? { ...user, role: roleName } : user
+  );
 }
 
 export function sortRoleAccessRows(rows = []) {

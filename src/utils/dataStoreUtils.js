@@ -640,7 +640,7 @@ export function createInitialDataStore() {
         id: "rl-009",
         type: "System",
         name: "Waitress",
-        members: "3 members",
+        members: "3 users",
         membersList: [
           { id: "mbr-027", name: "James Staff", email: "james.staff@restaurant.com", status: "Active" },
           { id: "mbr-028", name: "Patricia Staff", email: "patricia.staff@restaurant.com", status: "Active" },
@@ -663,7 +663,7 @@ export function createInitialDataStore() {
         id: "rl-008",
         type: "System",
         name: "Cashier",
-        members: "3 members",
+        members: "3 users",
         membersList: [
           { id: "mbr-024", name: "Salsa Mahendra", email: "salsa.mahendra@restaurant.com", status: "Active" },
           { id: "mbr-025", name: "Register Op", email: "register.op@restaurant.com", status: "Active" },
@@ -686,7 +686,7 @@ export function createInitialDataStore() {
         id: "rl-007",
         type: "System",
         name: "Manager",
-        members: "2 members",
+        members: "2 users",
         membersList: [
           { id: "mbr-022", name: "Dea Maheswari", email: "dea.maheswari@restaurant.com", status: "Active" },
           { id: "mbr-023", name: "Rendy Saputra", email: "rendy.saputra@restaurant.com", status: "Active" },
@@ -729,7 +729,7 @@ export function createInitialDataStore() {
         id: "rl-003",
         type: "Custom",
         name: "Outlet Manager",
-        members: "5 members",
+        members: "5 users",
         membersList: [
           { id: "mbr-004", name: "Lisa Manager", email: "lisa.manager@restaurant.com", status: "Active" },
           { id: "mbr-005", name: "James Staff", email: "james.staff@restaurant.com", status: "Active" },
@@ -758,7 +758,7 @@ export function createInitialDataStore() {
         id: "rl-004",
         type: "Custom",
         name: "Kitchen Lead",
-        members: "3 members",
+        members: "3 users",
         membersList: [
           { id: "mbr-009", name: "Chef David", email: "david.chef@restaurant.com", status: "Active" },
           { id: "mbr-010", name: "Cook Alex", email: "alex.cook@restaurant.com", status: "Invited" },
@@ -778,7 +778,7 @@ export function createInitialDataStore() {
         id: "rl-005",
         type: "Custom",
         name: "Cashier Supervisor",
-        members: "4 members",
+        members: "4 users",
         membersList: [
           { id: "mbr-012", name: "Cashier Lead", email: "lead.cashier@restaurant.com", status: "Active" },
           { id: "mbr-013", name: "Register Op", email: "register.op@restaurant.com", status: "Active" },
@@ -803,7 +803,7 @@ export function createInitialDataStore() {
         id: "rl-006",
         type: "Custom",
         name: "Audit Viewer",
-        members: "6 members",
+        members: "6 users",
         membersList: [
           { id: "mbr-016", name: "Auditor Prime", email: "auditor.prime@restaurant.com", status: "Active" },
           { id: "mbr-017", name: "Auditor Second", email: "auditor.second@restaurant.com", status: "Active" },

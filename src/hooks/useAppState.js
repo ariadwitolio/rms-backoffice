@@ -256,6 +256,7 @@ export function useAppState() {
   const [roleAccessDetailErrors, setRoleAccessDetailErrors] = useState({});
   const [roleAccessDetailPanelTab, setRoleAccessDetailPanelTab] = useState("general");
   const [roleAccessCreatePanelTab, setRoleAccessCreatePanelTab] = useState("general");
+  const [isRoleUserAssignModalOpen, setIsRoleUserAssignModalOpen] = useState(false);
   const [roleAccessDraft, setRoleAccessDraft] = useState(createInitialRoleAccessDraft);
   const [roleAccessDraftErrors, setRoleAccessDraftErrors] = useState({});
   const [deviceManagementDetailId, setDeviceManagementDetailId] = useState(null);
@@ -434,6 +435,7 @@ export function useAppState() {
     roleAccessDetailErrors,
     roleAccessDetailPanelTab,
     roleAccessCreatePanelTab,
+    isRoleUserAssignModalOpen,
     roleAccessDraft,
     roleAccessDraftErrors,
     deviceManagementDetailId,
@@ -577,6 +579,7 @@ export function useAppState() {
     setRoleAccessDetailErrors,
     setRoleAccessDetailPanelTab,
     setRoleAccessCreatePanelTab,
+    setIsRoleUserAssignModalOpen,
     setRoleAccessDraft,
     setRoleAccessDraftErrors,
     setDeviceManagementDetailId,

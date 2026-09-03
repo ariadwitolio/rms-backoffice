@@ -12,6 +12,7 @@ export function RoleManagementDetailPanel({
   isMainAccountSide = false,
   onTabChange,
   members = [],
+  onAddUser,
   onClose,
   onEdit,
   onNext,
@@ -35,7 +36,7 @@ export function RoleManagementDetailPanel({
   const roleType = row.type ?? "Custom";
   const roleTypeClass =
     roleType === "System" ? "status-pill--primary" : "status-pill--success";
-  const memberCountLabel = `${members.length} Member${members.length === 1 ? "" : "s"}`;
+  const memberCountLabel = `${members.length} User${members.length === 1 ? "" : "s"}`;
   const baseResolvedActiveTab =
     isEditing && activeTab === "member" ? "general" : activeTab;
   const accountPermissionGroups = permissionsStructure.filter(
@@ -209,7 +210,7 @@ export function RoleManagementDetailPanel({
                   role="tab"
                   aria-selected={resolvedActiveTab === "member"}
                 >
-                  Member
+                  User
                 </button>
               ) : null}
             </div>
@@ -320,7 +321,27 @@ export function RoleManagementDetailPanel({
             </DetailSection>
           </>
         ) : (
-          <DetailSection title="Assigned Member" meta={memberCountLabel}>
+          <DetailSection
+            title={
+              <span style={{ display: "flex", alignItems: "baseline", gap: "6px" }}>
+                <span>Assigned User</span>
+                <span className="type-body text-secondary">
+                  ({memberCountLabel})
+                </span>
+              </span>
+            }
+            meta={
+              <button
+                type="button"
+                className="lab-button lab-button--small lab-button--secondary"
+                onClick={onAddUser}
+                style={{ display: "flex", alignItems: "center", gap: "6px" }}
+              >
+                <Icon name="add" className="lab-icon lab-icon--16" alt="" />
+                <span className="type-subtitle-2">Add User</span>
+              </button>
+            }
+          >
             {members.length ? (
               <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
                 {members.map((member, memberIndex) => (
@@ -398,10 +419,10 @@ export function RoleManagementDetailPanel({
                 }}
               >
                 <p className="type-subtitle-2" style={{ margin: 0 }}>
-                  No members assigned
+                  No users assigned
                 </p>
                 <p className="type-body text-secondary" style={{ margin: 0 }}>
-                  This role has not been assigned to any member yet.
+                  This role has not been assigned to any user yet.
                 </p>
               </div>
             )}

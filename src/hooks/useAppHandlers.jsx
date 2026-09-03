@@ -30,7 +30,7 @@ import { normalizePricingOverrideMaximumValue, formatPricingOverrideMaximumValue
 import { normalizeUnitPrecisionOption, nextCatalogBuilderId, createEmptyPackageItem, createEmptyIngredientItem, createEmptyAdditionalName, normalizePackageItems, normalizeCatalogIngredients, updatePackageItems, buildAssignedUnitRecord, normalizeCatalogAssignedUnits, createAssignedUnitsFromIds, createSellingTimeSlot, cloneSellingTimeSlots, getSellingTimeSlotErrorKey, getSellingTimeDayErrorPrefix, createSellingTimeDaySchedule, createInitialSellingTimeDraft, createInitialCatalogDraft, getCatalogCategoryForType, getCatalogModifierSummaryValue, getCatalogModifierDetailValue, MODIFIER_INGREDIENT_OPTION_LABELS } from "../utils/catalogDraftUtils.js";
 import { createEmptyModifierOption, formatModifierIngredientUnitLabel, getModifierIngredientSelection, normalizeModifierIngredientQtyInput, hasModifierOptionIngredient, isModifierOptionIngredientQtyValid, getModifierOptionNameErrorIds, getModifierOptionDuplicateNameIds, getModifierOptionIngredientQtyErrorIds, getModifierOptionErrors, getModifierSelectionCountError, getModifierSelectionRangeError, clearModifierOptionErrorId, buildModifierOptionDraft, buildModifierOptionRecordForStorage, normalizeModifierOptions, createInitialModifierDraft, createModifierDetailDraftFromRecord, cloneModifierDetailDraftState, createInitialCategoryDraft } from "../utils/modifierUtils.js";
 import { createInitialGroupedDeviceDraft, getGroupedDeviceListSummary, findDeviceManagementRecordByValue, getGroupedDeviceDeviceRows, getNormalizedGroupedDeviceTabletRows, getGroupedDeviceCatalogNames, getNormalizedGroupedDeviceCatalogIds, buildGroupedDeviceSelectionOptions, buildGroupedDeviceCatalogSelectionGroups, buildGroupedDeviceDetailRows } from "../utils/deviceGroupUtils.js";
-import { getRolePermissionLevel, hasRolePermissionAccess, createRolePermissions, createRolePermissionSections, getRolePermissionGroupIdsForContext, getRolePermissionsStructure, normalizeRoleAccessPermissionSections, createInitialRoleAccessDraft, createRoleAccessDraftFromRecord, getRoleAccessValidationGroups, sortRoleAccessRows, getRoleAccessPermissionSectionErrors, hasAnyVisibleRoleAccessPermission } from "../utils/roleUtils.js";
+import { getRolePermissionLevel, hasRolePermissionAccess, createRolePermissions, createRolePermissionSections, getRolePermissionGroupIdsForContext, getRolePermissionsStructure, normalizeRoleAccessPermissionSections, createInitialRoleAccessDraft, createRoleAccessDraftFromRecord, getRoleAccessValidationGroups, sortRoleAccessRows, getRoleAccessPermissionSectionErrors, hasAnyVisibleRoleAccessPermission, formatUserCountLabel, buildRoleMemberEntries, stripUsersFromRoleMembersLists, applyUserRoleName } from "../utils/roleUtils.js";
 import { createInitialDeviceManagementDraft, createInitialUnitDraft, createCategoryDetailDraftFromRecord, createUnitDetailDraftFromRecord, cloneCategoryDetailDraftState, cloneUnitDetailDraftState, getCategoryDetailValidationMessage, getUnitDetailValidationMessage, isSameCategoryDetailEditing, isSameUnitDetailEditing, getConnectedCatalogNamesForUnit, getModifierDetailValidationMessage, isSameModifierDetailEditing, getSellingTimeDaysFromRecord, getSellingTimeDayDisplay, getDefaultSellingTimeSlotsForRecord, getSellingTimeDetailSchedule, createSellingTimeDetailDraftFromRecord, cloneSellingTimeDetailDraftState, getSellingTimeDetailValidationMessage, getSellingTimeDetailValidationErrors, isSameSellingTimeDetailEditing, CATEGORY_HIERARCHY_SEPARATOR, MAX_CATEGORY_NESTING_LEVEL, DUPLICATE_CATALOG_SNACKBAR_MESSAGE, DUPLICATE_CATALOG_NAME_ERROR_MESSAGE, DUPLICATE_CATEGORY_ERROR_MESSAGE, DUPLICATE_UNIT_ERROR_MESSAGE, DUPLICATE_MODIFIER_ERROR_MESSAGE, DUPLICATE_PRICING_RULE_ERROR_MESSAGE, DUPLICATE_DEVICE_ERROR_MESSAGE, DUPLICATE_KDS_GROUP_ERROR_MESSAGE, DUPLICATE_ROLE_ACCESS_ERROR_MESSAGE } from "../utils/detailDraftUtils.js";
 import { getCategoryHierarchyDepth, getCategorySubtreeDepth, buildOrderedCategoryRows, createCategoryTreeOption, buildCategoryParentOptions, normalizeCatalogIdentityValue, isDuplicateCatalogRecord, buildCatalogCategoryOptions, buildModifierCatalogGroups, getCategoryHierarchyPath, buildCategoryRows, buildModifierRows, buildUnitRows, buildAssignedUnitRows, buildCatalogAssignedUnitRows, normalizeDuplicateNameValue, hasDuplicateRecordName } from "../utils/catalogHierarchyUtils.jsx";
 import { getModifierUnitAssignmentColumns, getModifierUnitAssignmentValue, formatModifierDetailOptionPrice, getModifierCatalogSelectSummary, getModifierConnectedCatalogSummary, getModifierDetailUnitAssignmentValue, buildSellingTimeRows, cloneCatalogPhotos, clonePackageItems, cloneCatalogIngredients, cloneAssignedUnits, createCatalogPhotoSet, getCatalogPhotoPoolForRecord, createCatalogPhotoSetForRecord, createCatalogAssignedUnits, createCatalogSeedRecord, createCatalogDetailDraftFromRecord, cloneCatalogDetailDraftState, getCatalogDetailValidationMessage, isSameCatalogDetailEditing, getNextCatalogDetailTypeDraft, getCatalogDetailAssignmentEditingDraft, disposeCatalogPhotos } from "../utils/catalogBuildUtils.js";
@@ -193,6 +193,7 @@ export function useAppHandlers(state) {
     roleAccessDetailErrors,
     roleAccessDetailPanelTab,
     roleAccessCreatePanelTab,
+    isRoleUserAssignModalOpen,
     roleAccessDraft,
     roleAccessDraftErrors,
     deviceManagementDetailId,
@@ -336,6 +337,7 @@ export function useAppHandlers(state) {
     setRoleAccessDetailErrors,
     setRoleAccessDetailPanelTab,
     setRoleAccessCreatePanelTab,
+    setIsRoleUserAssignModalOpen,
     setRoleAccessDraft,
     setRoleAccessDraftErrors,
     setDeviceManagementDetailId,
@@ -6679,11 +6681,14 @@ export function useAppHandlers(state) {
       Boolean(selectedSidebarBusinessUnit)
     );
 
+    const stagedMembersList = normalizedDraft.membersList || [];
+    const stagedUserIds = stagedMembersList.map((member) => member.id);
+
     const newRow = {
       ...normalizedDraft,
       id: `rl-${Math.floor(Math.random() * 1000).toString().padStart(3, "0")}`,
-      members: "0 members",
-      membersList: [],
+      members: formatUserCountLabel(stagedMembersList.length),
+      membersList: stagedMembersList,
       updated: new Date().toLocaleDateString("en-GB", {
         day: "numeric",
         month: "short",
@@ -6692,10 +6697,23 @@ export function useAppHandlers(state) {
       status: "Active",
     };
 
-    setRecords((prev) => ({
-      ...prev,
-      "role-access": [newRow, ...prev["role-access"]],
-    }));
+    setRecords((prev) => {
+      const strippedRoleAccess = stripUsersFromRoleMembersLists(
+        prev["role-access"] || [],
+        stagedUserIds,
+        null
+      );
+
+      return {
+        ...prev,
+        "role-access": [newRow, ...strippedRoleAccess],
+        "user-list": applyUserRoleName(
+          prev["user-list"] || [],
+          stagedUserIds,
+          newRow.name
+        ),
+      };
+    });
 
     // Clear pending navigation to prevent discard modal
     pendingCreateNavigationRef.current = null;
@@ -6783,6 +6801,92 @@ export function useAppHandlers(state) {
         )
       );
     }
+  }
+
+  const currentRoleAccessDetailRow = roleAccessDetailId
+    ? records["role-access"].find((r) => r.id === roleAccessDetailId)
+    : null;
+  const roleUserAssignExistingMemberIds = new Set(
+    (
+      (roleAccessDetailId
+        ? currentRoleAccessDetailRow?.membersList
+        : roleAccessDraft?.membersList) || []
+    ).map((member) => member.id)
+  );
+  const roleUserAssignAvailableUsers = (records["user-list"] || []).filter(
+    (user) => !roleUserAssignExistingMemberIds.has(user.id)
+  );
+
+  function openRoleUserAssignModal() {
+    setIsRoleUserAssignModalOpen(true);
+  }
+
+  function closeRoleUserAssignModal() {
+    setIsRoleUserAssignModalOpen(false);
+  }
+
+  function confirmRoleUserAssignment(selectedUserIds) {
+    if (!selectedUserIds?.length) return;
+
+    // Editing an existing role: assign immediately and replace the users'
+    // previous role right away.
+    if (roleAccessDetailId) {
+      const targetRoleId = roleAccessDetailId;
+      const targetRole = records["role-access"].find((r) => r.id === targetRoleId);
+      if (!targetRole) return;
+
+      setRecords((prev) => {
+        const userList = prev["user-list"] || [];
+        const selectedUsers = userList.filter((user) =>
+          selectedUserIds.includes(user.id)
+        );
+        if (!selectedUsers.length) return prev;
+
+        const strippedRoleAccess = stripUsersFromRoleMembersLists(
+          prev["role-access"] || [],
+          selectedUserIds,
+          targetRoleId
+        );
+        const nextRoleAccess = strippedRoleAccess.map((role) => {
+          if (role.id !== targetRoleId) return role;
+
+          const nextMembersList = [
+            ...(role.membersList || []),
+            ...buildRoleMemberEntries(selectedUsers),
+          ];
+          return {
+            ...role,
+            membersList: nextMembersList,
+            members: formatUserCountLabel(nextMembersList.length),
+          };
+        });
+
+        return {
+          ...prev,
+          "role-access": nextRoleAccess,
+          "user-list": applyUserRoleName(userList, selectedUserIds, targetRole.name),
+        };
+      });
+    } else {
+      // Still on the create-role draft: just stage the selection. The
+      // replace-previous-role side effects apply once the role is saved.
+      const selectedUsers = (records["user-list"] || []).filter((user) =>
+        selectedUserIds.includes(user.id)
+      );
+      if (!selectedUsers.length) return;
+
+      const nextMembersList = [
+        ...(roleAccessDraft?.membersList || []),
+        ...buildRoleMemberEntries(selectedUsers),
+      ];
+      handleRoleAccessChange("membersList", nextMembersList);
+    }
+
+    setIsRoleUserAssignModalOpen(false);
+    showSnackbar(
+      selectedUserIds.length === 1 ? "User added to role" : "Users added to role",
+      "green"
+    );
   }
 
   function handleRoleAccessChange(field, value) {
@@ -15904,9 +16008,12 @@ export function useAppHandlers(state) {
         onClose={closeRoleAccessCreatePage}
         onChange={handleRoleAccessChange}
         onSave={saveRoleAccessDraft}
+        members={roleAccessDraft.membersList || []}
+        onAddUser={openRoleUserAssignModal}
         permissionsStructure={rolePermissionsStructure}
         DetailSection={DetailSection}
         DetailField={DetailField}
+        StatusPillComponent={StatusPill}
       />
     );
   }
@@ -15925,6 +16032,7 @@ export function useAppHandlers(state) {
         activeTab={roleAccessDetailPanelTab}
         isMainAccountSide={!selectedSidebarBusinessUnit}
         members={row.membersList || []}
+        onAddUser={openRoleUserAssignModal}
         onTabChange={(tab) => setRoleAccessDetailPanelTab(tab)}
         onClose={resetRoleAccessDetailState}
         onEdit={(value) => {
@@ -20547,6 +20655,10 @@ export function useAppHandlers(state) {
       saveRoleAccessDetailEdit,
       cancelRoleAccessDetailEdit,
       handleRoleAccessChange,
+      openRoleUserAssignModal,
+      closeRoleUserAssignModal,
+      confirmRoleUserAssignment,
+      roleUserAssignAvailableUsers,
       openDeviceManagementCreatePage,
       openGroupedDeviceCreatePage,
       closeGroupedDeviceCreatePage,

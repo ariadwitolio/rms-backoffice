@@ -162,7 +162,7 @@ export const PAGE_CONFIGS = {
     searchFields: ["name", "members", "description"],
     columns: [
       { key: "name", label: "Role Name", type: "link" },
-      { key: "members", label: "Member", type: "text" },
+      { key: "members", label: "User", type: "text" },
       { key: "description", label: "Description", type: "text" },
       { key: "actions", label: "", type: "delete" },
     ],

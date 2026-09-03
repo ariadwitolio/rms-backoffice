@@ -13,10 +13,13 @@ export function RoleManagementCreatePanel({
   onClose,
   onChange,
   onSave,
+  members = [],
+  onAddUser,
   permissionsStructure,
   // Shared UI components passed as props
   DetailSection,
   DetailField,
+  StatusPillComponent,
 }) {
   const isEntitySide = !isMainAccountSide;
   const accountPermissionGroups = permissionsStructure.filter(
@@ -50,7 +53,9 @@ export function RoleManagementCreatePanel({
     ...rmsBackOfficeGroups.map((group) => group.id),
   ];
   const showAppsPermissionTab = isEntitySide && rmsAppsGroups.length > 0;
-  const resolvedActiveTab = showAppsPermissionTab ? activeTab : "general";
+  const memberCountLabel = `${members.length} User${members.length === 1 ? "" : "s"}`;
+  const resolvedActiveTab =
+    activeTab === "rms-module" && !showAppsPermissionTab ? "general" : activeTab;
   const getScopedSectionErrors = (groupIds) =>
     Object.fromEntries(
       Object.entries(errors?.permissionSections ?? {}).filter(([groupId]) =>
@@ -138,18 +143,18 @@ export function RoleManagementCreatePanel({
             </button>
           </div>
         </div>
-        {showAppsPermissionTab ? (
-          <div className="catalog-detail-panel__tabbar">
-            <div className="catalog-detail-panel__tabs" role="tablist">
-              <button
-                type="button"
-                className={`catalog-detail-panel__tab${resolvedActiveTab === "general" ? " is-active" : ""}`}
-                onClick={() => onTabChange?.("general")}
-                role="tab"
-                aria-selected={resolvedActiveTab === "general"}
-              >
-                General
-              </button>
+        <div className="catalog-detail-panel__tabbar">
+          <div className="catalog-detail-panel__tabs" role="tablist">
+            <button
+              type="button"
+              className={`catalog-detail-panel__tab${resolvedActiveTab === "general" ? " is-active" : ""}`}
+              onClick={() => onTabChange?.("general")}
+              role="tab"
+              aria-selected={resolvedActiveTab === "general"}
+            >
+              General
+            </button>
+            {showAppsPermissionTab ? (
               <button
                 type="button"
                 className={`catalog-detail-panel__tab${resolvedActiveTab === "rms-module" ? " is-active" : ""}`}
@@ -159,9 +164,18 @@ export function RoleManagementCreatePanel({
               >
                 Apps Permission
               </button>
-            </div>
+            ) : null}
+            <button
+              type="button"
+              className={`catalog-detail-panel__tab${resolvedActiveTab === "member" ? " is-active" : ""}`}
+              onClick={() => onTabChange?.("member")}
+              role="tab"
+              aria-selected={resolvedActiveTab === "member"}
+            >
+              User
+            </button>
           </div>
-        ) : null}
+        </div>
       </div>
       <div className="catalog-detail-panel__body">
         {resolvedActiveTab === "general" ? (
@@ -212,7 +226,7 @@ export function RoleManagementCreatePanel({
               />
             </DetailSection>
           </>
-        ) : (
+        ) : resolvedActiveTab === "rms-module" ? (
           <>
             <DetailSection title="POS Apps Permissions">
               <RolePermissionsList
@@ -247,6 +261,113 @@ export function RoleManagementCreatePanel({
               />
             </DetailSection>
           </>
+        ) : (
+          <DetailSection
+            title={
+              <span style={{ display: "flex", alignItems: "baseline", gap: "6px" }}>
+                <span>Assigned User</span>
+                <span className="type-body text-secondary">
+                  ({memberCountLabel})
+                </span>
+              </span>
+            }
+            meta={
+              <button
+                type="button"
+                className="lab-button lab-button--small lab-button--secondary"
+                onClick={onAddUser}
+                style={{ display: "flex", alignItems: "center", gap: "6px" }}
+              >
+                <Icon name="add" className="lab-icon lab-icon--16" alt="" />
+                <span className="type-subtitle-2">Add User</span>
+              </button>
+            }
+          >
+            {members.length ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                {members.map((member, memberIndex) => (
+                  <div
+                    key={member.id}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: "16px",
+                      paddingBottom:
+                        memberIndex === members.length - 1 ? "0" : "12px",
+                      borderBottom:
+                        memberIndex === members.length - 1
+                          ? "none"
+                          : "1px solid var(--neutral-line-outline)",
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "12px",
+                        minWidth: 0,
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: "36px",
+                          height: "36px",
+                          borderRadius: "10px",
+                          background: "var(--neutral-background)",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          color: "var(--neutral-on-surface-secondary)",
+                          flexShrink: 0,
+                        }}
+                      >
+                        <Icon
+                          name="userList"
+                          className="lab-icon lab-icon--18"
+                          alt=""
+                        />
+                      </div>
+                      <div style={{ minWidth: 0 }}>
+                        <p className="type-subtitle-2" style={{ margin: 0 }}>
+                          {member.name}
+                        </p>
+                        <p
+                          className="type-body text-secondary"
+                          style={{ margin: "4px 0 0" }}
+                        >
+                          {member.email ||
+                            [member.branch, member.lastSeen]
+                              .filter(Boolean)
+                              .join(" • ") ||
+                            "-"}
+                        </p>
+                      </div>
+                    </div>
+                    {StatusPillComponent ? (
+                      <StatusPillComponent status={member.status} />
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div
+                style={{
+                  padding: "8px 0",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "4px",
+                }}
+              >
+                <p className="type-subtitle-2" style={{ margin: 0 }}>
+                  No users assigned
+                </p>
+                <p className="type-body text-secondary" style={{ margin: 0 }}>
+                  Adding a user here is optional and can be done later.
+                </p>
+              </div>
+            )}
+          </DetailSection>
         )}
       </div>
       <div
@@ -291,13 +412,34 @@ export function RoleManagementCreatePanel({
               <span className="type-subtitle-2">Next</span>
             </button>
           </>
-        ) : (
+        ) : resolvedActiveTab === "rms-module" ? (
           <>
             <button
               type="button"
               className="lab-button lab-button--medium lab-button--secondary"
               style={{ flex: 1 }}
               onClick={() => onTabChange?.("general")}
+            >
+              <span className="type-subtitle-2">Back</span>
+            </button>
+            <button
+              type="button"
+              className="lab-button lab-button--primary lab-button--medium"
+              style={{ flex: 1 }}
+              onClick={onSave}
+            >
+              <span className="type-subtitle-2">Create Role</span>
+            </button>
+          </>
+        ) : (
+          <>
+            <button
+              type="button"
+              className="lab-button lab-button--medium lab-button--secondary"
+              style={{ flex: 1 }}
+              onClick={() =>
+                onTabChange?.(showAppsPermissionTab ? "rms-module" : "general")
+              }
             >
               <span className="type-subtitle-2">Back</span>
             </button>
