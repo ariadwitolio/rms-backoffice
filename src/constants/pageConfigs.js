@@ -140,7 +140,7 @@ export const PAGE_CONFIGS = {
       { key: "status", options: ["All", "Active", "Inactive"] },
       {
         key: "role",
-        options: ["All", "Owner", "Manager", "Cashier", "Inventory"],
+        options: ["All", "Super Admin", "Manager", "Cashier", "Inventory"],
       },
     ],
     searchFields: ["name", "role", "branch"],

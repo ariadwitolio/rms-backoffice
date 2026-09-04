@@ -196,7 +196,7 @@ export function TopNavbar({
         <div className="top-navbar__user">
           <div className="top-navbar__user-copy">
             <p className="top-navbar__user-name type-title-3">Natasha Smith</p>
-            <p className="top-navbar__user-role type-body">Owner</p>
+            <p className="top-navbar__user-role type-body">Super Admin</p>
           </div>
           <ChevronIcon name="selectChevron" size={16} direction="down" />
         </div>

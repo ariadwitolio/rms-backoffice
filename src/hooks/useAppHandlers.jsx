@@ -6883,10 +6883,13 @@ export function useAppHandlers(state) {
     }
 
     setIsRoleUserAssignModalOpen(false);
-    showSnackbar(
-      selectedUserIds.length === 1 ? "User added to role" : "Users added to role",
-      "green"
-    );
+
+    if (roleAccessDetailId) {
+      showSnackbar(
+        selectedUserIds.length === 1 ? "User added to role" : "Users added to role",
+        "green"
+      );
+    }
   }
 
   function handleRoleAccessChange(field, value) {
@@ -15560,7 +15563,7 @@ export function useAppHandlers(state) {
       lastActive: formatted,
       addedBy: "Natasha Smith",
       addedByName: "Natasha Smith",
-      addedByRole: "Owner",
+      addedByRole: "Super Admin",
     };
     setRecords((prev) => ({
       ...prev,

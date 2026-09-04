@@ -100,6 +100,8 @@ export function RoleUserAssignmentModal({
                 filteredUsers.map((user) => {
                   const isSelected = selectedIds.includes(user.id);
 
+                  const isSuperAdmin = user.role === "Super Admin";
+
                   return (
                     <div key={user.id} className="unit-assignment-modal__unit-row">
                       <div className="unit-assignment-modal__unit-cell">
@@ -124,6 +126,7 @@ export function RoleUserAssignmentModal({
                             label="Assign"
                             variant="primary"
                             size="small"
+                            disabled={isSuperAdmin}
                             onClick={() => toggleUser(user.id)}
                           />
                         )}

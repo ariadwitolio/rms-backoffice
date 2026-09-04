@@ -37,8 +37,7 @@ export function RoleManagementDetailPanel({
   const roleTypeClass =
     roleType === "System" ? "status-pill--primary" : "status-pill--success";
   const memberCountLabel = `${members.length} User${members.length === 1 ? "" : "s"}`;
-  const baseResolvedActiveTab =
-    isEditing && activeTab === "member" ? "general" : activeTab;
+  const baseResolvedActiveTab = activeTab;
   const accountPermissionGroups = permissionsStructure.filter(
     (group) => group.id === "account-module"
   );
@@ -99,7 +98,7 @@ export function RoleManagementDetailPanel({
       <span className="type-body">{roleType}</span>
     </span>
   );
-  const showMemberTab = !isEditing;
+  const showMemberTab = true;
   const showTabBar = showAppsPermissionTab || showMemberTab;
 
   const updatePermissionsForGroupToggle = (modules, enabled) => {

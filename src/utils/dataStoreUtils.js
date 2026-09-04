@@ -597,7 +597,7 @@ export function createInitialDataStore() {
       {
         id: "usr-001",
         name: "Natasha Smith",
-        role: "Owner",
+        role: "Super Admin",
         branch: "HQ",
         lastSeen: "Online now",
         status: "Active",
@@ -637,36 +637,6 @@ export function createInitialDataStore() {
     ],
     "role-access": [
       {
-        id: "rl-010",
-        type: "System",
-        name: "Staff",
-        members: "3 users",
-        membersList: [
-          { id: "mbr-030", name: "Bayu Staff", email: "bayu.staff@restaurant.com", status: "Active" },
-          { id: "mbr-031", name: "Citra Staff", email: "citra.staff@restaurant.com", status: "Active" },
-          { id: "mbr-032", name: "New Staff", email: "new.staff@restaurant.com", status: "Invited" },
-        ],
-        description: "Edit-level Back Office access with full POS and Payment access.",
-        status: "Active",
-        updated: "4 Sep 2026",
-        permissions: createRolePermissions({
-          "role-management": "edit",
-          catalog: "edit",
-          category: "edit",
-          unit: "edit",
-          modifier: "edit",
-          device: "edit",
-          "grouped-device": "edit",
-          "table-management": "edit",
-          "menu-settings": "edit",
-          cashier: {
-            level: "full",
-            additionalAccess: { shiftCashOperations: true, report: true },
-          },
-          payment: "full",
-        }),
-      },
-      {
         id: "rl-009",
         type: "System",
         name: "Waitress",
@@ -704,6 +674,36 @@ export function createInitialDataStore() {
           cashier: {
             level: "full",
             additionalAccess: { approveServiceChargeRemoval: true, report: true },
+          },
+          payment: "full",
+        }),
+      },
+      {
+        id: "rl-010",
+        type: "System",
+        name: "Staff",
+        members: "3 users",
+        membersList: [
+          { id: "mbr-030", name: "Bayu Staff", email: "bayu.staff@restaurant.com", status: "Active" },
+          { id: "mbr-031", name: "Citra Staff", email: "citra.staff@restaurant.com", status: "Active" },
+          { id: "mbr-032", name: "New Staff", email: "new.staff@restaurant.com", status: "Invited" },
+        ],
+        description: "Edit-level Back Office access with full POS and Payment access.",
+        status: "Active",
+        updated: "4 Sep 2026",
+        permissions: createRolePermissions({
+          "role-management": "edit",
+          catalog: "edit",
+          category: "edit",
+          unit: "edit",
+          modifier: "edit",
+          device: "edit",
+          "grouped-device": "edit",
+          "table-management": "edit",
+          "menu-settings": "edit",
+          cashier: {
+            level: "full",
+            additionalAccess: { shiftCashOperations: true, report: true },
           },
           payment: "full",
         }),
@@ -874,7 +874,7 @@ export function createInitialDataStore() {
         lastActive: "24 Apr 2026, 15:18",
         addedBy: "Natasha Smith",
         addedByName: "Natasha Smith",
-        addedByRole: "Owner",
+        addedByRole: "Super Admin",
       },
       {
         id: "dm-007",
@@ -891,7 +891,7 @@ export function createInitialDataStore() {
         lastActive: "24 Apr 2026, 15:20",
         addedBy: "Natasha Smith",
         addedByName: "Natasha Smith",
-        addedByRole: "Owner",
+        addedByRole: "Super Admin",
       },
       {
         id: "dm-008",
@@ -914,7 +914,7 @@ export function createInitialDataStore() {
         lastActive: "24 Apr 2026, 15:22",
         addedBy: "Natasha Smith",
         addedByName: "Natasha Smith",
-        addedByRole: "Owner",
+        addedByRole: "Super Admin",
       },
       {
         id: "dm-009",
@@ -931,7 +931,7 @@ export function createInitialDataStore() {
         lastActive: "24 Apr 2026, 15:25",
         addedBy: "Natasha Smith",
         addedByName: "Natasha Smith",
-        addedByRole: "Owner",
+        addedByRole: "Super Admin",
       },
       {
         id: "dm-001",
@@ -945,7 +945,7 @@ export function createInitialDataStore() {
         lastActive: "24 Apr 2026, 15:12",
         addedBy: "Natasha Smith",
         addedByName: "Natasha Smith",
-        addedByRole: "Owner",
+        addedByRole: "Super Admin",
       },
       {
         id: "dm-002",
@@ -959,7 +959,7 @@ export function createInitialDataStore() {
         lastActive: "24 Apr 2026, 14:55",
         addedBy: "Natasha Smith",
         addedByName: "Natasha Smith",
-        addedByRole: "Owner",
+        addedByRole: "Super Admin",
       },
       {
         id: "dm-004",
@@ -973,7 +973,7 @@ export function createInitialDataStore() {
         lastActive: "24 Apr 2026, 15:10",
         addedBy: "Natasha Smith",
         addedByName: "Natasha Smith",
-        addedByRole: "Owner",
+        addedByRole: "Super Admin",
       },
       {
         id: "dm-003",
@@ -987,7 +987,7 @@ export function createInitialDataStore() {
         lastActive: "22 Apr 2026, 09:30",
         addedBy: "Natasha Smith",
         addedByName: "Natasha Smith",
-        addedByRole: "Owner",
+        addedByRole: "Super Admin",
       },
       {
         id: "dm-005",
@@ -1001,7 +1001,7 @@ export function createInitialDataStore() {
         lastActive: "24 Apr 2026, 15:00",
         addedBy: "Natasha Smith",
         addedByName: "Natasha Smith",
-        addedByRole: "Owner",
+        addedByRole: "Super Admin",
       },
     ],
     "grouped-device": [
