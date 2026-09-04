@@ -15135,6 +15135,8 @@ export function useAppHandlers(state) {
                                     : row[column.key] || "-";
 
                               if (column.type === "delete") {
+                                const isSystemRoleRow =
+                                  isRoleAccessPage && row.type === "System";
                                 const isPrinterDevice = row.deviceType === "Printer";
                                 const isDisconnectedDevice = row.status === "Disconnected";
                                 const isPendingDevice = row.status === "Pending";
@@ -15217,37 +15219,39 @@ export function useAppHandlers(state) {
                                           />
                                         </TableActionButton>
                                       ) : null}
-                                      <TableActionButton
-                                        tooltip={
-                                          row.deviceType === "Printer"
-                                            ? "Delete unavailable for printers"
-                                            : row.isDefault
-                                              ? "Cannot delete default item"
-                                              : "Delete"
-                                        }
-                                        disabled={row.deviceType === "Printer" || row.isDefault}
-                                        onClick={() => {
-                                          if (row.deviceType === "Printer" || row.isDefault) {
-                                            return;
+                                      {isSystemRoleRow ? null : (
+                                        <TableActionButton
+                                          tooltip={
+                                            row.deviceType === "Printer"
+                                              ? "Delete unavailable for printers"
+                                              : row.isDefault
+                                                ? "Cannot delete default item"
+                                                : "Delete"
                                           }
+                                          disabled={row.deviceType === "Printer" || row.isDefault}
+                                          onClick={() => {
+                                            if (row.deviceType === "Printer" || row.isDefault) {
+                                              return;
+                                            }
 
-                                          requestDeleteRow(
-                                            pageId,
-                                            row.id,
-                                            row.deviceName ??
-                                            row.name ??
-                                            row.label ??
-                                            row.title ??
-                                            row.id
-                                          );
-                                        }}
-                                      >
-                                        <Icon
-                                          name="delete"
-                                          className="lab-icon lab-icon--16"
-                                          alt="Delete"
-                                        />
-                                      </TableActionButton>
+                                            requestDeleteRow(
+                                              pageId,
+                                              row.id,
+                                              row.deviceName ??
+                                              row.name ??
+                                              row.label ??
+                                              row.title ??
+                                              row.id
+                                            );
+                                          }}
+                                        >
+                                          <Icon
+                                            name="delete"
+                                            className="lab-icon lab-icon--16"
+                                            alt="Delete"
+                                          />
+                                        </TableActionButton>
+                                      )}
                                     </div>
                                   </td>
                                 );

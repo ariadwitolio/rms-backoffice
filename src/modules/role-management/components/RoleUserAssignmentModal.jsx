@@ -67,7 +67,7 @@ export function RoleUserAssignmentModal({
             id="role-user-assignment-modal-title"
             className="unit-assignment-modal__title type-title-1"
           >
-            Add User
+            Assign User
           </p>
           <p className="unit-assignment-modal__copy type-body-bold">
             {roleName
@@ -121,7 +121,7 @@ export function RoleUserAssignmentModal({
                           </button>
                         ) : (
                           <LabButton
-                            label="Add"
+                            label="Assign"
                             variant="primary"
                             size="small"
                             onClick={() => toggleUser(user.id)}
@@ -145,7 +145,7 @@ export function RoleUserAssignmentModal({
         </div>
         <div className="unit-assignment-modal__footer">
           <LabButton
-            label="Add User"
+            label="Assign User"
             variant="primary"
             size="large"
             fullWidth

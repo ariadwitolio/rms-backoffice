@@ -103,7 +103,19 @@ export function RoleManagementDetailPanel({
   const showTabBar = showAppsPermissionTab || showMemberTab;
 
   const updatePermissionsForGroupToggle = (modules, enabled) => {
-    if (enabled) return draft.permissions;
+    if (enabled) {
+      return modules.reduce((nextPermissions, module) => {
+        const isBinaryFullAccessModule =
+          !module.dependsOnModuleId &&
+          module.permittedLevels?.every(
+            (level) => level === "none" || level === "full"
+          );
+
+        return isBinaryFullAccessModule
+          ? { ...nextPermissions, [module.id]: "full" }
+          : nextPermissions;
+      }, { ...draft.permissions });
+    }
 
     return modules.reduce(
       (nextPermissions, module) => ({
@@ -154,7 +166,7 @@ export function RoleManagementDetailPanel({
             {effectiveName}
           </p>
           <div className="catalog-detail-panel__actions">
-            {!isEditing && (
+            {!isEditing && roleType !== "System" && (
               <button
                 type="button"
                 className="lab-button lab-button--small lab-button--secondary"
@@ -338,7 +350,7 @@ export function RoleManagementDetailPanel({
                 style={{ display: "flex", alignItems: "center", gap: "6px" }}
               >
                 <Icon name="add" className="lab-icon lab-icon--16" alt="" />
-                <span className="type-subtitle-2">Add User</span>
+                <span className="type-subtitle-2">Assign User</span>
               </button>
             }
           >
@@ -493,12 +505,12 @@ export function RoleManagementDetailPanel({
             </>
           )}
         </div>
-      ) : (
+      ) : roleType !== "System" ? (
         <DetailPanelDeleteAction
           ariaLabel="Delete role"
           onDelete={onDelete}
         />
-      )}
+      ) : null}
     </aside>
   );
 }

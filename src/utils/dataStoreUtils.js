@@ -637,6 +637,36 @@ export function createInitialDataStore() {
     ],
     "role-access": [
       {
+        id: "rl-010",
+        type: "System",
+        name: "Staff",
+        members: "3 users",
+        membersList: [
+          { id: "mbr-030", name: "Bayu Staff", email: "bayu.staff@restaurant.com", status: "Active" },
+          { id: "mbr-031", name: "Citra Staff", email: "citra.staff@restaurant.com", status: "Active" },
+          { id: "mbr-032", name: "New Staff", email: "new.staff@restaurant.com", status: "Invited" },
+        ],
+        description: "Edit-level Back Office access with full POS and Payment access.",
+        status: "Active",
+        updated: "4 Sep 2026",
+        permissions: createRolePermissions({
+          "role-management": "edit",
+          catalog: "edit",
+          category: "edit",
+          unit: "edit",
+          modifier: "edit",
+          device: "edit",
+          "grouped-device": "edit",
+          "table-management": "edit",
+          "menu-settings": "edit",
+          cashier: {
+            level: "full",
+            additionalAccess: { shiftCashOperations: true, report: true },
+          },
+          payment: "full",
+        }),
+      },
+      {
         id: "rl-009",
         type: "System",
         name: "Waitress",
@@ -646,17 +676,15 @@ export function createInitialDataStore() {
           { id: "mbr-028", name: "Patricia Staff", email: "patricia.staff@restaurant.com", status: "Active" },
           { id: "mbr-029", name: "Emma Invited", email: "emma.invited@restaurant.com", status: "Invited" },
         ],
-        description: "Full POS access with edit-level Payment and Printer access.",
+        description: "Full POS and Payment access with shift & cash operations.",
         status: "Active",
-        updated: "2 Apr 2026",
+        updated: "4 Sep 2026",
         permissions: createRolePermissions({
-          cashier: "full",
-          "printer-settings": "full",
-          payment: {
+          cashier: {
             level: "full",
-            additionalAccess: { addOrderItem: true },
+            additionalAccess: { shiftCashOperations: true },
           },
-          "printer-settings-payment": "full",
+          payment: "full",
         }),
       },
       {
@@ -669,17 +697,15 @@ export function createInitialDataStore() {
           { id: "mbr-025", name: "Register Op", email: "register.op@restaurant.com", status: "Active" },
           { id: "mbr-026", name: "New Cashier", email: "new.cashier@restaurant.com", status: "Invited" },
         ],
-        description: "Full POS access with edit-level Payment and Printer access.",
+        description: "Full POS and Payment access with service charge removal and report approvals.",
         status: "Active",
-        updated: "2 Apr 2026",
+        updated: "4 Sep 2026",
         permissions: createRolePermissions({
-          cashier: "full",
-          "printer-settings": "full",
-          payment: {
+          cashier: {
             level: "full",
-            additionalAccess: { inputManualTransaction: true },
+            additionalAccess: { approveServiceChargeRemoval: true, report: true },
           },
-          "printer-settings-payment": "full",
+          payment: "full",
         }),
       },
       {
@@ -693,7 +719,7 @@ export function createInitialDataStore() {
         ],
         description: "Full access across Back Office, POS App, and Payment App modules.",
         status: "Active",
-        updated: "2 Apr 2026",
+        updated: "4 Sep 2026",
         permissions: createRolePermissions({
           "user-management": {
             level: "full",
@@ -715,14 +741,15 @@ export function createInitialDataStore() {
           modifier: "full",
           cashier: {
             level: "full",
-            additionalAccess: { approveVoid: true, approveDiscount: true },
+            additionalAccess: {
+              shiftCashOperations: true,
+              approveVoid: true,
+              approveDiscount: true,
+              approveServiceChargeRemoval: true,
+              report: true,
+            },
           },
-          "printer-settings": "full",
-          payment: {
-            level: "full",
-            additionalAccess: { inputManualTransaction: true, addOrderItem: true },
-          },
-          "printer-settings-payment": "full",
+          payment: "full",
         }),
       },
       {

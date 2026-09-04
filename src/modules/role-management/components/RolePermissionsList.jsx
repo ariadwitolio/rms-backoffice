@@ -296,6 +296,12 @@ export function RolePermissionRow({
       ?.label ?? "No Access";
   const label = module.levelLabels?.[normalizedPermission.level] ?? baseLabel;
   const iconName = ROLE_PERMISSION_ICON_BY_MODULE[module.id] ?? "roleManagement";
+  const isBinaryFullAccessModule =
+    !module.dependsOnModuleId &&
+    module.permittedLevels?.length === 2 &&
+    module.permittedLevels.includes("none") &&
+    module.permittedLevels.includes("full");
+  const showSelect = isEditing && !isBinaryFullAccessModule;
 
   return (
     <div
@@ -360,7 +366,7 @@ export function RolePermissionRow({
           minWidth: 0,
         }}
       >
-        {isEditing ? (
+        {showSelect ? (
           <RolePermissionSelect
             value={normalizedPermission.level}
             permittedLevels={module.permittedLevels}
